@@ -1,0 +1,13 @@
+The most pressing issues in priority order
+
+1.) finalize valgrind socket listener
+
+2.) add in sigil2-valgrind-3.11 somewhere
+
+3.) finish test cases for STGen
+
+4.) command line option parsing
+
+5.) clean-up plugin architecture
+
+6.) refactor logging in STGen, make thread-safe

@@ -1,0 +1,8 @@
+See COPYING for license details
+
+Quick build instructions:
+	$ cd <root directory>
+	$ mkdir build 
+	$ cd build
+	$ cmake ..
+	$ make -j<threads>

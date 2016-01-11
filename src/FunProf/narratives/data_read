@@ -1,0 +1,15 @@
+Given a read to an address is detected in IR
+	Mark yourself as the current reader
+
+	When no write has happened already to that address
+		
+	When a write has already happened to that address
+		When you performed the last write
+			increment the global local data reads
+		When you performed the last write
+			increment the global local data reads
+
+	When a read already happened
+		Do nothing
+	
+Given a 

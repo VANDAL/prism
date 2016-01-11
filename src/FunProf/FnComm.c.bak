@@ -1,0 +1,77 @@
+#include "FnComm.h"
+#include "ShadowMemory.h"
+#include "FnShadMem.h"
+
+#define _STATIC_ static
+#define _STATIC_INLINE_ static inline
+
+_STATIC_INLINE_ void addUniqueLocalBytes(FnCxtNode* const fn, UInt64 num_bytes) __attribute__((always_inline));
+_STATIC_INLINE_ void addNonUniqueLocalBytes(FnCxtNode* const fn, UInt64 num_bytes) __attribute__((always_inline));
+_STATIC_INLINE_ void addUniqueDepBytes(const FnCxtNode* const consumer, const FnCxtNode* const producer, UInt64 num_bytes) __attribute__((always_inline));
+_STATIC_INLINE_ void addNonUniqueDepBytes(const FnCxtNode* const consumer, const FnCxtNode* const producer, UInt64 num_bytes) __attribute__((always_inline));
+_STATIC_INLINE_ DepNode* getDepNode(const FnCxtNode* const consumer, const FnCxtNode* const producer);
+
+/*********************************************************************/
+/*                    Data Write Instrumentation                     */
+/*********************************************************************/
+//nothing to do for data writes, no dependencies
+//TODO call this file/functions FnDeps? 
+
+
+/*********************************************************************/
+/*                    Data Read Instrumentation                      */
+/*********************************************************************/
+void setReaderDependencies(FnCxtNode* const curr_reader, UInt64 addr,	UInt64 bytes)
+{
+	FnCxtNode *aligned_writer = NULL;
+	FnCxtNode *aligned_reader = NULL;
+	for (UInt64 i = 0; i < bytes;)
+	{
+		UInt64 curr_addr = addr+i;
+		UInt64 curr_bytes = bytes-i;
+		UInt32 max_aligned_writer_bytes = setAlignWriterAndGetBytes(aligned_writer, curr_addr, curr_bytes);
+		UInt32 max_aligned_reader_bytes = setAlignReaderAndGetBytes(aligned_reader, curr_reader, curr_addr, curr_bytes);
+		UInt32 min_aligned_bytes = max_aligned_writer_bytes < max_aligned_reader_bytes ? max_aligned_writer_bytes : max_aligned_reader_bytes;
+
+		if/*local read*/(curr_reader == aligned_writer)
+		{
+			if (aligned_reader != curr_reader)
+				addUniqueLocalBytes(curr_reader, min_aligned_bytes);
+			else
+				addNonUniqueLocalBytes(curr_reader, min_aligned_bytes);
+		} else 
+		{
+			if (aligned_reader != curr_reader)
+				addUniqueDepBytes(curr_reader, aligned_writer, min_aligned_bytes);
+			else
+				addNonUniqueDepBytes(curr_reader, aligned_writer, min_aligned_bytes);
+		}
+
+		i+=min_aligned_bytes;
+	}
+}
+
+_STATIC_INLINE_ 
+void addUniqueLocalBytes(FnCxtNode* const fn, UInt64 num_bytes) {
+	fn->unique_local_cnt += num_bytes;
+}
+
+_STATIC_INLINE_ 
+void addNonUniqueLocalBytes(FnCxtNode* const fn, UInt64 num_bytes) {
+	fn->nonunique_local_cnt += num_bytes;
+}
+
+_STATIC_INLINE_ 
+void addUniqueDepBytes(const FnCxtNode* const consumer, const FnCxtNode* const producer, UInt64 num_bytes) {
+	getDepNode(consumer,producer)->unique_bytes_read+=num_bytes;
+}
+
+_STATIC_INLINE_ 
+void addNonUniqueDepBytes(const FnCxtNode* const consumer, const FnCxtNode* const producer, UInt64 num_bytes) {
+	getDepNode(consumer,producer)->reused_bytes_read+=num_bytes;
+}
+
+_STATIC_INLINE_ 
+DepNode* getDepNode(const FnCxtNode* const consumer, const FnCxtNode* const producer)
+{
+}
