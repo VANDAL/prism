@@ -1,7 +1,5 @@
 #include "LogHelpers.hpp"
-#include <iostream>
-using std::cout;
-using std::endl;
+#include <sstream>
 
 namespace STGen
 {

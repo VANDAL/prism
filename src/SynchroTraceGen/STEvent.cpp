@@ -1,5 +1,6 @@
 #include "STEvent.hpp"
 #include "LogHelpers.hpp"
+#include <sstream>
 #include <cassert>
 
 namespace STGen
