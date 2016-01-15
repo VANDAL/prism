@@ -10,4 +10,8 @@ The most pressing issues in priority order
 
 5.) clean-up plugin architecture
 
-6.) refactor logging in STGen, make thread-safe
+6.) refactor Sigil for thread-safety
+
+7.) refactor logging in STGen, make thread-safe
+
+8.) Exception handling

@@ -1,21 +1,37 @@
 #include "Plugins.hpp"
 #include "EventManager.hpp"
-static std::function<sgl::EventManager&(void)> sigil = sgl::EventManager::instance;
 
-#include "SynchroTraceGen/EventHandlers.hpp"
-void registerSynchroTrace()
+namespace
 {
-	static STGen::EventHandlers handler;
-	sigil().addObserver(std::bind(&STGen::EventHandlers::onCompEv, handler, std::placeholders::_1));
-	sigil().addObserver(std::bind(&STGen::EventHandlers::onMemEv, handler, std::placeholders::_1));
-	sigil().addObserver(std::bind(&STGen::EventHandlers::onSyncEv, handler, std::placeholders::_1));
-	sigil().addObserver(std::bind(&STGen::EventHandlers::onCxtEv, handler, std::placeholders::_1));
-}
+std::function<sgl::EventManager&(void)> sigil = sgl::EventManager::instance; 
+using std::placeholders::_1;
+};
+
+/* Static plugins are registered to Sigil 
+ * via a void function that takes no arguments.
+ *
+ * Users can add functionality by adding their
+ * register functions in this header and its
+ * corresponding source file.
+ *
+ * TODO dynamic plugins
+ */
 
 /*
 #include "MySigilBackend.h"
-void registerMySigilBackend()
+SIGIL_REGISTER(MyBackEnd)
 {
 	
 }
- */
+*/
+
+#include "SynchroTraceGen/EventHandlers.hpp"
+SIGIL_REGISTER(STGen)
+{
+	static STGen::EventHandlers handler;
+	sigil().addObserver(std::bind(&STGen::EventHandlers::onCompEv, handler, _1));
+	sigil().addObserver(std::bind(&STGen::EventHandlers::onMemEv, handler, _1));
+	sigil().addObserver(std::bind(&STGen::EventHandlers::onSyncEv, handler, _1));
+	sigil().addObserver(std::bind(&STGen::EventHandlers::onCxtEv, handler, _1));
+	//TODO register cleanup
+}

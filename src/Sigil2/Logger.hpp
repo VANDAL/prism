@@ -1,6 +1,8 @@
 #ifndef SGL_LOGGER_H
 #define SGL_LOGGER_H
 
+/* Defunct */
+
 namespace sgl
 {
 /* The log file must be created before it can be used */

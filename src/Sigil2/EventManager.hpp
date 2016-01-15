@@ -6,10 +6,15 @@
 
 #include "Primitive.h"
 
-/*
- * Tracks events coming from the front-end event generator
+/**
+ * Tracks events coming from the event generator instrumentation front-end;
+ * this manager is accessed via a singleton instance.
  *
- * The front-end queues up events for processing.
+ * Event primitives are added to a buffer, which is then flushed to all 
+ * registered observers. 
+ *
+ * finish() is expected to be called just before the end of its lifetime.
+ *
  */
 namespace sgl
 {
@@ -40,13 +45,13 @@ public:
 		return mgr;
 	}
 
-	void flushEvents();
 	void addObserver(std::function<void(SglMemEv)> obs);
 	void addObserver(std::function<void(SglCompEv)> obs);
 	void addObserver(std::function<void(SglSyncEv)> obs);
 	void addObserver(std::function<void(SglCxtEv)> obs);
 	void addCleanup(std::function<void(void)> obs);
 	void finish();
+	void flushEvents();
 
 private:
 	EventManager() { used = 0; }

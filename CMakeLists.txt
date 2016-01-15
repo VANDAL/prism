@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 project(Sigil2)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -lpthread")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -rdynamic -lpthread -ldl")
 
 enable_testing( true )
 include( CTest )
@@ -19,7 +19,6 @@ set(SOURCES
 	${SIGIL2_DIR}/OptionParser.cpp
 	${SIGIL2_DIR}/EventManager.cpp
 	${SIGIL2_DIR}/Logger.cpp
-	${SIGIL2_DIR}/Plugins.cpp
 
 	${SIGIL2_DIR}/ScaleTest.cpp
 	)

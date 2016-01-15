@@ -12,11 +12,13 @@ int main(int argc, char* argv[])
 	parser.parse();
 
 	unsigned long cnt=50000;
+	/*
 	char* end;
 	if (argc < 2)
 		return -1;
 	else
 		cnt = strtoul(argv[1], &end, 10)/5;
+	*/
 
 	SglMemEv memev;
 	memev.size = 4;

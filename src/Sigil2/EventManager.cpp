@@ -57,7 +57,9 @@ void EventManager::addCleanup(std::function<void(void)> obs)
 	cleanup_observers.push_back(obs);
 }
 
-static void notifyMemObservers(const BufferedEvent& ev)
+namespace
+{
+void notifyMemObservers(const BufferedEvent& ev)
 {
 	for( auto& notify : *reinterpret_cast<Observers<SglMemEv>*>(ev.observers) )
 	{
@@ -65,7 +67,7 @@ static void notifyMemObservers(const BufferedEvent& ev)
 	}
 }
 
-static void notifyCompObservers(const BufferedEvent& ev)
+void notifyCompObservers(const BufferedEvent& ev)
 {
 	for( auto& notify : *reinterpret_cast<Observers<SglCompEv>*>(ev.observers) )
 	{
@@ -73,7 +75,7 @@ static void notifyCompObservers(const BufferedEvent& ev)
 	}
 }
 
-static void notifySyncObservers(const BufferedEvent& ev)
+void notifySyncObservers(const BufferedEvent& ev)
 {
 	for( auto& notify : *reinterpret_cast<Observers<SglSyncEv>*>(ev.observers) )
 	{
@@ -81,13 +83,14 @@ static void notifySyncObservers(const BufferedEvent& ev)
 	}
 }
 
-static void notifyCxtObservers(const BufferedEvent& ev)
+void notifyCxtObservers(const BufferedEvent& ev)
 {
 	for( auto& notify : *reinterpret_cast<Observers<SglCxtEv>*>(ev.observers) )
 	{
 		notify(ev.cxt_ev);
 	}
 }
+}; //end namespace
 
 void EventManager::bufferEvent(SglMemEv ev)
 {
