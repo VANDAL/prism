@@ -15,12 +15,11 @@ set(STGEN_DIR ./src/SynchroTraceGen)
 set(SOURCES)
 set(SOURCES
 	${SOURCES}
-	${SIGIL2_DIR}/Sigil.cpp
+	${SIGIL2_DIR}/InstrumentationIface.cpp
+	${SIGIL2_DIR}/OptionParser.cpp
 	${SIGIL2_DIR}/EventManager.cpp
-	${SIGIL2_DIR}/SglInit.cpp
-	${SIGIL2_DIR}/FrontIface.cpp
-	${SIGIL2_DIR}/SglClo.cpp
-	${SIGIL2_DIR}/SglLog.cpp
+	${SIGIL2_DIR}/Logger.cpp
+	${SIGIL2_DIR}/Plugins.cpp
 
 	${SIGIL2_DIR}/ScaleTest.cpp
 	)
@@ -34,6 +33,8 @@ set(SOURCES
 	)
 
 include_directories(src)
+include_directories(include/Catch/include)
+include_directories(include/spdlog/include/spdlog)
 
 add_executable(sigil ${SOURCES})
 

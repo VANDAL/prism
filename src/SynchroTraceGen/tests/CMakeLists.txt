@@ -3,7 +3,6 @@ set (SMTEST_SOURCES
 	)
 
 set (STEVENTTEST_SOURCES
-	../../Sigil2/SglLog.cpp
 	../LogHelpers.cpp
 	../STEvent.cpp
 	../EventHandlers.cpp
@@ -14,7 +13,6 @@ include_directories(
 	../../../include #catch
 	../../           #project src
 	../../Sigil2
-	../../Sigil2/spdlog/include/spdlog
 	)
 
 add_executable(SMTest ./ShadMemTest.cpp ${SMTEST_SOURCES}) 

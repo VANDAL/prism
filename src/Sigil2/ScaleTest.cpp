@@ -1,5 +1,5 @@
-#include "FrontIface.h"
-#include "SglClo.hpp"
+#include "InstrumentationIface.h"
+#include "OptionParser.hpp"
 
 #include <iostream>
 #include <cstdlib>
@@ -8,8 +8,8 @@
 
 int main(int argc, char* argv[])
 {
-	sgl::Clo clo(argc, argv);
-	clo.parse();
+	sgl::OptionParser parser(argc, argv);
+	parser.parse();
 
 	unsigned long cnt=50000;
 	char* end;

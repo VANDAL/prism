@@ -1,3 +1,6 @@
-[submodule "src/Sigil2/spdlog"]
-	path = src/Sigil2/spdlog
+[submodule "include/Catch"]
+	path = include/Catch
+	url = https://github.com/philsquared/Catch
+[submodule "include/spdlog"]
+	path = include/spdlog
 	url = https://github.com/gabime/spdlog

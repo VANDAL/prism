@@ -1,5 +1,5 @@
-#ifndef SGL_FRONTIFACE_H
-#define SGL_FRONTIFACE_H
+#ifndef SGL_INSTRUMENTATIONIFACE_H
+#define SGL_INSTRUMENTATIONIFACE_H
 
 #include "Primitive.h"
 
