@@ -11,7 +11,7 @@ int main(int argc, char* argv[])
 	sgl::OptionParser parser(argc, argv);
 	parser.parse();
 
-	unsigned long cnt=50000;
+	unsigned long cnt=100000;
 	/*
 	char* end;
 	if (argc < 2)

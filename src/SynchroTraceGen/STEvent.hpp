@@ -65,7 +65,7 @@ private:
 	virtual void detailedFlush() = 0;
 	virtual void reset() = 0;
 
-protected:
+public:
 	bool is_active = false;
 };
 

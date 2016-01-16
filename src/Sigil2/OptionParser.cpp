@@ -34,7 +34,6 @@ bool registerBackend(const std::string&)
 	void* fptr = dlsym(hndl, func_name.c_str());
 	if ( fptr == nullptr )
 	{
-		std::cerr << "dlsym " << func_name << " failed: " << dlerror() << std::endl;
 		std::cerr << "Could not find a matching backend registry" << std::endl;
 		return false;
 		//TODO output a list of available backends

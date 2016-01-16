@@ -2,17 +2,6 @@
 
 namespace sgl
 {
-void EventManager::flushEventsIfFull()
-{
-	if (used == sgl_max_events)
-	{
-		for (auto& ev : ev_buf)
-		{
-			ev.notify(ev);
-		}
-		used = 0;
-	}
-}
 
 void EventManager::flushEvents()
 {
@@ -30,31 +19,6 @@ void EventManager::finish()
 	{
 		cleanup();
 	}
-}
-
-void EventManager::addObserver(std::function<void(SglMemEv)> obs)
-{
-	mem_observers.push_back(obs);
-}
-
-void EventManager::addObserver(std::function<void(SglCompEv)> obs)
-{
-	comp_observers.push_back(obs);
-}
-
-void EventManager::addObserver(std::function<void(SglSyncEv)> obs)
-{
-	sync_observers.push_back(obs);
-}
-
-void EventManager::addObserver(std::function<void(SglCxtEv)> obs)
-{
-	cxt_observers.push_back(obs);
-}
-
-void EventManager::addCleanup(std::function<void(void)> obs)
-{
-	cleanup_observers.push_back(obs);
 }
 
 namespace
@@ -122,6 +86,31 @@ void EventManager::bufferEvent(SglCxtEv ev)
 	ev_buf[used].observers = reinterpret_cast<void*>(&cxt_observers);
 	ev_buf[used].cxt_ev = ev;
 	used++;
+}
+
+void EventManager::addObserver(std::function<void(SglMemEv)> obs)
+{
+	mem_observers.push_back(obs);
+}
+
+void EventManager::addObserver(std::function<void(SglCompEv)> obs)
+{
+	comp_observers.push_back(obs);
+}
+
+void EventManager::addObserver(std::function<void(SglSyncEv)> obs)
+{
+	sync_observers.push_back(obs);
+}
+
+void EventManager::addObserver(std::function<void(SglCxtEv)> obs)
+{
+	cxt_observers.push_back(obs);
+}
+
+void EventManager::addCleanup(std::function<void()> obs)
+{
+	cleanup_observers.push_back(obs);
 }
 
 }; //end namespace sgl

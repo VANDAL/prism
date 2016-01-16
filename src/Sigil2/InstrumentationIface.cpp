@@ -29,5 +29,5 @@ void SGLnotifyCF(SglCFEv ev)
 
 void SGLnotifyFinish()
 {
-	EventManager::instance().flushEvents();
+	EventManager::instance().finish();
 }

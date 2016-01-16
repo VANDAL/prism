@@ -149,6 +149,7 @@ void STCompEvent::reset()
 	total_events = 0;
 	stores_unique.clear();
 	loads_unique.clear();
+
 	is_active = false;
 }
 

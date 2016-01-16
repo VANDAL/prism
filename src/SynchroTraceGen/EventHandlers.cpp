@@ -1,17 +1,16 @@
 #include "EventHandlers.hpp"
 #include <cassert>
+#include "spdlog.h"
 
 namespace STGen
 {
+extern std::shared_ptr<spdlog::logger> curr_logger;
+
 EventHandlers::EventHandlers()
 {
 	/* to initialize loggers;
 	 * assume first thread is id 0 */
 	STEvent::setThread(0);
-}
-
-EventHandlers::~EventHandlers()
-{
 }
 
 ////////////////////////////////////////////////////////////
@@ -122,10 +121,13 @@ void EventHandlers::onStore(const SglMemEv& ev_data)
 }
 
 ////////////////////////////////////////////////////////////
-// Context Switch Event Handling
+// Cleanup - Flush remaining events
 ////////////////////////////////////////////////////////////
-void EventHandlers::onCxtEv(SglCxtEv ev)
+void EventHandlers::cleanup()
 {
-	//nothing to do
+	st_comm_ev.flush();
+	st_comp_ev.flush();
+	curr_logger->flush();
 }
+
 }; //end namespace STGen

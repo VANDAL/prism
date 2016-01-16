@@ -45,13 +45,13 @@ public:
 		return mgr;
 	}
 
+	void flushEvents();
+	void finish();
 	void addObserver(std::function<void(SglMemEv)> obs);
 	void addObserver(std::function<void(SglCompEv)> obs);
 	void addObserver(std::function<void(SglSyncEv)> obs);
 	void addObserver(std::function<void(SglCxtEv)> obs);
-	void addCleanup(std::function<void(void)> obs);
-	void finish();
-	void flushEvents();
+	void addCleanup(std::function<void()> obs);
 
 private:
 	EventManager() { used = 0; }
@@ -64,13 +64,15 @@ private:
 	void bufferEvent(SglCompEv ev);
 	void bufferEvent(SglSyncEv ev);
 	void bufferEvent(SglCxtEv ev);
-	void flushEventsIfFull();
 
 public:
 	template<typename T>
 	void addEvent(T ev)
 	{
-		flushEventsIfFull();
+		if/*buffer full*/(used == sgl_max_events)
+		{
+			flushEvents();
+		}
 		bufferEvent(ev);
 	}
 

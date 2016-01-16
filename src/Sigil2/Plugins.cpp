@@ -29,9 +29,8 @@ SIGIL_REGISTER(MyBackEnd)
 SIGIL_REGISTER(STGen)
 {
 	static STGen::EventHandlers handler;
-	sigil().addObserver(std::bind(&STGen::EventHandlers::onCompEv, handler, _1));
-	sigil().addObserver(std::bind(&STGen::EventHandlers::onMemEv, handler, _1));
-	sigil().addObserver(std::bind(&STGen::EventHandlers::onSyncEv, handler, _1));
-	sigil().addObserver(std::bind(&STGen::EventHandlers::onCxtEv, handler, _1));
-	//TODO register cleanup
+	sigil().addObserver(std::bind(&STGen::EventHandlers::onCompEv, &handler, _1));
+	sigil().addObserver(std::bind(&STGen::EventHandlers::onMemEv, &handler, _1));
+	sigil().addObserver(std::bind(&STGen::EventHandlers::onSyncEv, &handler, _1));
+	sigil().addCleanup(std::bind(&STGen::EventHandlers::cleanup, &handler));
 }
