@@ -392,7 +392,8 @@ int sigrind_listener (int argc, char** argv)
                if (conn_count == 0 && exit_when_zero) {
                   printf("\n");
                   fflush(stdout);
-                  exit_routine();
+				  goto finish;
+                  //exit_routine();
           }
             }
          }
@@ -401,7 +402,7 @@ int sigrind_listener (int argc, char** argv)
   
    } /* while (1) */
 
-   /* NOTREACHED */
+   finish: return 0;
 }
 
 
