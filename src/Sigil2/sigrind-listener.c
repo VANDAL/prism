@@ -57,6 +57,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#include "FrontEnds.hpp"
 #include "msg-builder.h"
 
 /*---------------------------------------------------------------*/
@@ -131,7 +132,7 @@ static void set_blocking ( int sd )
 }
 static int read_from_sd ( int sd, VGBufState& buf_state )
 {
-   unsigned char buf[100];
+   char buf[100];
    int n;
 
    set_blocking(sd);
@@ -191,22 +192,14 @@ static void usage ( void )
       "\n"
       "usage is:\n"
       "\n"
-      "   sigil-listener [--exit-at-zero|-e] [--max-connect=INT] [port-number]\n"
+      "   sigrind-listener [port-number]\n"
       "\n"
-      "   where   --exit-at-zero or -e causes the listener to exit\n"
-      "           when the number of connections falls back to zero\n"
-      "           (the default is to keep listening forever)\n"
-      "\n"
-      "           --max-connect=INT can be used to increase the maximum\n"
-      "           number of connected processes (default = %d).\n"
-      "           INT must be positive and less than %d.\n"
-      "\n"
-      "           port-number is the default port on which to listen for\n"
+      "   where   port-number is the default port on which to listen for\n"
       "           connections.  It must be between 1024 and 65535.\n"
       "           Current default is %d.\n"
       "\n"
       ,
-      M_CONNECTIONS_DEFAULT, M_CONNECTIONS_MAX, DEFAULT_LOGPORT
+      DEFAULT_LOGPORT
    );
    exit(1);
 }
@@ -216,7 +209,7 @@ static void banner ( const char* str )
 {
    time_t t;
    t = time(NULL);
-   printf("valgrind-listener %s at %s", str, ctime(&t));
+   printf("sigrind-listener %s at %s", str, ctime(&t));
    fflush(stdout);
 }
 
@@ -234,7 +227,7 @@ static void sigint_handler ( int signo )
 }
 
 
-int main (int argc, char** argv) 
+int sigrind_listener (int argc, char** argv) 
 {
    int    i, j, k, res, one;
    int    main_sd, new_sd;
@@ -244,17 +237,8 @@ int main (int argc, char** argv)
    char /*bool*/ exit_when_zero = 0;
    int           port = DEFAULT_LOGPORT;
 
+
    for (i = 1; i < argc; i++) {
-      if (0==strcmp(argv[i], "--exit-at-zero")
-          || 0==strcmp(argv[i], "-e")) {
-         exit_when_zero = 1;
-      }
-      else if (0 == strncmp(argv[i], "--max-connect=", 14)) {
-         M_CONNECTIONS = atoi_with_bound(strchr(argv[i], '=') + 1, 5000);
-         if (M_CONNECTIONS <= 0 || M_CONNECTIONS > M_CONNECTIONS_MAX)
-            usage();
-      }
-      else
       if (atoi_portno(argv[i]) > 0) {
          port = atoi_portno(argv[i]);
       }
@@ -262,8 +246,8 @@ int main (int argc, char** argv)
       usage();
    }
 
-   if (M_CONNECTIONS == 0)   // nothing specified on command line
-      M_CONNECTIONS = M_CONNECTIONS_DEFAULT;
+   exit_when_zero = 1;
+   M_CONNECTIONS = M_CONNECTIONS_DEFAULT;
 
    conn_fd     =(int*) malloc(M_CONNECTIONS * sizeof conn_fd[0]);
    conn_pollfd = (struct pollfd*)malloc(M_CONNECTIONS * sizeof conn_pollfd[0]);
@@ -422,5 +406,5 @@ int main (int argc, char** argv)
 
 
 /*--------------------------------------------------------------------*/
-/*--- end                                      valgrind-listener.c ---*/
+/*--- end                                      sigrind-listener.c ---*/
 /*--------------------------------------------------------------------*/

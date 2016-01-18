@@ -1,7 +1,6 @@
 #ifndef MSG_BUIDLER_H
 #define MSG_BUIDLER_H
 
-
 typedef struct VGBufState VGBufState;
 struct VGBufState
 {
@@ -12,9 +11,9 @@ struct VGBufState
 };
 
 //Deserialize that msg and hook into the sigil back end
-void sendToSgl( VGBufState data );
+void sendToSgl( const VGBufState& data );
 
 //Build up a sigil 'msg' created in from the valgrind server, here in the client
-void parseSglMsg ( unsigned char* buf, int nbuf, VGBufState& buf_state );
+void parseSglMsg ( const char* const buf, const int nbuf, VGBufState& buf_state );
 
 #endif

@@ -3,8 +3,12 @@
 
 int main(int argc, char* argv[])
 {
-	sgl::Clo clo(argc, argv);
-	clo.parse();
+	sgl::OptionParser parser(argc, argv);
 
-	sgl::EventManager::instance().finish();
+	if ( parser.start_backend != nullptr && parser.start_frontend != nullptr )
+	{
+		parser.start_backend();
+		parser.start_frontend();
+		sgl::EventManager::instance().finish();
+	}
 }

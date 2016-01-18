@@ -51,10 +51,12 @@ void EventHandlers::onCompEv(SglCompEv ev)
 	switch( ev.type )
 	{
 		case CompCostType::COMP_IOP:
-			st_comp_ev.incIOP();
+			curr_logger->info("IOP Event");
+			//st_comp_ev.incIOP();
 			break;
 		case CompCostType::COMP_FLOP:
-			st_comp_ev.incFLOP();
+			curr_logger->info("FLOP Event");
+			//st_comp_ev.incFLOP();
 			break;
 		default:
 			break;
@@ -69,10 +71,12 @@ void EventHandlers::onMemEv(SglMemEv ev)
 	switch( ev.type )
 	{
 		case MemType::MEM_LOAD:
-			onLoad(ev);
+			curr_logger->info("Load Event");
+			//onLoad(ev);
 			break;
 		case MemType::MEM_STORE:
-			onStore(ev);
+			curr_logger->info("Store Event");
+			//onStore(ev);
 			break;
 		default:
 			break;

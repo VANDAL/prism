@@ -1,19 +1,19 @@
 #ifndef SGL_OPTIONPARSER_H
 #define SGL_OPTIONPARSER_H
 
+#include <functional>
+
 namespace sgl
 {
 class OptionParser
 {
-public:
-	OptionParser(int argc, char* argv[]) 
-		: argc(argc), argv(argv) {}
+	bool registerBackendArgument(const std::string& backend);
+	bool registerFrontendArgument(const std::string& frontend);
 
-	void parse();
-	
-private:
-	int argc;
-	char** argv;
+public:
+	std::function<void()> start_backend = nullptr;
+	std::function<void()> start_frontend = nullptr;
+	OptionParser(int argc, char* argv[]);
 };
 }; //end namespace sgl
 

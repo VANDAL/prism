@@ -1,17 +1,15 @@
 The most pressing issues in priority order
 
-1.) finalize valgrind socket listener
+ fix portability of sigil-valgrind (endianness)
 
-2.) add in sigil2-valgrind-3.11 somewhere
+ finish test cases for STGen
 
-3.) finish test cases for STGen
+ command line option parsing
 
-4.) command line option parsing
+ clean-up - CMake, option parsing/handling, plugin architecture, sigrind-listener
 
-5.) clean-up plugin architecture
+ refactor Sigil for thread-safety
 
-6.) refactor Sigil for thread-safety
+ refactor logging in STGen, make thread-safe
 
-7.) refactor logging in STGen, make thread-safe
-
-8.) Exception handling
+ Exception handling
