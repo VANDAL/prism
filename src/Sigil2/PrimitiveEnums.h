@@ -6,30 +6,30 @@
 ////////////////
 enum CompCostType
 {
-	COMP_TYPE_UNDEF = 0,
-	COMP_IOP,
-	COMP_FLOP
+	SGLPRIM_COMP_TYPE_UNDEF = 0,
+	SGLPRIM_COMP_IOP,
+	SGLPRIM_COMP_FLOP
 };
 
 enum CompArity
 {
-	COMP_ARITY_UNDEF = 0,
-	COMP_NULLARY,
-	COMP_UNARY,
-	COMP_BINARY,
-	COMP_TERNARY,
-	COMP_QUARTERNARY
+	SGLPRIM_COMP_ARITY_UNDEF = 0,
+	SGLPRIM_COMP_NULLARY,
+	SGLPRIM_COMP_UNARY,
+	SGLPRIM_COMP_BINARY,
+	SGLPRIM_COMP_TERNARY,
+	SGLPRIM_COMP_QUARTERNARY
 };
 
 enum CompCostOp
 {
-	COMP_OP_UNDEF = 0,
-	COMP_ADD,
-	COMP_SUB,
-	COMP_MULT,
-	COMP_DIV,
-	COMP_SHFT,
-	COMP_MOV
+	SGLPRIM_COMP_OP_UNDEF = 0,
+	SGLPRIM_COMP_ADD,
+	SGLPRIM_COMP_SUB,
+	SGLPRIM_COMP_MULT,
+	SGLPRIM_COMP_DIV,
+	SGLPRIM_COMP_SHFT,
+	SGLPRIM_COMP_MOV
 };
 
 
@@ -38,9 +38,9 @@ enum CompCostOp
 ////////////////
 enum MemType
 {
-	MEM_TYPE_UNDEF = 0,
-	MEM_LOAD,
-	MEM_STORE
+	SGLPRIM_MEM_TYPE_UNDEF = 0,
+	SGLPRIM_MEM_LOAD,
+	SGLPRIM_MEM_STORE
 };
 
 
@@ -49,9 +49,9 @@ enum MemType
 //////////////////
 enum CFType
 {
-	CF_UNDEF = 0,
-	CF_JUMP,
-	CF_BRANCH_CND
+	SGLPRIM_CF_UNDEF = 0,
+	SGLPRIM_CF_JUMP,
+	SGLPRIM_CF_BRANCH_CND
 };
 
 
@@ -60,9 +60,9 @@ enum CFType
 ///////////////
 enum CxtType
 {
-	CXT_UNDEF = 0,
-	CXT_FUNC = 1,
-	CXT_THREAD = 2 
+	SGLPRIM_CXT_UNDEF = 0,
+	SGLPRIM_CXT_FUNC = 1,
+	SGLPRIM_CXT_THREAD = 2 
 	//instr, etc, unimplemented
 };
 
@@ -70,14 +70,25 @@ enum CxtType
 /////////////////////
 /* Synchronization */
 /////////////////////
+/* TODO Many of these are specific
+ * to SynchroTrace. Can we simplify
+ * SynchroTrace to take a subset? */
 enum SyncType
 {
-	SYNC_UNDEF = 0,
-	SYNC_CREATE,
-	SYNC_JOIN,
-	SYNC_BARRIER,
-	SYNC_SYNC,
-	SYNC_SWAP
+	SGLPRIM_SYNC_UNDEF = 0,
+	SGLPRIM_SYNC_CREATE,
+	SGLPRIM_SYNC_JOIN,
+	SGLPRIM_SYNC_BARRIER,
+	SGLPRIM_SYNC_SYNC,
+	SGLPRIM_SYNC_SWAP,
+
+/* SynchroTrace specific */
+	SGLPRIM_SYNC_LOCK,
+	SGLPRIM_SYNC_UNLOCK,
+	SGLPRIM_SYNC_CONDWAIT,
+	SGLPRIM_SYNC_CONDSIG,
+	SGLPRIM_SYNC_SPINLOCK,
+	SGLPRIM_SYNC_SPINUNLOCK
 };
 
 #ifndef __cpluscplus

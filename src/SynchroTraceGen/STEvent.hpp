@@ -30,7 +30,7 @@ public:
 	void clear();
 
 private:
-	/* Returns true if addr range 2 contains addr range 1, inclusive
+	/* Returns true if addr range #2 contains addr range #1, inclusive
 	 * Returns false otherwise */
 	bool addrOverlap(
 			Addr addr1_begin, Addr addr1_end,
@@ -51,7 +51,7 @@ struct STEvent
 	 * Per-thread event count. Logged to SynchroTrace event trace.
 	 * Each derived SynchroTrace event tracks the same event id.
 	 */
-	//TODO make thread/event tracking thread-safe
+	//TODO refactor without static variables
 	static std::unordered_map<TId, EId> event_ids;
 	static TId curr_thread_id;
 	static EId curr_event_id;

@@ -18,12 +18,18 @@ public:
 	void onMemEv(SglMemEv ev);
 	void cleanup();
 
+	/* SynchroTraceGen makes use of 3 SynchroTrace events,
+	 * i.e. Computation, Communication, and Synchronization.
+	 *
+	 * One of each event is populated and flushed as Sigil
+	 * primitives are processed. Because there might be billions
+	 * or more of SynchroTrace events, dynamic heap allocation of 
+	 * consecutive SynchroTrace events is avoided */
 	STCompEvent st_comp_ev;
 	STCommEvent st_comm_ev;
 	STSyncEvent st_sync_ev;
 
 private:
-	void onThreadSwap();
 	void onLoad(const SglMemEv& ev_data);
 	void onStore(const SglMemEv& ev_data);
 

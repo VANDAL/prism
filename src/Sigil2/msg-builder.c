@@ -1,5 +1,7 @@
 #include "msg-builder.h"
 #include "InstrumentationIface.h" 
+#include "PrimitiveEnums.h"
+
 #include <iostream>
 #include <cassert>
 
@@ -106,10 +108,10 @@ void sendCompEvent( const VGBufState& data )
 	switch( COMP_OP_TYPE(data.msg) )
 	{
 	case MSG_IOP_TYPE:
-		ev.type = COMP_IOP;
+		ev.type = CompCostType::SGLPRIM_COMP_IOP;
 		break;
 	case MSG_FLOP_TYPE:
-		ev.type = COMP_FLOP;
+		ev.type = CompCostType::SGLPRIM_COMP_FLOP;
 		break;
 	default:
 		break;
@@ -117,19 +119,19 @@ void sendCompEvent( const VGBufState& data )
 	switch( COMP_ARITY(data.msg) )
 	{
 	case MSG_NULLARY:
-		ev.arity = COMP_NULLARY;
+		ev.arity = CompArity::SGLPRIM_COMP_NULLARY;
 		break;
 	case MSG_UNARY:
-		ev.arity = COMP_UNARY;
+		ev.arity = CompArity::SGLPRIM_COMP_UNARY;
 		break;
 	case MSG_BINARY:
-		ev.arity = COMP_BINARY;
+		ev.arity = CompArity::SGLPRIM_COMP_BINARY;
 		break;
 	case MSG_TERNARY:
-		ev.arity = COMP_TERNARY;
+		ev.arity = CompArity::SGLPRIM_COMP_TERNARY;
 		break;
 	case MSG_QUARTERNARY:
-		ev.arity = COMP_QUARTERNARY;
+		ev.arity = CompArity::SGLPRIM_COMP_QUARTERNARY;
 		break;
 	default:
 		break;
@@ -144,27 +146,34 @@ void sendMemEvent( const VGBufState& data )
 {
 	union
 	{
-		uint64_t addr;
+		uint64_t data;
 		char byte[8];
-	} addr, size;
-
+	} addr;
 	for (int i=0; i<8; ++i)
 	{
 		addr.byte[i] = data.msg[i+2];
+	}
+
+	union
+	{
+		uint16_t data;
+		char byte[2];
+	} size;
+	for (int i=0; i<2; ++i)
+	{
 		size.byte[i] = data.msg[i+10];
 	}
 
-
 	SglMemEv ev;
-	ev.begin_addr = addr.addr;
-	ev.size = addr.addr;
+	ev.begin_addr = addr.data;
+	ev.size = size.data;
 	switch( MEM_TYPE(data.msg) )
 	{
 	case MSG_MEM_LOAD:
-		ev.type = MemType::MEM_LOAD;
+		ev.type = MemType::SGLPRIM_MEM_LOAD;
 		break;
 	case MSG_MEM_STORE:
-		ev.type = MemType::MEM_STORE;
+		ev.type = MemType::SGLPRIM_MEM_STORE;
 		break;
 	default:
 		break;
@@ -172,20 +181,25 @@ void sendMemEvent( const VGBufState& data )
 	SGLnotifyMem(ev);
 }
 
-#define SYNC_TYPE(x) (x[1] & 0xF0)
+#define SYNC_TYPE(x) (x[1] & 0xFF)
 #define MSG_SYNC_CREATE 0x10
 void sendSyncEvent( const VGBufState& data )
 {
 	SglSyncEv ev;
-	switch( SYNC_TYPE(data.msg) )
+	ev.type = (SyncType)SYNC_TYPE(data.msg); //Event Primitive Enum directly coded
+
+	union
 	{
-	case MSG_SYNC_CREATE:
-		//we have the thread id
-		//we have the addresss
-		break;
-	default:
-		break;
+		uint64_t data;
+		uint8_t byte[8];	
+	} sync_data;
+	for (int i=0; i<8; ++i)
+	{
+		sync_data.byte[i] = data.msg[i+2];
 	}
+
+	ev.id = sync_data.data;
+	SGLnotifySync(ev);
 }
 
 
@@ -199,6 +213,7 @@ void sendSyncEvent( const VGBufState& data )
 #define MSG_CXT_THREAD 0x40
 #define MSG_CXT_THREAD_SWAP 0x01
 
+/* WIP */
 void sendCxtEvent( const VGBufState& data )
 {
 	SglCxtEv ev;
@@ -206,7 +221,7 @@ void sendCxtEvent( const VGBufState& data )
 	{
 	case MSG_CXT_FUNC:
 	{
-		ev.type = CXT_FUNC;
+		ev.type = CxtType::SGLPRIM_CXT_FUNC;
 		std::string fn_name(reinterpret_cast<const char*>(data.msg+2), data.used-2);
 		switch ( CXT_SUBTYPE(data.msg) )
 		{

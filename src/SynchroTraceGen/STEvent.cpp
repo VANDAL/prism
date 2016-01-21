@@ -90,16 +90,7 @@ void STCompEvent::detailedFlush()
 	}
 
 	curr_logger->info(logmsg.str());
-
 	reset();
-}
-
-bool STCompEvent::updateWrites(SglMemEv ev)
-{
-	is_active = true;
-	store_cnt += ev.size;
-	total_events++;
-	return stores_unique.insert(ev.begin_addr, ev.begin_addr+ev.size-1);
 }
 
 bool STCompEvent::updateWrites(Addr begin, Addr size)
@@ -108,6 +99,14 @@ bool STCompEvent::updateWrites(Addr begin, Addr size)
 	store_cnt += size;
 	total_events++;
 	return stores_unique.insert(begin, begin+size-1);
+}
+
+bool STCompEvent::updateWrites(SglMemEv ev)
+{
+	is_active = true;
+	store_cnt += ev.size;
+	total_events++;
+	return stores_unique.insert(ev.begin_addr, ev.begin_addr+ev.size-1);
 }
 
 bool STCompEvent::updateReads(Addr begin, Addr size)
@@ -176,7 +175,8 @@ void STCommEvent::detailedFlush()
 			<< " " << std::get<2>(edge)
 			<< " " << std::get<3>(edge);
 	}
-	
+
+	curr_logger->info(logmsg.str());
 	reset();
 }
 
@@ -248,11 +248,12 @@ bool AddrRange::insert(Addr begin, Addr end)
 			range.second = end;
 			return true;
 		}
-		else if ( end == range.first+1 )
+		else if ( end+1 == range.first )
 		{
 			range.first = begin;
 			return true;
 		}
+		//TODO partial overlap not implemented, considered new address
 	}
 
 	ranges.push_back(std::make_pair(begin, end));

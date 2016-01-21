@@ -9,7 +9,8 @@ extern std::shared_ptr<spdlog::logger> curr_logger;
 EventHandlers::EventHandlers()
 {
 	/* to initialize loggers;
-	 * assume first thread is id 0 */
+	 * FIXME let front end initialize this
+	 * Thread ID #0 is assumed as first thread from Sigrind */
 	STEvent::setThread(0);
 }
 
@@ -20,24 +21,30 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 {
 	switch( ev.type )
 	{
-		case SyncType::SYNC_SWAP:
-			if ( STEvent::curr_thread_id != static_cast<TId>(ev.id) )
-			{
-				st_comp_ev.flush();
-				st_comm_ev.flush();
+	case SyncType::SGLPRIM_SYNC_SWAP:
+		if ( STEvent::curr_thread_id != static_cast<TId>(ev.id) )
+		{
+			st_comm_ev.flush();
+			st_comp_ev.flush();
 
-				STEvent::setThread(ev.id);
-			}
-			break;
-		case SyncType::SYNC_CREATE:
-		case SyncType::SYNC_JOIN:
-		case SyncType::SYNC_BARRIER:
-		case SyncType::SYNC_SYNC:
-			st_sync_ev.logSync(ev.type, ev.id);
-			break;
-		default:
-			assert(0); //TODO will this validly happen?
-			break;
+			STEvent::setThread(ev.id);
+		}
+		break;
+	case SyncType::SGLPRIM_SYNC_CREATE:
+	case SyncType::SGLPRIM_SYNC_JOIN:
+	case SyncType::SGLPRIM_SYNC_BARRIER:
+	case SyncType::SGLPRIM_SYNC_SYNC:
+	case SyncType::SGLPRIM_SYNC_LOCK:
+	case SyncType::SGLPRIM_SYNC_UNLOCK:
+	case SyncType::SGLPRIM_SYNC_CONDWAIT:
+	case SyncType::SGLPRIM_SYNC_CONDSIG:
+	case SyncType::SGLPRIM_SYNC_SPINLOCK:
+	case SyncType::SGLPRIM_SYNC_SPINUNLOCK:
+		st_sync_ev.logSync(ev.type, ev.id);
+		break;
+	default:
+		assert(0); //TODO will this validly happen?
+		break;
 	}
 }
 
@@ -50,13 +57,11 @@ void EventHandlers::onCompEv(SglCompEv ev)
 						   flush most recent communication event */
 	switch( ev.type )
 	{
-		case CompCostType::COMP_IOP:
-			curr_logger->info("IOP Event");
-			//st_comp_ev.incIOP();
+		case CompCostType::SGLPRIM_COMP_IOP:
+			st_comp_ev.incIOP();
 			break;
-		case CompCostType::COMP_FLOP:
-			curr_logger->info("FLOP Event");
-			//st_comp_ev.incFLOP();
+		case CompCostType::SGLPRIM_COMP_FLOP:
+			st_comp_ev.incFLOP();
 			break;
 		default:
 			break;
@@ -70,13 +75,11 @@ void EventHandlers::onMemEv(SglMemEv ev)
 {
 	switch( ev.type )
 	{
-		case MemType::MEM_LOAD:
-			curr_logger->info("Load Event");
-			//onLoad(ev);
+		case MemType::SGLPRIM_MEM_LOAD:
+			onLoad(ev);
 			break;
-		case MemType::MEM_STORE:
-			curr_logger->info("Store Event");
-			//onStore(ev);
+		case MemType::SGLPRIM_MEM_STORE:
+			onStore(ev);
 			break;
 		default:
 			break;
@@ -88,12 +91,12 @@ void EventHandlers::onMemEv(SglMemEv ev)
 	}
 }
 
-void EventHandlers::onLoad(const SglMemEv& ev_data)
+void EventHandlers::onLoad(const SglMemEv& ev)
 {
 	//Each byte of the read may have been touched by a different thread
-	for/*each byte*/( UInt i=0; i<ev_data.size; ++i )
+	for/*each byte*/( UInt i=0; i<ev.size; ++i )
 	{
-		Addr curr_addr = ev_data.begin_addr+i;
+		Addr curr_addr = ev.begin_addr+i;
 		TId writer_thread = shad_mem.getWriterTID(curr_addr);
 		TId reader_thread = shad_mem.getReaderTID(curr_addr);
 
@@ -114,12 +117,12 @@ void EventHandlers::onLoad(const SglMemEv& ev_data)
 	}
 }
 
-void EventHandlers::onStore(const SglMemEv& ev_data)
+void EventHandlers::onStore(const SglMemEv& ev)
 {
-	st_comp_ev.updateWrites(ev_data);
+	st_comp_ev.updateWrites(ev);
 	shad_mem.updateWriter(
-			ev_data.begin_addr, 
-			ev_data.size,
+			ev.begin_addr, 
+			ev.size,
 			STEvent::curr_thread_id,
 			STEvent::curr_event_id);
 }
