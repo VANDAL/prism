@@ -57,14 +57,14 @@ void EventHandlers::onCompEv(SglCompEv ev)
 						   flush most recent communication event */
 	switch( ev.type )
 	{
-		case CompCostType::SGLPRIM_COMP_IOP:
-			st_comp_ev.incIOP();
-			break;
-		case CompCostType::SGLPRIM_COMP_FLOP:
-			st_comp_ev.incFLOP();
-			break;
-		default:
-			break;
+	case CompCostType::SGLPRIM_COMP_IOP:
+		st_comp_ev.incIOP();
+		break;
+	case CompCostType::SGLPRIM_COMP_FLOP:
+		st_comp_ev.incFLOP();
+		break;
+	default:
+		break;
 	}
 }
 
@@ -75,14 +75,14 @@ void EventHandlers::onMemEv(SglMemEv ev)
 {
 	switch( ev.type )
 	{
-		case MemType::SGLPRIM_MEM_LOAD:
-			onLoad(ev);
-			break;
-		case MemType::SGLPRIM_MEM_STORE:
-			onStore(ev);
-			break;
-		default:
-			break;
+	case MemType::SGLPRIM_MEM_LOAD:
+		onLoad(ev);
+		break;
+	case MemType::SGLPRIM_MEM_STORE:
+		onStore(ev);
+		break;
+	default:
+		break;
 	}
 
 	if ( st_comp_ev.store_cnt > 99 || st_comp_ev.load_cnt > 99 )
