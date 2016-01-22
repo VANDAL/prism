@@ -5,6 +5,7 @@
 #include <getopt.h>
 #include <dlfcn.h>
 #include <iostream>
+#include <cstring>
 
 extern char* optarg;
 
@@ -14,20 +15,23 @@ namespace
 {
 struct option long_options[] =
 {
-	{"help",     no_argument,       0, 'h' },
-	{"backend",  required_argument, 0, 'b' },
-	{"frontend", required_argument, 0, 'f' },
-	{0,          0,                 0,  0  }
+	{"help",          no_argument,       nullptr, 'h' },
+	{"backend",       required_argument, nullptr, 'b' },
+	{"frontend",      required_argument, nullptr, 'f' },
+	{"exec",          required_argument, nullptr,  0  },
+	{nullptr,         0,                 nullptr,  0  }
 };
 }; //end namespace
 
 OptionParser::OptionParser(int argc, char* argv[])
 {
-	int c;
-	int option_index = 0;
-	while ( (c = getopt_long(argc,argv,"hb:f:", long_options, &option_index) ) != 0 )
+	std::string exec;
+	std::string frontend;
+
+	int c, option_index;
+	while ( (c = getopt_long(argc,argv,"hb:f:", long_options, &option_index) ) != -1 )
 	{
-		if (c == -1)
+		if/*end of opts*/(c == -1)
 		{
 			break;
 		}
@@ -35,8 +39,8 @@ OptionParser::OptionParser(int argc, char* argv[])
 		switch (c)
 		{
 		case 0:
-			if ( long_options[option_index].flag != 0 )
-				break;
+			exec = optarg;
+			break;
 		case 'h':
 			break;
 		case 'b':
@@ -47,13 +51,17 @@ OptionParser::OptionParser(int argc, char* argv[])
 			}
 			break;
 		case 'f':
-			if ( registerFrontendArgument(optarg) == false )
-			{
-				std::cerr << "Error initializing frontend" << std::endl;
-				exit( EXIT_FAILURE );
-			}
+			frontend = optarg;
+			break;
+		case '?':
 			break;
 		}
+	}
+
+	if ( registerFrontendArgument(frontend, exec) == false )
+	{
+		std::cerr << "Error initializing frontend" << std::endl;
+		exit( EXIT_FAILURE );
 	}
 
 	if ( start_backend == nullptr || start_frontend == nullptr )
@@ -89,11 +97,11 @@ bool OptionParser::registerBackendArgument(const std::string& backend)
 	return true;
 }
 
-bool OptionParser::registerFrontendArgument(const std::string& frontend)
+bool OptionParser::registerFrontendArgument(const std::string& frontend, const std::string& exec)
 {
 	if (frontend.compare("vg") == 0)
 	{
-		start_frontend = std::bind(&sigrind_listener, 0, nullptr);
+		start_frontend = std::bind(&sigrind_frontend, exec);
 		return true;
 	}
 	else

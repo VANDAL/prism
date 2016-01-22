@@ -8,7 +8,7 @@ namespace sgl
 class OptionParser
 {
 	bool registerBackendArgument(const std::string& backend);
-	bool registerFrontendArgument(const std::string& frontend);
+	bool registerFrontendArgument(const std::string& frontend, const std::string& exec);
 
 public:
 	std::function<void()> start_backend = nullptr;

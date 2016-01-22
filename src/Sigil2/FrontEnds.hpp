@@ -1,8 +1,8 @@
 #ifndef SGL_FRONTENDS_H
 #define SGL_FRONTENDS_H
 
-#include <functional>
+#include <string>
 
-int sigrind_listener(int argc, char* argv[]);
+int sigrind_frontend(std::string exec);
 
 #endif

@@ -57,6 +57,12 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#include <string>
+#include <vector>
+#include <sstream>
+#include <iterator>
+#include <iostream>
+
 #include "Sigil2/FrontEnds.hpp"
 #include "MsgBuilder.hpp"
 
@@ -78,7 +84,7 @@ __attribute__ ((noreturn))
 static void panic ( const char* str )
 {
    fprintf(stderr,
-           "\nsigil-listener: the "
+           "\nsigrind-listener: the "
            "'impossible' happened:\n   %s\n", str);
    exit(1);
 }
@@ -87,7 +93,7 @@ __attribute__ ((noreturn))
 static void my_assert_fail ( const char* expr, const char* file, int line, const char* fn )
 {
    fprintf(stderr,
-           "\nsigil-listener: %s:%d (%s): Assertion '%s' failed.\n",
+           "\nsigrind-listener: %s:%d (%s): Assertion '%s' failed.\n",
            file, line, fn, expr );
    exit(1);
 }
@@ -226,77 +232,48 @@ static void sigint_handler ( int signo )
    exit_routine();
 }
 
-
-int sigrind_listener (int argc, char** argv) 
+static char* const* tokenize_sigrind_opts(const std::string& user_exec)
 {
-   int    i, j, k, res, one;
-   int    main_sd, new_sd;
-   socklen_t client_len;
-   struct sockaddr_in client_addr, server_addr;
+	using namespace std;
 
-   char /*bool*/ exit_when_zero = 0;
-   int           port = DEFAULT_LOGPORT;
+	/* FIXME this does not account for quoted arguments with spaces
+	 * Both whitespace and quote pairs should be delimiters */
+	istringstream iss(user_exec);
+	vector<string> tokens{
+			istream_iterator<string>(iss),
+			istream_iterator<string>()};
 
+	//                 program name + valgrind options + user program options + null
+	int vg_opts_size = 1            + 2                + tokens.size()        + 1;
+	char** vg_opts = static_cast<char**>( malloc(vg_opts_size * sizeof(char*)) );
 
-   for (i = 1; i < argc; i++) {
-      if (atoi_portno(argv[i]) > 0) {
-         port = atoi_portno(argv[i]);
-      }
-      else
-      usage();
-   }
+	int i = 0;
+	vg_opts[i++] = strdup("valgrind");
+	vg_opts[i++] = strdup("--tool=sigrind");
+	vg_opts[i++] = strdup("--log-socket=127.0.0.1:1500");//TODO open socket in sigrind w/o log socket opt
+	for (string token : tokens) 
+	{
+		vg_opts[i++] = strdup(token.c_str());
+	}
+	vg_opts[i] = nullptr;
 
-   exit_when_zero = 1;
-   M_CONNECTIONS = M_CONNECTIONS_DEFAULT;
+	return vg_opts;
+}
 
-   conn_fd     =(int*) malloc(M_CONNECTIONS * sizeof conn_fd[0]);
-   conn_pollfd = (struct pollfd*)malloc(M_CONNECTIONS * sizeof conn_pollfd[0]);
-   if (conn_fd == NULL || conn_pollfd == NULL) {
-      fprintf(stderr, "Memory allocation failed; cannot continue.\n");
-      exit(1);
-   }
+static void start_sigrind(const std::string& user_exec)
+{
+	//TODO where will valgrind be?
+	std::string vg_exec = "../src/Sigil2/FrontEnds/Sigrind/valgrind-3.11.0-Sigil2/vg-in-place";
 
-   banner("started");
-   signal(SIGINT, sigint_handler);
+	// execvp() expects a const char* const*
+	auto vg_opts = tokenize_sigrind_opts(user_exec);
+	execvp(vg_exec.c_str(), vg_opts);
+}
 
-   conn_count = 0;
-   for (i = 0; i < M_CONNECTIONS; i++)
-      conn_fd[i] = 0;
-
-   /* create socket */
-   main_sd = socket(AF_INET, SOCK_STREAM, 0);
-   if (main_sd < 0) {
-      perror("cannot open socket ");
-      panic("main -- create socket");
-   }
-
-   /* allow address reuse to avoid "address already in use" errors */
-
-   one = 1;
-   if (setsockopt(main_sd, SOL_SOCKET, SO_REUSEADDR, 
-        &one, sizeof(int)) < 0) {
-      perror("cannot enable address reuse ");
-      panic("main -- enable address reuse");
-   }
-
-   /* bind server port */
-   server_addr.sin_family      = AF_INET;
-   server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-   server_addr.sin_port        = htons(port);
-  
-   if (bind(main_sd, (struct sockaddr *) &server_addr, 
-                     sizeof(server_addr) ) < 0) {
-      perror("cannot bind port ");
-      panic("main -- bind port");
-   }
-
-   res = listen(main_sd,M_CONNECTIONS);
-   if (res != 0) {
-      perror("listen failed ");
-      panic("main -- listen");
-   }
-  
+static int listen_loop(int main_sd)
+{
    VGBufState buf_state;
+   struct sockaddr_in client_addr;
    while (1) {
 
       snooze();
@@ -309,12 +286,12 @@ int sigrind_listener (int argc, char** argv)
            ufd.fd = main_sd;
            ufd.events = POLLIN;
            ufd.revents = 0;
-           res = poll(&ufd, 1, 0);
+           int res = poll(&ufd, 1, 0);
            if (res == 0) break;
 
            /* ok, we have someone waiting to connect.  Get the sd. */
-           client_len = sizeof(client_addr);
-           new_sd = accept(main_sd, (struct sockaddr *)&client_addr, 
+           socklen_t client_len = sizeof(client_addr);
+           int new_sd = accept(main_sd, (struct sockaddr *)&client_addr, 
                                                        &client_len);
            if (new_sd < 0) {
               perror("cannot accept connection ");
@@ -323,6 +300,7 @@ int sigrind_listener (int argc, char** argv)
 
            /* find a place to put it. */
       assert(new_sd > 0);
+           int i;
            for (i = 0; i < M_CONNECTIONS; i++)
               if (conn_fd[i] == 0) 
                  break;
@@ -346,8 +324,8 @@ int sigrind_listener (int argc, char** argv)
 
       /* We've processed all new connect requests.  Listen for changes
          to the current set of fds. */
-      j = 0;
-      for (i = 0; i < M_CONNECTIONS; i++) {
+      int j = 0;
+      for (int i = 0; i < M_CONNECTIONS; i++) {
          if (conn_fd[i] == 0)
             continue;
          conn_pollfd[j].fd = conn_fd[i];
@@ -356,7 +334,7 @@ int sigrind_listener (int argc, char** argv)
          j++;
       }
 
-      res = poll(conn_pollfd, j, 0 /* return immediately. */ );
+      int res = poll(conn_pollfd, j, 0 /* return immediately. */ );
       if (res < 0) {
          perror("poll(main) failed");
          panic("poll(main) failed");
@@ -368,7 +346,7 @@ int sigrind_listener (int argc, char** argv)
       }
 
       /* inspect the fds. */
-      for (i = 0; i < j; i++) {
+      for (int i = 0; i < j; i++) {
  
          if (conn_pollfd[i].revents & POLLIN) {
             /* data is available on this fd */
@@ -379,6 +357,7 @@ int sigrind_listener (int argc, char** argv)
                close(conn_pollfd[i].fd);
                /* this fd has been closed or otherwise gone bad; forget
                  about it. */
+			   int k;
                for (k = 0; k < M_CONNECTIONS; k++)
                   if (conn_fd[k] == conn_pollfd[i].fd) 
                      break;
@@ -389,11 +368,10 @@ int sigrind_listener (int argc, char** argv)
                       "-------------------\n(%d)\n(%d) ", 
                       conn_count, conn_count, conn_count);
                fflush(stdout);
-               if (conn_count == 0 && exit_when_zero) {
+               if (conn_count == 0) {
                   printf("\n");
                   fflush(stdout);
 				  goto finish;
-                  //exit_routine();
           }
             }
          }
@@ -404,6 +382,85 @@ int sigrind_listener (int argc, char** argv)
 
    finish: return 0;
 }
+
+
+int sigrind_frontend (std::string exec) 
+{
+   int    main_sd, new_sd;
+   struct sockaddr_in server_addr;
+
+   int port = DEFAULT_LOGPORT;
+
+   M_CONNECTIONS = M_CONNECTIONS_DEFAULT;
+
+   conn_fd     =(int*) malloc(M_CONNECTIONS * sizeof conn_fd[0]);
+   conn_pollfd = (struct pollfd*)malloc(M_CONNECTIONS * sizeof conn_pollfd[0]);
+   if (conn_fd == NULL || conn_pollfd == NULL) {
+      fprintf(stderr, "Memory allocation failed; cannot continue.\n");
+      exit(1);
+   }
+
+   banner("started");
+   signal(SIGINT, sigint_handler);
+
+   conn_count = 0;
+   for (int i = 0; i < M_CONNECTIONS; i++)
+      conn_fd[i] = 0;
+
+   /* create socket */
+   main_sd = socket(AF_INET, SOCK_STREAM, 0);
+   if (main_sd < 0) {
+      perror("cannot open socket ");
+      panic("main -- create socket");
+   }
+
+   /* allow address reuse to avoid "address already in use" errors */
+
+   int one = 1;
+   if (setsockopt(main_sd, SOL_SOCKET, SO_REUSEADDR, 
+        &one, sizeof(int)) < 0) {
+      perror("cannot enable address reuse ");
+      panic("main -- enable address reuse");
+   }
+
+   /* bind server port */
+   server_addr.sin_family      = AF_INET;
+   server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+   server_addr.sin_port        = htons(port);
+  
+   if (bind(main_sd, (struct sockaddr *) &server_addr, 
+                     sizeof(server_addr) ) < 0) {
+      perror("cannot bind port ");
+      panic("main -- bind port");
+   }
+
+   int res = listen(main_sd,M_CONNECTIONS);
+   if (res != 0) {
+      perror("listen failed ");
+      panic("main -- listen");
+   }
+
+
+   pid_t pid;
+   pid = fork();
+   if ( pid >= 0 )
+   {
+      if ( pid == 0 )
+      {
+         start_sigrind(exec);
+      }
+      else
+      {
+         return listen_loop(main_sd);
+      }
+   }
+   else
+   {
+      perror("fork failed ");
+      panic("main -- fork");
+   }
+}
+   
 
 
 /*--------------------------------------------------------------------*/

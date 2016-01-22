@@ -21,12 +21,13 @@ set(SOURCES
 	${SIGIL2_DIR}/main.cpp)
 add_executable(sigil2 ${SOURCES})
 
+#Plugin Backends
+set(STGen src/SynchroTraceGen)
+add_subdirectory(${STGen})
+target_link_libraries(sigil2 STGen)
+
 #Frontends
 set(FrontEnds ${SIGIL2_DIR}/FrontEnds)
 add_subdirectory(${FrontEnds}/Sigrind)
 target_link_libraries(sigil2 Sigrind)
 
-#Plugin Backends
-set(STGen src/SynchroTraceGen)
-add_subdirectory(${STGen})
-target_link_libraries(sigil2 STGen)
