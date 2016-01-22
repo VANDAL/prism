@@ -49,7 +49,7 @@ ULong* CLG_(cost_base);
 /*--- Helper functions called by instrumented code         ---*/
 /*------------------------------------------------------------*/
 
-void send_to_sigil_socket(const char *const buf, const UInt size)
+static void send_to_sigil_socket(const char *const buf, const UInt size)
 {
 	Int rc = VG_(write_socket)( VG_(log_output_sink).fd, buf, size );
 

@@ -85,12 +85,10 @@ void CLG_(set_current_call_stack)(call_stack* s)
 static __inline__
 void ensure_stack_size(Int i)
 {
-  Int oldsize;
   call_stack *cs = &CLG_(current_call_stack);
 
   if (i < cs->size) return;
 
-  oldsize = cs->size;
   cs->size *= 2;
   while (i > cs->size) cs->size *= 2;
 

@@ -69,7 +69,7 @@
 #include "callgrind.h"
 
 #include "log_events.h"
-#include "PrimitiveEnums.h"
+#include "Sigil2/PrimitiveEnums.h"
 
 #include "pub_tool_threadstate.h"
 #include "pub_tool_gdbserver.h"
@@ -1476,52 +1476,6 @@ ULong *syscalltime;
 UInt *syscalltime;
 #endif
 
-static
-void CLG_(pre_syscalltime)(ThreadId tid, UInt syscallno,
-                           UWord* args, UInt nArgs)
-{
-  if (CLG_(clo).collect_systime) {
-#if CLG_MICROSYSTIME
-    struct vki_timeval tv_now;
-    VG_(gettimeofday)(&tv_now, NULL);
-    syscalltime[tid] = tv_now.tv_sec * 1000000ULL + tv_now.tv_usec;
-#else
-    syscalltime[tid] = VG_(read_millisecond_timer)();
-#endif
-  }
-}
-
-static
-void CLG_(post_syscalltime)(ThreadId tid, UInt syscallno,
-                            UWord* args, UInt nArgs, SysRes res)
-{
-  if (CLG_(clo).collect_systime &&
-      CLG_(current_state).bbcc) {
-      Int o;
-#if CLG_MICROSYSTIME
-    struct vki_timeval tv_now;
-    ULong diff;
-    
-    VG_(gettimeofday)(&tv_now, NULL);
-    diff = (tv_now.tv_sec * 1000000ULL + tv_now.tv_usec) - syscalltime[tid];
-#else
-    UInt diff = VG_(read_millisecond_timer)() - syscalltime[tid];
-#endif  
-
-  }
-}
-
-static UInt ULong_width(ULong n)
-{
-   UInt w = 0;
-   while (n > 0) {
-      n = n / 10;
-      w++;
-   }
-   if (w == 0) w = 1;
-   return w + (w-1)/3;   // add space for commas
-}
-
 
 static
 void clg_print_stats(void)
@@ -1532,8 +1486,6 @@ void clg_print_stats(void)
 static
 void finish(void)
 {
-  HChar fmt[128];    // large enough
-
   CLG_DEBUG(0, "finish()\n");
 
   /* pop all remaining items from CallStack for correct sum
@@ -1660,20 +1612,12 @@ void CLG_(pre_clo_init)(void)
 
     VG_(needs_client_requests)(CLG_(handle_client_request));
     VG_(needs_print_stats)    (clg_print_stats);
-    VG_(needs_syscall_wrapper)(CLG_(pre_syscalltime),
-			       CLG_(post_syscalltime));
 
     VG_(track_start_client_code)  ( & clg_start_client_code_callback );
     VG_(track_pre_deliver_signal) ( & CLG_(pre_signal) );
     VG_(track_post_deliver_signal)( & CLG_(post_signal) );
 
     CLG_(set_clo_defaults)();
-
-    syscalltime = CLG_MALLOC("cl.main.pci.1",
-                             VG_N_THREADS * sizeof syscalltime[0]);
-    for (UInt i = 0; i < VG_N_THREADS; ++i) {
-       syscalltime[i] = 0;
-    }
 }
 
 VG_DETERMINE_INTERFACE_VERSION(CLG_(pre_clo_init))

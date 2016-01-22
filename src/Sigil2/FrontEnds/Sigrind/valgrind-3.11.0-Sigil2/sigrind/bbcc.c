@@ -28,7 +28,7 @@
 
 #include "global.h"
 #include "log_events.h"
-#include "PrimitiveEnums.h"
+#include "Sigil2/PrimitiveEnums.h"
 
 #include "pub_tool_threadstate.h"
 
@@ -84,7 +84,6 @@ void CLG_(set_current_bbcc_hash)(bbcc_hash* h)
 void CLG_(zero_bbcc)(BBCC* bbcc)
 {
   Int i;
-  jCC* jcc;
 
   CLG_ASSERT(bbcc->cxt != 0);
   CLG_DEBUG(1, "  zero_bbcc: BB %#lx, Cxt %u "
@@ -487,7 +486,6 @@ static void handleUnderflow(BB* bb)
   fn_node* caller;
   int fn_number;
   unsigned *pactive;
-  call_entry* call_entry_up;
 
   CLG_DEBUG(1,"  Callstack underflow !\n");
 
@@ -534,8 +532,6 @@ static void handleUnderflow(BB* bb)
   CLG_(push_cxt)( CLG_(current_state).bbcc->cxt->fn[0] );
   CLG_(push_call_stack)(source_bbcc, 0, CLG_(current_state).bbcc,
 		       (Addr)-1, False);
-  call_entry_up = 
-    &(CLG_(current_call_stack).entry[CLG_(current_call_stack).sp -1]);
 }
 
 
