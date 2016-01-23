@@ -28,11 +28,9 @@
 #include "sg_msg_fmt.h"
 
 #include <stdint.h>
-
-/* Sigrind only supports socket logging */
-#include "coregrind/pub_core_libcprint.h"
 #include "coregrind/pub_core_libcfile.h"
 
+/* Sigrind only supports socket logging */
 
 //FIXME these isn't needed for Sigil, but deleting them causes 
 /* Following global vars are setup before by setup_bbcc():
@@ -49,18 +47,20 @@ ULong* CLG_(cost_base);
 /*--- Helper functions called by instrumented code         ---*/
 /*------------------------------------------------------------*/
 
+OutputSink sigil_sink;
+
 static void send_to_sigil_socket(const char *const buf, const UInt size)
 {
-	Int rc = VG_(write_socket)( VG_(log_output_sink).fd, buf, size );
+	Int rc = VG_(write_socket)( sigil_sink.fd, buf, size );
 
 	if (rc == -1) 
 	{
 		 // FIXME handle gracefully
          // For example, the listener process died.  Switch back to stderr.
 		 const char msg[32] = "Could not write to socket\n";
-         VG_(log_output_sink).is_socket = False;
-         VG_(log_output_sink).fd = 2;
-         VG_(write)( VG_(log_output_sink).fd, msg, 32 );
+         sigil_sink.is_socket = False;
+         sigil_sink.fd = 2;
+         VG_(write)( sigil_sink.fd, msg, 32 );
 
 		 VG_(exit)(-1);
 	}

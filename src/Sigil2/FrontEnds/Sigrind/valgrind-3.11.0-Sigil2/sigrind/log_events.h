@@ -17,44 +17,35 @@
  *
  */
 
-//TODO gcc attributes were causes errors in YCM plugin, re-enable for production
+#include "coregrind/pub_core_libcprint.h"
+extern OutputSink sigil_sink;
 
-//void log_global_event(InstrInfo* ii) VG_REGPARM(1);
-void log_global_event(InstrInfo* ii);
+void log_global_event(InstrInfo* ii) VG_REGPARM(1);
 
-//void log_cond_branch(InstrInfo* ii, Word taken) VG_REGPARM(2);
-void log_cond_branch(InstrInfo* ii, Word taken);
+void log_cond_branch(InstrInfo* ii, Word taken) VG_REGPARM(2);
 
-//void log_ind_branch(InstrInfo* ii, UWord actual_dst) VG_REGPARM(2);
-void log_ind_branch(InstrInfo* ii, UWord actual_dst);
+void log_ind_branch(InstrInfo* ii, UWord actual_dst) VG_REGPARM(2);
 
 /* 1 Instruction */
-//void log_1I0D(InstrInfo* ii) VG_REGPARM(1);
-void log_1I0D(InstrInfo* ii);
+void log_1I0D(InstrInfo* ii) VG_REGPARM(1);
 
 /* 2 Instructions */
-//void log_2I0D(InstrInfo* ii1, InstrInfo* ii2) VG_REGPARM(2);
-void log_2I0D(InstrInfo* ii1, InstrInfo* ii2);
+void log_2I0D(InstrInfo* ii1, InstrInfo* ii2) VG_REGPARM(2);
 
 /* 3 Instructions */
-//void log_3I0D(InstrInfo* ii1, InstrInfo* ii2, InstrInfo* ii3) VG_REGPARM(3);
-void log_3I0D(InstrInfo* ii1, InstrInfo* ii2, InstrInfo* ii3);
+void log_3I0D(InstrInfo* ii1, InstrInfo* ii2, InstrInfo* ii3) VG_REGPARM(3);
 
 /* 1 Instruction, 1 Data Read */
-//void log_1I1Dr(InstrInfo* ii, Addr data_addr, Word data_size) VG_REGPARM(3);
-void log_1I1Dr(InstrInfo* ii, Addr data_addr, Word data_size);
+void log_1I1Dr(InstrInfo* ii, Addr data_addr, Word data_size) VG_REGPARM(3);
 
 /* 1 Data Read */
-//void log_0I1Dr(InstrInfo* ii, Addr data_addr, Word data_size) VG_REGPARM(3);
-void log_0I1Dr(InstrInfo* ii, Addr data_addr, Word data_size);
+void log_0I1Dr(InstrInfo* ii, Addr data_addr, Word data_size) VG_REGPARM(3);
 
 /* 1 Instruction, 1 Data Write */
-//void log_1I1Dw(InstrInfo* ii, Addr data_addr, Word data_size) VG_REGPARM(3);
-void log_1I1Dw(InstrInfo* ii, Addr data_addr, Word data_size);
+void log_1I1Dw(InstrInfo* ii, Addr data_addr, Word data_size) VG_REGPARM(3);
 
 /* 1 Data Write */
-//void log_0I1Dw(InstrInfo* ii, Addr data_addr, Word data_size) VG_REGPARM(3);
-void log_0I1Dw(InstrInfo* ii, Addr data_addr, Word data_size);
+void log_0I1Dw(InstrInfo* ii, Addr data_addr, Word data_size) VG_REGPARM(3);
 
 void log_comp_event(InstrInfo* ii, IRType op_type, IRExprTag arity);
 

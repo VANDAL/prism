@@ -31,37 +31,6 @@
    The GNU General Public License is contained in the file COPYING.
 */
 
-/*--------------------------------------------------------------------*/
-/*--- Callgrind                                                    ---*/
-/*---                                                       main.c ---*/
-/*--------------------------------------------------------------------*/
-
-/*
-   This file is part of Callgrind, a Valgrind tool for call graph
-   profiling programs.
-
-   Copyright (C) 2002-2015, Josef Weidendorfer (Josef.Weidendorfer@gmx.de)
-
-   This tool is derived from and contains code from Cachegrind
-   Copyright (C) 2002-2015 Nicholas Nethercote (njn@valgrind.org)
-
-   This program is free software; you can redistribute it and/or
-   modify it under the terms of the GNU General Public License as
-   published by the Free Software Foundation; either version 2 of the
-   License, or (at your option) any later version.
-
-   This program is distributed in the hope that it will be useful, but
-   WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
-   02111-1307, USA.
-
-   The GNU General Public License is contained in the file COPYING.
-*/
 
 #include "config.h"
 
@@ -71,6 +40,8 @@
 #include "log_events.h"
 #include "Sigil2/PrimitiveEnums.h"
 
+#include "coregrind/pub_core_libcfile.h"
+#include "coregrind/pub_core_clientstate.h"
 #include "pub_tool_threadstate.h"
 #include "pub_tool_gdbserver.h"
 #include "pub_tool_transtab.h"       // VG_(discard_translations_safely)
@@ -1579,16 +1550,38 @@ void CLG_(post_clo_init)(void)
                    (VG_(arg_vgdb_prefix) ? " " : ""),
                    (VG_(arg_vgdb_prefix) ? VG_(arg_vgdb_prefix) : ""));
    }
+
+
+
+
+   /* initialize communication socket to sigil */
+   const HChar* default_socket = "127.0.0.1:1500";
+   Int sd = VG_(connect_via_socket)( default_socket );
+   tl_assert( sd >= 0 );
+
+   /* Reuse valgrind's error processing */
+
+   // Move log_fd into the safe range, so it doesn't conflict with
+   // any app fds.
+   sd = VG_(fcntl)(sd, VKI_F_DUPFD, VG_(fd_hard_limit));
+   if (sd < 0) {
+      VG_(message)(Vg_UserMsg, "valgrind: failed to move logfile fd "
+                               "into safe range, exiting\n");
+      VG_(exit)(-1);
+   } else {
+      sigil_sink.fd = sd;
+      VG_(fcntl)(sigil_sink.fd, VKI_F_SETFD, VKI_FD_CLOEXEC);
+   }
 }
 
 static
 void CLG_(pre_clo_init)(void)
 {
-    VG_(details_name)            ("Sigil");
+    VG_(details_name)            ("Sigrind");
     VG_(details_version)         (NULL);
     VG_(details_description)     ("");
-    VG_(details_copyright_author)("Copyright (C) 2002-2015, and GNU GPL'd, "
-				  "by Josef Weidendorfer et al.");
+    VG_(details_copyright_author)("Copyright (C) 2015-2016, "
+				  "by Michael Lui et al.");
     VG_(details_bug_reports_to)  (VG_BUGS_TO);
     VG_(details_avg_translation_sizeB) ( 500 );
 

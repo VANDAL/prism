@@ -41,10 +41,6 @@
 
 /*---------------------------------------------------------------*/
 
-/* Include valgrind headers before system headers to avoid problems
-   with the system headers #defining things which are used as names
-   of structure members in vki headers. */
-
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
@@ -66,6 +62,8 @@
 #include "Sigil2/FrontEnds.hpp"
 #include "MsgBuilder.hpp"
 
+namespace
+{
 /*---------------------------------------------------------------*/
 
 /* The default allowable number of concurrent connections. */
@@ -81,7 +79,7 @@ unsigned M_CONNECTIONS = 0;
 /*---------------------------------------------------------------*/
 
 __attribute__ ((noreturn))
-static void panic ( const char* str )
+void panic ( const char* str )
 {
    fprintf(stderr,
            "\nsigrind-listener: the "
@@ -90,7 +88,7 @@ static void panic ( const char* str )
 }
 
 __attribute__ ((noreturn))
-static void my_assert_fail ( const char* expr, const char* file, int line, const char* fn )
+void my_assert_fail ( const char* expr, const char* file, int line, const char* fn )
 {
    fprintf(stderr,
            "\nsigrind-listener: %s:%d (%s): Assertion '%s' failed.\n",
@@ -115,7 +113,7 @@ int           *conn_fd;
 struct pollfd *conn_pollfd;
 
 
-static void set_nonblocking ( int sd )
+void set_nonblocking ( int sd )
 {
    int res;
    res = fcntl(sd, F_GETFL);
@@ -126,7 +124,7 @@ static void set_nonblocking ( int sd )
    }
 }
 
-static void set_blocking ( int sd )
+void set_blocking ( int sd )
 {
    int res;
    res = fcntl(sd, F_GETFL);
@@ -136,7 +134,8 @@ static void set_blocking ( int sd )
       panic("set_blocking");
    }
 }
-static int read_from_sd ( int sd, VGBufState& buf_state )
+
+int read_from_sd ( int sd, VGBufState& buf_state )
 {
    char buf[100];
    int n;
@@ -155,7 +154,7 @@ static int read_from_sd ( int sd, VGBufState& buf_state )
 }
 
 
-static void snooze ( void )
+void snooze ( void )
 {
    struct timespec req;
    req.tv_sec = 0;
@@ -165,7 +164,7 @@ static void snooze ( void )
 
 
 /* returns 0 if negative, or > BOUND or invalid characters were found */
-static int atoi_with_bound ( const char* str, int bound )
+int atoi_with_bound ( const char* str, int bound )
 {
    int n = 0;
    while (1) {
@@ -182,7 +181,7 @@ static int atoi_with_bound ( const char* str, int bound )
 }
 
 /* returns 0 if invalid, else port # */
-static int atoi_portno ( const char* str )
+int atoi_portno ( const char* str )
 {
    int n = atoi_with_bound(str, 65536);
 
@@ -192,7 +191,7 @@ static int atoi_portno ( const char* str )
 }
 
 
-static void usage ( void )
+void usage ( void )
 {
    fprintf(stderr, 
       "\n"
@@ -211,7 +210,7 @@ static void usage ( void )
 }
 
 
-static void banner ( const char* str )
+void banner ( const char* str )
 {
    time_t t;
    t = time(NULL);
@@ -220,19 +219,19 @@ static void banner ( const char* str )
 }
 
 
-static void exit_routine ( void )
+void exit_routine ( void )
 {
    banner("exited");
    exit(0);
 }
 
 
-static void sigint_handler ( int signo )
+void sigint_handler ( int signo )
 {
    exit_routine();
 }
 
-static char* const* tokenize_sigrind_opts(const std::string& user_exec)
+char* const* tokenize_sigrind_opts(const std::string& user_exec)
 {
 	using namespace std;
 
@@ -244,13 +243,12 @@ static char* const* tokenize_sigrind_opts(const std::string& user_exec)
 			istream_iterator<string>()};
 
 	//                 program name + valgrind options + user program options + null
-	int vg_opts_size = 1            + 2                + tokens.size()        + 1;
+	int vg_opts_size = 1            + 1                + tokens.size()        + 1;
 	char** vg_opts = static_cast<char**>( malloc(vg_opts_size * sizeof(char*)) );
 
 	int i = 0;
 	vg_opts[i++] = strdup("valgrind");
 	vg_opts[i++] = strdup("--tool=sigrind");
-	vg_opts[i++] = strdup("--log-socket=127.0.0.1:1500");//TODO open socket in sigrind w/o log socket opt
 	for (string token : tokens) 
 	{
 		vg_opts[i++] = strdup(token.c_str());
@@ -260,7 +258,7 @@ static char* const* tokenize_sigrind_opts(const std::string& user_exec)
 	return vg_opts;
 }
 
-static void start_sigrind(const std::string& user_exec)
+void start_sigrind(const std::string& user_exec)
 {
 	//TODO where will valgrind be?
 	std::string vg_exec = "../src/Sigil2/FrontEnds/Sigrind/valgrind-3.11.0-Sigil2/vg-in-place";
@@ -270,7 +268,7 @@ static void start_sigrind(const std::string& user_exec)
 	execvp(vg_exec.c_str(), vg_opts);
 }
 
-static int listen_loop(int main_sd)
+int listen_loop(int main_sd)
 {
    VGBufState buf_state;
    struct sockaddr_in client_addr;
@@ -315,10 +313,6 @@ static int listen_loop(int main_sd)
 
            conn_fd[i] = new_sd;
            conn_count++;
-      printf("\n(%d) -------------------- CONNECT "
-                  "--------------------\n(%d)\n(%d) ", 
-                  conn_count, conn_count, conn_count);
-           fflush(stdout);
         } /* while (1) */
       }
 
@@ -382,6 +376,10 @@ static int listen_loop(int main_sd)
 
    finish: return 0;
 }
+
+} //end namespace
+
+
 
 
 int sigrind_frontend (std::string exec) 
@@ -460,9 +458,3 @@ int sigrind_frontend (std::string exec)
       panic("main -- fork");
    }
 }
-   
-
-
-/*--------------------------------------------------------------------*/
-/*--- end                                      sigrind-listener.c ---*/
-/*--------------------------------------------------------------------*/
