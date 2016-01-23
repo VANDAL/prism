@@ -1544,13 +1544,6 @@ void CLG_(post_clo_init)(void)
 
    CLG_(instrument_state) = CLG_(clo).instrument_atstart;
 
-   if (VG_(clo_verbosity > 0)) {
-      VG_(message)(Vg_UserMsg,
-                   "For interactive control, run 'callgrind_control%s%s -h'.\n",
-                   (VG_(arg_vgdb_prefix) ? " " : ""),
-                   (VG_(arg_vgdb_prefix) ? VG_(arg_vgdb_prefix) : ""));
-   }
-
 
 
 

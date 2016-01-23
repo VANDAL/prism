@@ -32,6 +32,6 @@ add_subdirectory(${FrontEnds}/Sigrind)
 target_link_libraries(sigil2 Sigrind)
 
 #All
-add_custom_target(backends_frontends ALL
+add_custom_target(frontends ALL
 	DEPENDS sigil2 valgrind
 	COMMENT "Building Sigil2 and all frontends")

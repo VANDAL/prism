@@ -191,6 +191,7 @@ int atoi_portno ( const char* str )
 }
 
 
+/* DEPRECATED */
 void usage ( void )
 {
    fprintf(stderr, 
@@ -207,28 +208,6 @@ void usage ( void )
       DEFAULT_LOGPORT
    );
    exit(1);
-}
-
-
-void banner ( const char* str )
-{
-   time_t t;
-   t = time(NULL);
-   printf("sigrind-listener %s at %s", str, ctime(&t));
-   fflush(stdout);
-}
-
-
-void exit_routine ( void )
-{
-   banner("exited");
-   exit(0);
-}
-
-
-void sigint_handler ( int signo )
-{
-   exit_routine();
 }
 
 char* const* tokenize_sigrind_opts(const std::string& user_exec)
@@ -258,10 +237,9 @@ char* const* tokenize_sigrind_opts(const std::string& user_exec)
 	return vg_opts;
 }
 
-void start_sigrind(const std::string& user_exec)
+void start_sigrind(const std::string& user_exec, const std::string& sigrind_dir)
 {
-	//TODO where will valgrind be?
-	std::string vg_exec = "../src/Sigil2/FrontEnds/Sigrind/valgrind-3.11.0-Sigil2/vg-in-place";
+	std::string vg_exec = sigrind_dir + "/valgrind";
 
 	// execvp() expects a const char* const*
 	auto vg_opts = tokenize_sigrind_opts(user_exec);
@@ -358,10 +336,14 @@ int listen_loop(int main_sd)
                assert(k < M_CONNECTIONS);
                conn_fd[k] = 0;
                conn_count--;
-               printf("\n(%d) ------------------- DISCONNECT "
-                      "-------------------\n(%d)\n(%d) ", 
-                      conn_count, conn_count, conn_count);
-               fflush(stdout);
+
+			   char tstr[64];
+               time_t t = time(NULL);
+               struct tm * p = localtime(&t);
+               strftime(tstr, 64, "%c", p);
+               std::cerr << "\n------------------- Sigrind connection closed -------------------" << std::endl;;
+               std::cerr <<   "-------------------  " << tstr << " -------------------" << std::endl;;
+
                if (conn_count == 0) {
                   printf("\n");
                   fflush(stdout);
@@ -382,9 +364,9 @@ int listen_loop(int main_sd)
 
 
 
-int sigrind_frontend (std::string exec) 
+int sigrind_frontend (const std::string& user_exec, const std::string& sigrind_dir) 
 {
-   int    main_sd, new_sd;
+   int    main_sd;
    struct sockaddr_in server_addr;
 
    int port = DEFAULT_LOGPORT;
@@ -398,8 +380,13 @@ int sigrind_frontend (std::string exec)
       exit(1);
    }
 
-   banner("started");
-   signal(SIGINT, sigint_handler);
+   std::cerr << "Connecting to Sigrind as a separate process" << std::endl;;
+   char tstr[64];
+   time_t t = time(NULL);
+   struct tm * p = localtime(&t);
+   strftime(tstr, 64, "%c", p);
+   std::cerr << "------------------- Sigrind connection opening ------------------" << std::endl;;
+   std::cerr <<   "-------------------  " << tstr << " -------------------\n" << std::endl;;
 
    conn_count = 0;
    for (int i = 0; i < M_CONNECTIONS; i++)
@@ -445,7 +432,7 @@ int sigrind_frontend (std::string exec)
    {
       if ( pid == 0 )
       {
-         start_sigrind(exec);
+         start_sigrind(user_exec, sigrind_dir);
       }
       else
       {

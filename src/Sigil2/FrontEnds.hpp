@@ -3,6 +3,6 @@
 
 #include <string>
 
-int sigrind_frontend(std::string exec);
+int sigrind_frontend(const std::string& user_exec, const std::string& sigrind_dir);
 
 #endif

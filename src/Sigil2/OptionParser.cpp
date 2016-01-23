@@ -101,7 +101,8 @@ bool OptionParser::registerFrontendArgument(const std::string& frontend, const s
 {
 	if (frontend.compare("vg") == 0)
 	{
-		start_frontend = std::bind(&sigrind_frontend, exec);
+		//TODO option or env var for valgrind/sigrind install directory
+		start_frontend = std::bind(&sigrind_frontend, exec, std::string("./vg-bin/bin"));
 		return true;
 	}
 	else

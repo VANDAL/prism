@@ -42,10 +42,7 @@ SIGRIND_SOURCES_COMMON = \
 	sg_main.c 
 
 # We sneakily include "PrimitveEnums.h" from Sigil2
-sigil2_dir=../../../../..
-vg_includedir=../include
-VEX_includedir=../VEX/pub
-SIGRIND_CFLAGS_COMMON =  -I$(sigil2_dir) -I$(vg_includedir) -I$(VEX_includedir)
+SIGRIND_CFLAGS_COMMON =  -I$(top_srcdir)/../../../.. -I$(top_srcdir)/include -I$(top_srcdir)/VEX/pub
 
 sigrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_SOURCES      = \
 	$(SIGRIND_SOURCES_COMMON)
