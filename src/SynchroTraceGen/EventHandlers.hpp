@@ -2,7 +2,6 @@
 #define STGEN_EVENTHANDLERS_H
 
 #include "ShadowMemory.hpp"
-#include "LogHelpers.hpp"
 #include "STEvent.hpp"
 
 namespace STGen
@@ -11,7 +10,7 @@ class EventHandlers
 {
 	typedef int32_t TId; 
 public:
-	EventHandlers();
+	EventHandlers(){};
 
 	void onSyncEv(SglSyncEv ev);
 	void onCompEv(SglCompEv ev);

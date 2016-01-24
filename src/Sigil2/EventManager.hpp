@@ -22,23 +22,23 @@ constexpr unsigned int sgl_max_events = 10000;
 template<typename T> using Observers = std::vector<std::function<void(T)>>; 
 using CleanupObservers = std::vector<std::function<void()>>; 
 
-struct BufferedEvent
-{
-	void (*notify)(const BufferedEvent&);
-	void* observers;
-	union 
-	{
-		SglMemEv  mem_ev;
-		SglCompEv comp_ev;
-		SglCFEv   cf_ev;
-		SglCxtEv  cxt_ev;
-		SglSyncEv sync_ev;
-	};
-};
-
 class EventManager
 {
 public:
+	struct BufferedEvent
+	{
+		void (*notify)(const BufferedEvent&);
+		void* observers;
+		union 
+		{
+			SglMemEv  mem_ev;
+			SglCompEv comp_ev;
+			SglCFEv   cf_ev;
+			SglCxtEv  cxt_ev;
+			SglSyncEv sync_ev;
+		};
+	};
+
 	static EventManager& instance()
 	{
 		static EventManager mgr;
@@ -53,6 +53,16 @@ public:
 	void addObserver(std::function<void(SglCxtEv)> obs);
 	void addCleanup(std::function<void()> obs);
 
+	template<typename T>
+	void addEvent(T ev)
+	{
+		if/*buffer full*/(used == sgl_max_events)
+		{
+			flushEvents();
+		}
+		bufferEvent(ev);
+	}
+
 private:
 	EventManager() { used = 0; }
 	EventManager(const EventManager&) = delete;
@@ -65,18 +75,6 @@ private:
 	void bufferEvent(SglSyncEv ev);
 	void bufferEvent(SglCxtEv ev);
 
-public:
-	template<typename T>
-	void addEvent(T ev)
-	{
-		if/*buffer full*/(used == sgl_max_events)
-		{
-			flushEvents();
-		}
-		bufferEvent(ev);
-	}
-
-private:
 	BufferedEvent ev_buf[sgl_max_events];
 	UInt used;
 

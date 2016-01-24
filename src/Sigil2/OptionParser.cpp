@@ -31,11 +31,6 @@ OptionParser::OptionParser(int argc, char* argv[])
 	int c, option_index;
 	while ( (c = getopt_long(argc,argv,"hb:f:", long_options, &option_index) ) != -1 )
 	{
-		if/*end of opts*/(c == -1)
-		{
-			break;
-		}
-
 		switch (c)
 		{
 		case 0:

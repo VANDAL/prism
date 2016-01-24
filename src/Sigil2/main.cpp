@@ -3,12 +3,12 @@
 
 int main(int argc, char* argv[])
 {
-	sgl::OptionParser parser(argc, argv);
+	sgl::OptionParser options(argc, argv);
 
-	if ( parser.start_backend != nullptr && parser.start_frontend != nullptr )
+	if ( options.start_backend != nullptr && options.start_frontend != nullptr )
 	{
-		parser.start_backend();
-		parser.start_frontend();
+		options.start_backend();
+		options.start_frontend();
 		sgl::EventManager::instance().finish();
 	}
 }

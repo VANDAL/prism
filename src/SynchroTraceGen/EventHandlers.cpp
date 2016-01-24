@@ -4,47 +4,80 @@
 
 namespace STGen
 {
-extern std::shared_ptr<spdlog::logger> curr_logger;
-
-EventHandlers::EventHandlers()
-{
-	/* to initialize loggers;
-	 * FIXME let front end initialize this
-	 * Thread ID #0 is assumed as first thread from Sigrind */
-	STEvent::setThread(0);
-}
-
 ////////////////////////////////////////////////////////////
 // Synchronization Event Handling
 ////////////////////////////////////////////////////////////
 void EventHandlers::onSyncEv(SglSyncEv ev)
 {
-	switch( ev.type )
+	if ( ev.type == SyncType::SGLPRIM_SYNC_SWAP 
+			&& STEvent::curr_thread_id != static_cast<TId>(ev.id) )
 	{
-	case SyncType::SGLPRIM_SYNC_SWAP:
-		if ( STEvent::curr_thread_id != static_cast<TId>(ev.id) )
-		{
-			st_comm_ev.flush();
-			st_comp_ev.flush();
+		st_comm_ev.flush();
+		st_comp_ev.flush();
 
-			STEvent::setThread(ev.id);
+		STEvent::setThread(ev.id);
+	}
+	else
+	{
+		UChar STtype = 0;
+		switch( ev.type )
+		{
+		/* Convert sync type to SynchroTrace's expected value
+		 * From SynchroTraceSim source code:
+		 *
+		 * #define P_MUTEX_LK              1
+		 * #define P_MUTEX_ULK             2
+		 * #define P_CREATE                3
+		 * #define P_JOIN                  4
+		 * #define P_BARRIER_WT            5
+		 * #define P_COND_WT               6
+		 * #define P_COND_SG               7
+		 * #define P_SPIN_LK               8
+		 * #define P_SPIN_ULK              9
+		 * #define P_SEM_INIT              10
+		 * #define P_SEM_WAIT              11
+		 * #define P_SEM_POST              12
+		 * #define P_SEM_GETV              13
+		 * #define P_SEM_DEST              14
+		 *
+		 * NOTE: semaphores are not supported in SynchroTraceGen
+		 */
+		case SyncType::SGLPRIM_SYNC_LOCK:
+			STtype = 1;
+			break;
+		case SyncType::SGLPRIM_SYNC_UNLOCK:
+			STtype = 2;
+			break;
+		case SyncType::SGLPRIM_SYNC_CREATE:
+			STtype = 3;
+			break;
+		case SyncType::SGLPRIM_SYNC_JOIN:
+			STtype = 4;
+			break;
+		case SyncType::SGLPRIM_SYNC_BARRIER:
+			STtype = 5;
+			break;
+		case SyncType::SGLPRIM_SYNC_CONDWAIT:
+			STtype = 6;
+			break;
+		case SyncType::SGLPRIM_SYNC_CONDSIG:
+			STtype = 7;
+			break;
+		case SyncType::SGLPRIM_SYNC_SPINLOCK:
+			STtype = 8;
+			break;
+		case SyncType::SGLPRIM_SYNC_SPINUNLOCK:
+			STtype = 9;
+			break;
+		default:
+			//ignore sync event
+			break;
 		}
-		break;
-	case SyncType::SGLPRIM_SYNC_CREATE:
-	case SyncType::SGLPRIM_SYNC_JOIN:
-	case SyncType::SGLPRIM_SYNC_BARRIER:
-	case SyncType::SGLPRIM_SYNC_SYNC:
-	case SyncType::SGLPRIM_SYNC_LOCK:
-	case SyncType::SGLPRIM_SYNC_UNLOCK:
-	case SyncType::SGLPRIM_SYNC_CONDWAIT:
-	case SyncType::SGLPRIM_SYNC_CONDSIG:
-	case SyncType::SGLPRIM_SYNC_SPINLOCK:
-	case SyncType::SGLPRIM_SYNC_SPINUNLOCK:
-		st_sync_ev.logSync(ev.type, ev.id);
-		break;
-	default:
-		assert(0); //TODO will this validly happen?
-		break;
+
+		if/*set*/( STtype > 0 )
+		{
+			st_sync_ev.logSync(STtype, ev.id);
+		}
 	}
 }
 
@@ -130,6 +163,7 @@ void EventHandlers::onStore(const SglMemEv& ev)
 ////////////////////////////////////////////////////////////
 // Cleanup - Flush remaining events
 ////////////////////////////////////////////////////////////
+extern std::shared_ptr<spdlog::logger> curr_logger;
 void EventHandlers::cleanup()
 {
 	st_comm_ev.flush();

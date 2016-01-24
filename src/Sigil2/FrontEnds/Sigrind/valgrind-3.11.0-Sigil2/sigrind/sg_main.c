@@ -31,6 +31,8 @@
    The GNU General Public License is contained in the file COPYING.
 */
 
+//TODO Cleanup leftover Callgrind functionality
+
 
 #include "config.h"
 
@@ -233,6 +235,11 @@ static void addBBSetupCall(ClgState* clgs)
 }
 
 
+//FIXME this is hardcoded in for testing, to ignore all events
+//befor 'main'. This functionality should be given as an option
+//to the user, along with the exact name of the function.
+Bool is_in_main = 0; 
+
 static Bool is_in_synccall = 0;
 static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
                         IRSB* sbIn,
@@ -248,11 +255,6 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
    ClgState   clgs;
    UInt       cJumps = 0;
    IRTypeEnv* tyenv = sbIn->tyenv;
-
-   if ( is_in_synccall )
-   {
-      return sbIn;
-   }
 
    if (gWordTy != hWordTy) {
       /* We don't currently support this case. */
@@ -297,8 +299,6 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
 
    addBBSetupCall(&clgs);
 
-   //TODO SGL add fn update call to instrumentation, checking for jmpkind
-
    // Set up running state
    clgs.events_used = 0;
    clgs.ii_index = 0;
@@ -309,267 +309,282 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
       st = sbIn->stmts[i];
       CLG_ASSERT(isFlatIRStmt(st));
 
-      switch (st->tag) 
+      if (st->tag == Ist_IMark)
       {
-         case Ist_NoOp:
-         case Ist_AbiHint:
-         case Ist_Put:
-         case Ist_PutI:
-         case Ist_MBE:
-            break;
+         Addr   cia   = st->Ist.IMark.addr + st->Ist.IMark.delta;
+         UInt   isize = st->Ist.IMark.len;
+         CLG_ASSERT(clgs.instr_offset == cia - origAddr);
+         // If Vex fails to decode an instruction, the size will be zero.
+         // Pretend otherwise.
+         if (isize == 0) isize = VG_MIN_INSTR_SZB;
+         // Sanity-check size.
+         tl_assert( (VG_MIN_INSTR_SZB <= isize && isize <= VG_MAX_INSTR_SZB)
+            || VG_CLREQ_SZB == isize );
 
-         case Ist_IMark: 
-         {
-            Addr   cia   = st->Ist.IMark.addr + st->Ist.IMark.delta;
-            UInt   isize = st->Ist.IMark.len;
-            CLG_ASSERT(clgs.instr_offset == cia - origAddr);
-            // If Vex fails to decode an instruction, the size will be zero.
-            // Pretend otherwise.
-            if (isize == 0) isize = VG_MIN_INSTR_SZB;
-            // Sanity-check size.
-            tl_assert( (VG_MIN_INSTR_SZB <= isize && isize <= VG_MAX_INSTR_SZB)
-               || VG_CLREQ_SZB == isize );
-
-            // Init the inode, record it as the current one.
-            // Subsequent Dr/Dw/Dm events from the same instruction will
-            // also use it.
-            curr_inode = next_InstrInfo (&clgs, isize);
-
-            addEvent_Ir( &clgs, curr_inode );
-            break;
-         }
-         case Ist_WrTmp: 
-         {
-            IRExpr* data = st->Ist.WrTmp.data;
-            switch (data->tag)
-            {
-               case Iex_Load:
-               {
-                  IRExpr* aexpr = data->Iex.Load.addr;
-                  // Note also, endianness info is ignored.  I guess
-                  // that's not interesting.
-                  addEvent_Dr( &clgs, curr_inode, sizeofIRType(data->Iex.Load.ty), aexpr );
-                  break;
-               }
-               case Iex_Unop:
-               case Iex_Binop:
-               case Iex_Triop:
-               case Iex_Qop:
-                  addEvent_Comp( &clgs, curr_inode, data->tag, typeOfIRExpr(sbIn->tyenv, data) );
-                  break;
-               default:
-                  /*don't care*/
-                  break;
-            }
-            break;
-         }
-         case Ist_Store: 
-         {
-            IRExpr* data  = st->Ist.Store.data;
-            IRExpr* aexpr = st->Ist.Store.addr;
-            addEvent_Dw( &clgs, curr_inode, sizeofIRType(typeOfIRExpr(sbIn->tyenv, data)), aexpr );
-            break;
-         }
-         case Ist_StoreG: 
-         {
-            IRStoreG* sg   = st->Ist.StoreG.details;
-            IRExpr*   data = sg->data;
-            IRExpr*   addr = sg->addr;
-            IRType    type = typeOfIRExpr(tyenv, data);
-            tl_assert(type != Ity_INVALID);
-            addEvent_D_guarded( &clgs, curr_inode,
-                                sizeofIRType(type), addr, sg->guard,
-                                True/*isWrite*/ );
-            break;
-         }
-         case Ist_LoadG: 
-         {
-            IRLoadG* lg       = st->Ist.LoadG.details;
-            IRType   type     = Ity_INVALID; /* loaded type */
-            IRType   typeWide = Ity_INVALID; /* after implicit widening */
-            IRExpr*  addr     = lg->addr;
-            typeOfIRLoadGOp(lg->cvt, &typeWide, &type);
-            tl_assert(type != Ity_INVALID);
-            addEvent_D_guarded( &clgs, curr_inode,
-                                sizeofIRType(type), addr, lg->guard,
-                                False/*!isWrite*/ );
-            break;
-         }
-         case Ist_Dirty: 
-         {
-            Int      dataSize;
-            IRDirty* d = st->Ist.Dirty.details;
-            if (d->mFx != Ifx_None) 
-            {
-               /* This dirty helper accesses memory.  Collect the details. */
-               tl_assert(d->mAddr != NULL);
-               tl_assert(d->mSize != 0);
-               dataSize = d->mSize;
-
-               if (d->mFx == Ifx_Read || d->mFx == Ifx_Modify)
-               {
-                  addEvent_Dr( &clgs, curr_inode, dataSize, d->mAddr );
-               }
-               if (d->mFx == Ifx_Write || d->mFx == Ifx_Modify)
-               {
-                  addEvent_Dw( &clgs, curr_inode, dataSize, d->mAddr );
-               }
-            }
-            else 
-            {
-               tl_assert(d->mAddr == NULL);
-               tl_assert(d->mSize == 0);
-            }
-            break;
-         }
-         case Ist_CAS: 
-         {
-            /* We treat it as a read and a write of the location.  I
-               think that is the same behaviour as it was before IRCAS
-               was introduced, since prior to that point, the Vex
-               front ends would translate a lock-prefixed instruction
-               into a (normal) read followed by a (normal) write. */
-            Int    dataSize;
-            IRCAS* cas = st->Ist.CAS.details;
-            CLG_ASSERT(cas->addr && isIRAtom(cas->addr));
-            CLG_ASSERT(cas->dataLo);
-            dataSize = sizeofIRType(typeOfIRExpr(sbIn->tyenv, cas->dataLo));
-            if (cas->dataHi != NULL)
-               dataSize *= 2; /* since this is a doubleword-cas */
-            addEvent_Dr( &clgs, curr_inode, dataSize, cas->addr );
-            addEvent_Dw( &clgs, curr_inode, dataSize, cas->addr );
-            addEvent_G(  &clgs, curr_inode );
-            break;
-         }
-
-         case Ist_LLSC: 
-         {
-            IRType dataTy;
-            if (st->Ist.LLSC.storedata == NULL) {
-               /* LL */
-               dataTy = typeOfIRTemp(sbIn->tyenv, st->Ist.LLSC.result);
-               addEvent_Dr( &clgs, curr_inode,
-                            sizeofIRType(dataTy), st->Ist.LLSC.addr );
-               /* flush events before LL, should help SC to succeed */
-               flushEvents( &clgs );
-            } else {
-               /* SC */
-               dataTy = typeOfIRExpr(sbIn->tyenv, st->Ist.LLSC.storedata);
-               addEvent_Dw( &clgs, curr_inode,
-                            sizeofIRType(dataTy), st->Ist.LLSC.addr );
-               /* I don't know whether the global-bus-lock cost should
-                  be attributed to the LL or the SC, but it doesn't
-                  really matter since they always have to be used in
-                  pairs anyway.  Hence put it (quite arbitrarily) on
-                  the SC. */
-               addEvent_G(  &clgs, curr_inode );
-            }
-            break;
-         }
-
-         case Ist_Exit: 
-         {
-            Bool guest_exit, inverted;
-
-            /* VEX code generation sometimes inverts conditional branches.
-             * As Callgrind counts (conditional) jumps, it has to correct
-             * inversions. The heuristic is the following:
-             * (1) Callgrind switches off SB chasing and unrolling, and
-             *     therefore it assumes that a candidate for inversion only is
-             *     the last conditional branch in an SB.
-             * (2) inversion is assumed if the branch jumps to the address of
-             *     the next guest instruction in memory.
-             * This heuristic is precalculated in CLG_(collectBlockInfo)().
-             *
-             * Branching behavior is also used for branch prediction. Note that
-             * above heuristic is different from what Cachegrind does.
-             * Cachegrind uses (2) for all branches.
-             */
-            if (cJumps+1 == clgs.bb->cjmp_count)
-                inverted = clgs.bb->cjmp_inverted;
-            else
-                inverted = False;
-
-            // call branch predictor only if this is a branch in guest code
-            guest_exit = (st->Ist.Exit.jk == Ijk_Boring) ||
-                         (st->Ist.Exit.jk == Ijk_Call) ||
-                         (st->Ist.Exit.jk == Ijk_Ret);
-
-            if (guest_exit) {
-                /* Stuff to widen the guard expression to a host word, so
-                   we can pass it to the branch predictor simulation
-                   functions easily. */
-                IRType   tyW    = hWordTy;
-                IROp     widen  = tyW==Ity_I32  ? Iop_1Uto32  : Iop_1Uto64;
-                IROp     opXOR  = tyW==Ity_I32  ? Iop_Xor32   : Iop_Xor64;
-                IRTemp   guard1 = newIRTemp(clgs.sbOut->tyenv, Ity_I1);
-                IRTemp   guardW = newIRTemp(clgs.sbOut->tyenv, tyW);
-                IRTemp   guard  = newIRTemp(clgs.sbOut->tyenv, tyW);
-                IRExpr*  one    = tyW==Ity_I32 ? IRExpr_Const(IRConst_U32(1))
-                                               : IRExpr_Const(IRConst_U64(1));
-
-                /* Widen the guard expression. */
-                addStmtToIRSB( clgs.sbOut,
-                               IRStmt_WrTmp( guard1, st->Ist.Exit.guard ));
-                addStmtToIRSB( clgs.sbOut,
-                               IRStmt_WrTmp( guardW,
-                                             IRExpr_Unop(widen,
-                                                         IRExpr_RdTmp(guard1))) );
-                /* If the exit is inverted, invert the sense of the guard. */
-                addStmtToIRSB(
-                        clgs.sbOut,
-                        IRStmt_WrTmp(
-                                guard,
-                                inverted ? IRExpr_Binop(opXOR, IRExpr_RdTmp(guardW), one)
-                                    : IRExpr_RdTmp(guardW)
-                                    ));
-                /* And post the event. */
-                addEvent_Bc( &clgs, curr_inode, IRExpr_RdTmp(guard) );
-            }
-
-	         /* We may never reach the next statement, so need to flush
-	            all outstanding transactions now. */
-	         flushEvents( &clgs );
-
-	         CLG_ASSERT(clgs.ii_index>0);
-	         if (!clgs.seen_before) 
-            {
-	            ClgJumpKind jk;
-
-	            if (st->Ist.Exit.jk == Ijk_Call)
-               {
-                  jk = jk_Call;
-               }
-	            else if (st->Ist.Exit.jk == Ijk_Ret)
-               {
-                  jk = jk_Return;
-               }
-	            else 
-               {
-		            if (IRConst2Addr(st->Ist.Exit.dst) == origAddr + curr_inode->instr_offset + curr_inode->instr_size)
-		               jk = jk_None;
-		            else
-		               jk = jk_Jump;
-	            }
-	            clgs.bb->jmp[cJumps].instr = clgs.ii_index-1;
-	            clgs.bb->jmp[cJumps].jmpkind = jk;
-	         }
-
-	         /* Update global variable jmps_passed before the jump
-	          * A correction is needed if VEX inverted the last jump condition
-	         */
-	         UInt val = inverted ? cJumps+1 : cJumps;
-	         addConstMemStoreStmt( clgs.sbOut,
-				  (UWord) &CLG_(current_state).jmps_passed,
-				  val, hWordTy);
-	         cJumps++;
-
-	         break;
-	      }
-	      default:
-	         tl_assert(0);
-	         break;
+         // Init the inode, record it as the current one.
+         // Subsequent Dr/Dw/Dm events from the same instruction will
+         // also use it.
+         curr_inode = next_InstrInfo (&clgs, isize);
       }
+
+      /* Ignore all Sigil event processing when inside a synchronization syscall */
+      if ( !is_in_synccall && is_in_main)
+      {
+         switch (st->tag) 
+         {
+            case Ist_NoOp:
+            case Ist_AbiHint:
+            case Ist_Put:
+            case Ist_PutI:
+            case Ist_MBE:
+            case Ist_Exit:
+               break;
+
+            case Ist_IMark: 
+            {
+               addEvent_Ir( &clgs, curr_inode );
+               break;
+            }
+            case Ist_WrTmp: 
+            {
+               IRExpr* data = st->Ist.WrTmp.data;
+               switch (data->tag)
+               {
+                  case Iex_Load:
+                  {
+                     IRExpr* aexpr = data->Iex.Load.addr;
+                     // Note also, endianness info is ignored.  I guess
+                     // that's not interesting.
+                     addEvent_Dr( &clgs, curr_inode, sizeofIRType(data->Iex.Load.ty), aexpr );
+                     break;
+                  }
+                  case Iex_Unop:
+                  case Iex_Binop:
+                  case Iex_Triop:
+                  case Iex_Qop:
+                     addEvent_Comp( &clgs, curr_inode, data->tag, typeOfIRExpr(sbIn->tyenv, data) );
+                     break;
+                  default:
+                     /*don't care*/
+                     break;
+               }
+               break;
+            }
+            case Ist_Store: 
+            {
+               IRExpr* data  = st->Ist.Store.data;
+               IRExpr* aexpr = st->Ist.Store.addr;
+               addEvent_Dw( &clgs, curr_inode, sizeofIRType(typeOfIRExpr(sbIn->tyenv, data)), aexpr );
+               break;
+            }
+            case Ist_StoreG: 
+            {
+               IRStoreG* sg   = st->Ist.StoreG.details;
+               IRExpr*   data = sg->data;
+               IRExpr*   addr = sg->addr;
+               IRType    type = typeOfIRExpr(tyenv, data);
+               tl_assert(type != Ity_INVALID);
+               addEvent_D_guarded( &clgs, curr_inode,
+                                   sizeofIRType(type), addr, sg->guard,
+                                   True/*isWrite*/ );
+               break;
+            }
+            case Ist_LoadG: 
+            {
+               IRLoadG* lg       = st->Ist.LoadG.details;
+               IRType   type     = Ity_INVALID; /* loaded type */
+               IRType   typeWide = Ity_INVALID; /* after implicit widening */
+               IRExpr*  addr     = lg->addr;
+               typeOfIRLoadGOp(lg->cvt, &typeWide, &type);
+               tl_assert(type != Ity_INVALID);
+               addEvent_D_guarded( &clgs, curr_inode,
+                                   sizeofIRType(type), addr, lg->guard,
+                                   False/*!isWrite*/ );
+               break;
+            }
+            case Ist_Dirty: 
+            {
+               Int      dataSize;
+               IRDirty* d = st->Ist.Dirty.details;
+               if (d->mFx != Ifx_None) 
+               {
+                  /* This dirty helper accesses memory.  Collect the details. */
+                  tl_assert(d->mAddr != NULL);
+                  tl_assert(d->mSize != 0);
+                  dataSize = d->mSize;
+
+                  if (d->mFx == Ifx_Read || d->mFx == Ifx_Modify)
+                  {
+                     addEvent_Dr( &clgs, curr_inode, dataSize, d->mAddr );
+                  }
+                  if (d->mFx == Ifx_Write || d->mFx == Ifx_Modify)
+                  {
+                     addEvent_Dw( &clgs, curr_inode, dataSize, d->mAddr );
+                  }
+               }
+               else 
+               {
+                  tl_assert(d->mAddr == NULL);
+                  tl_assert(d->mSize == 0);
+               }
+               break;
+            }
+            case Ist_CAS: 
+            {
+               /* We treat it as a read and a write of the location.  I
+                  think that is the same behaviour as it was before IRCAS
+                  was introduced, since prior to that point, the Vex
+                  front ends would translate a lock-prefixed instruction
+                  into a (normal) read followed by a (normal) write. */
+               Int    dataSize;
+               IRCAS* cas = st->Ist.CAS.details;
+               CLG_ASSERT(cas->addr && isIRAtom(cas->addr));
+               CLG_ASSERT(cas->dataLo);
+               dataSize = sizeofIRType(typeOfIRExpr(sbIn->tyenv, cas->dataLo));
+               if (cas->dataHi != NULL)
+                  dataSize *= 2; /* since this is a doubleword-cas */
+               addEvent_Dr( &clgs, curr_inode, dataSize, cas->addr );
+               addEvent_Dw( &clgs, curr_inode, dataSize, cas->addr );
+               addEvent_G(  &clgs, curr_inode );
+               break;
+            }
+
+            case Ist_LLSC: 
+            {
+               IRType dataTy;
+               if (st->Ist.LLSC.storedata == NULL) {
+                  /* LL */
+                  dataTy = typeOfIRTemp(sbIn->tyenv, st->Ist.LLSC.result);
+                  addEvent_Dr( &clgs, curr_inode,
+                               sizeofIRType(dataTy), st->Ist.LLSC.addr );
+                  /* flush events before LL, should help SC to succeed */
+                  flushEvents( &clgs );
+               } else {
+                  /* SC */
+                  dataTy = typeOfIRExpr(sbIn->tyenv, st->Ist.LLSC.storedata);
+                  addEvent_Dw( &clgs, curr_inode,
+                               sizeofIRType(dataTy), st->Ist.LLSC.addr );
+                  /* I don't know whether the global-bus-lock cost should
+                     be attributed to the LL or the SC, but it doesn't
+                     really matter since they always have to be used in
+                     pairs anyway.  Hence put it (quite arbitrarily) on
+                     the SC. */
+                  addEvent_G(  &clgs, curr_inode );
+               }
+               break;
+            }
+            default:
+               tl_assert(0);
+               break;
+         } //end switch
+      } //end !is_in_syscall
+
+
+      /* 
+       * Still do jump/branch tracking regardless
+       * of whether or not we're in a sync syscall.
+       *
+       * ML: not sure what side effects what be introduced
+       * by ignoring Exit statements, even in a syscall 
+       */
+      if ( st->tag == Ist_Exit )
+      {
+         Bool guest_exit, inverted;
+
+         /* VEX code generation sometimes inverts conditional branches.
+          * As Callgrind counts (conditional) jumps, it has to correct
+          * inversions. The heuristic is the following:
+          * (1) Callgrind switches off SB chasing and unrolling, and
+          *     therefore it assumes that a candidate for inversion only is
+          *     the last conditional branch in an SB.
+          * (2) inversion is assumed if the branch jumps to the address of
+          *     the next guest instruction in memory.
+          * This heuristic is precalculated in CLG_(collectBlockInfo)().
+          *
+          * Branching behavior is also used for branch prediction. Note that
+          * above heuristic is different from what Cachegrind does.
+          * Cachegrind uses (2) for all branches.
+          */
+         if (cJumps+1 == clgs.bb->cjmp_count)
+             inverted = clgs.bb->cjmp_inverted;
+         else
+             inverted = False;
+
+         // call branch predictor only if this is a branch in guest code
+         guest_exit = (st->Ist.Exit.jk == Ijk_Boring) ||
+                      (st->Ist.Exit.jk == Ijk_Call) ||
+                      (st->Ist.Exit.jk == Ijk_Ret);
+
+         if (guest_exit) {
+             /* Stuff to widen the guard expression to a host word, so
+                we can pass it to the branch predictor simulation
+                functions easily. */
+             IRType   tyW    = hWordTy;
+             IROp     widen  = tyW==Ity_I32  ? Iop_1Uto32  : Iop_1Uto64;
+             IROp     opXOR  = tyW==Ity_I32  ? Iop_Xor32   : Iop_Xor64;
+             IRTemp   guard1 = newIRTemp(clgs.sbOut->tyenv, Ity_I1);
+             IRTemp   guardW = newIRTemp(clgs.sbOut->tyenv, tyW);
+             IRTemp   guard  = newIRTemp(clgs.sbOut->tyenv, tyW);
+             IRExpr*  one    = tyW==Ity_I32 ? IRExpr_Const(IRConst_U32(1))
+                                            : IRExpr_Const(IRConst_U64(1));
+
+             /* Widen the guard expression. */
+             addStmtToIRSB( clgs.sbOut,
+                            IRStmt_WrTmp( guard1, st->Ist.Exit.guard ));
+             addStmtToIRSB( clgs.sbOut,
+                            IRStmt_WrTmp( guardW,
+                                          IRExpr_Unop(widen,
+                                                      IRExpr_RdTmp(guard1))) );
+             /* If the exit is inverted, invert the sense of the guard. */
+             addStmtToIRSB(
+                     clgs.sbOut,
+                     IRStmt_WrTmp(
+                             guard,
+                             inverted ? IRExpr_Binop(opXOR, IRExpr_RdTmp(guardW), one)
+                                 : IRExpr_RdTmp(guardW)
+                                 ));
+             /* And post the event. */
+             if ( !is_in_synccall && is_in_main )
+               addEvent_Bc( &clgs, curr_inode, IRExpr_RdTmp(guard) );
+         }
+
+	      /* We may never reach the next statement, so need to flush
+	         all outstanding transactions now. */
+	      flushEvents( &clgs );
+
+	      CLG_ASSERT(clgs.ii_index>0);
+	      if (!clgs.seen_before) 
+         {
+	         ClgJumpKind jk;
+
+	         if (st->Ist.Exit.jk == Ijk_Call)
+            {
+               jk = jk_Call;
+            }
+	         else if (st->Ist.Exit.jk == Ijk_Ret)
+            {
+               jk = jk_Return;
+            }
+	         else 
+            {
+		         if (IRConst2Addr(st->Ist.Exit.dst) == origAddr + curr_inode->instr_offset + curr_inode->instr_size)
+		            jk = jk_None;
+		         else
+		            jk = jk_Jump;
+	         }
+	         clgs.bb->jmp[cJumps].instr = clgs.ii_index-1;
+	         clgs.bb->jmp[cJumps].jmpkind = jk;
+	      }
+
+	      /* Update global variable jmps_passed before the jump
+	       * A correction is needed if VEX inverted the last jump condition
+	      */
+	      UInt val = inverted ? cJumps+1 : cJumps;
+	      addConstMemStoreStmt( clgs.sbOut,
+			  (UWord) &CLG_(current_state).jmps_passed,
+			  val, hWordTy);
+	      cJumps++;
+      } //end if Ist_Exit
 
       /* Copy the original statement */
       addStmtToIRSB( clgs.sbOut, st );
@@ -580,7 +595,7 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
 	      ppIRStmt(st);
 	      VG_(printf)("\n");
       }
-   }
+   } //end foreach statement
 
    /* Deal with branches to unknown destinations.  Except ignore ones
       which are function returns as we assume the return stack
@@ -591,8 +606,9 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
          case Iex_Const:
             break; /* boring - branch to known address */
          case Iex_RdTmp:
-            /* looks like an indirect branch (branch to unknown) */
-            addEvent_Bi( &clgs, curr_inode, sbIn->next );
+            if ( !is_in_synccall && is_in_main )
+               /* looks like an indirect branch (branch to unknown) */
+               addEvent_Bi( &clgs, curr_inode, sbIn->next );
             break;
          default:
             /* shouldn't happen - if the incoming IR is properly
@@ -1358,19 +1374,26 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       return handled;
    }
 
+   /***********************************/
+   /***** Pthread API intercepts ******/
+   /***********************************/
+   // TODO confirm when these should be logged - at enter or leave?
+   // ML: by default I chose to log on a LEAVE once the syscall finished
    case VG_USERREQ__SIGIL_PTHREAD_CREATE_ENTER:
       is_in_synccall = 1;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_CREATE_LEAVE:
+      /* log once the thread has been CREATED and waiting */
       log_sync((UChar)SGLPRIM_SYNC_CREATE, args[1]);
       is_in_synccall = 0;
       break;
 
    case VG_USERREQ__SIGIL_PTHREAD_JOIN_ENTER:
+      /* log when the thread join is ENTERED */
+      log_sync((UChar)SGLPRIM_SYNC_JOIN, args[1]);
       is_in_synccall = 1;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_JOIN_LEAVE:
-      log_sync((UChar)SGLPRIM_SYNC_JOIN, args[1]);
       is_in_synccall = 0;
       break;
 
@@ -1378,6 +1401,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       is_in_synccall = 1;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_LOCK_LEAVE:
+      /* log once the lock has been acquired */
       log_sync((UChar)SGLPRIM_SYNC_LOCK, args[1]);
       is_in_synccall = 0;
       break;
@@ -1391,10 +1415,11 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       break;
 
    case VG_USERREQ__SIGIL_PTHREAD_BARRIER_ENTER:
+      /* log once the barrier is ENTERED and waiting */
+      log_sync((UChar)SGLPRIM_SYNC_BARRIER, args[1]);
       is_in_synccall = 1;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_BARRIER_LEAVE:
-      log_sync((UChar)SGLPRIM_SYNC_BARRIER, args[1]);
       is_in_synccall = 0;
       break;
 
@@ -1545,8 +1570,6 @@ void CLG_(post_clo_init)(void)
    CLG_(instrument_state) = CLG_(clo).instrument_atstart;
 
 
-
-
    /* initialize communication socket to sigil */
    const HChar* default_socket = "127.0.0.1:1500";
    Int sd = VG_(connect_via_socket)( default_socket );
@@ -1565,6 +1588,9 @@ void CLG_(post_clo_init)(void)
       sigil_sink.fd = sd;
       VG_(fcntl)(sigil_sink.fd, VKI_F_SETFD, VKI_FD_CLOEXEC);
    }
+
+   //Initialize backend with first thread
+   log_sync(SGLPRIM_SYNC_SWAP, CLG_(current_tid));
 }
 
 static

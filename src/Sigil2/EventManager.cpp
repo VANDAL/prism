@@ -23,7 +23,7 @@ void EventManager::finish()
 
 namespace
 {
-void notifyMemObservers(const BufferedEvent& ev)
+void notifyMemObservers(const EventManager::BufferedEvent& ev)
 {
 	for( auto& notify : *reinterpret_cast<Observers<SglMemEv>*>(ev.observers) )
 	{
@@ -31,7 +31,7 @@ void notifyMemObservers(const BufferedEvent& ev)
 	}
 }
 
-void notifyCompObservers(const BufferedEvent& ev)
+void notifyCompObservers(const EventManager::BufferedEvent& ev)
 {
 	for( auto& notify : *reinterpret_cast<Observers<SglCompEv>*>(ev.observers) )
 	{
@@ -39,7 +39,7 @@ void notifyCompObservers(const BufferedEvent& ev)
 	}
 }
 
-void notifySyncObservers(const BufferedEvent& ev)
+void notifySyncObservers(const EventManager::BufferedEvent& ev)
 {
 	for( auto& notify : *reinterpret_cast<Observers<SglSyncEv>*>(ev.observers) )
 	{
@@ -47,7 +47,7 @@ void notifySyncObservers(const BufferedEvent& ev)
 	}
 }
 
-void notifyCxtObservers(const BufferedEvent& ev)
+void notifyCxtObservers(const EventManager::BufferedEvent& ev)
 {
 	for( auto& notify : *reinterpret_cast<Observers<SglCxtEv>*>(ev.observers) )
 	{

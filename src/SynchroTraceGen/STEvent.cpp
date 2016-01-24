@@ -1,21 +1,66 @@
 #include "STEvent.hpp"
-#include "LogHelpers.hpp"
 
 #include "spdlog.h"
-
 #include <sstream>
 #include <cassert>
 
 namespace STGen
 {
-//TODO initialization at FIRST event in the entire workload
-//artificially setThread?
 
+////////////////////////////////////////////////////////////
+// SynchroTrace - Logging
+////////////////////////////////////////////////////////////
+/**
+ * The event log is updated often.
+ * Directly using spdlog for performance, instead of Sigil's
+ * logging abstraction.
+ *
+ * The log is created and set up by changing the current thread
+ * to a thread not seen before.
+ *
+ * Each ST event type flushes itself to the specific log file.
+ */
+static std::vector<std::shared_ptr<spdlog::logger>> loggers(16);
+std::shared_ptr<spdlog::logger> curr_logger;
+
+namespace
+{
+void initThreadLog(TId tid)
+{
+	assert( tid >= 0 );
+
+	char filename[32] = "sigil.events-";
+	sprintf(filename, "%s%u.txt", filename, tid);
+
+	spdlog::set_async_mode(8192);
+	spdlog::create<spdlog::sinks::simple_file_sink_st>(filename, filename);
+	spdlog::get(filename)->set_pattern("%v");
+
+
+	if ( static_cast<int>(loggers.size()) <= tid )
+	{
+		loggers.resize(loggers.size()*2, nullptr);
+	}
+	loggers[tid] = spdlog::get(filename);
+
+	curr_logger = loggers[tid];
+}
+
+void switchThreadLog(TId tid)
+{
+	assert( static_cast<int>(loggers.size()) > tid );
+	assert( loggers[tid] != nullptr );
+
+	curr_logger = loggers[tid];
+}
+}; //end namespace
+
+////////////////////////////////////////////////////////////
+// SynchroTrace - Events
+////////////////////////////////////////////////////////////
 std::unordered_map<TId, EId> STEvent::event_ids;
 TId STEvent::curr_thread_id = -1;
 EId STEvent::curr_event_id = -1;
-
-extern std::shared_ptr<spdlog::logger> curr_logger;
 
 void STEvent::flush()
 {
@@ -69,7 +114,8 @@ void STCompEvent::detailedFlush()
 		<< "," << iop_cnt
 		<< "," << flop_cnt
 		<< "," << load_cnt
-		<< "," << store_cnt;
+		<< "," << store_cnt
+		<< std::hex;
 
 	/* log write addresses */
 	for (auto& addr_pair : stores_unique.ranges)
@@ -172,8 +218,10 @@ void STCommEvent::detailedFlush()
 		logmsg << " # " //unique write delimiter
 			<< std::get<0>(edge) 
 			<< " " << std::get<1>(edge)
+			<< std::hex
 			<< " " << std::get<2>(edge)
-			<< " " << std::get<3>(edge);
+			<< " " << std::get<3>(edge)
+			<< std::dec;
 	}
 
 	curr_logger->info(logmsg.str());
@@ -213,7 +261,14 @@ void STCommEvent::reset()
 ////////////////////////////////////////////////////////////
 void STSyncEvent::logSync(UChar type, Addr sync_addr)
 {
-	logSyncEvent(curr_thread_id, curr_event_id, type, sync_addr);
+	std::stringstream logmsg;
+	logmsg << curr_event_id
+		<< "," << curr_thread_id
+		<< "," << "pth_ty:"
+		<< (int)type
+		<< "^"
+		<< std::hex << sync_addr;
+	curr_logger->info(logmsg.str());
 }
 
 void STSyncEvent::detailedFlush()
@@ -229,21 +284,14 @@ void STSyncEvent::reset()
 ////////////////////////////////////////////////////////////
 // Address Range
 ////////////////////////////////////////////////////////////
+
+/* FIXME ML: occasionally I see addresses, in the traces, that are consecutive, 
+ * but they're not getting condensed for some reason */
 bool AddrRange::insert(Addr begin, Addr end)
 {
 	for(auto& range : ranges)
 	{
-		if (addrOverlap(begin, end, range.first, range.second))
-		{
-			return false; //memory addresses already stored
-		}
-		else if (addrOverlap(range.first, range.second, begin, end))
-		{
-			range.first = begin;
-			range.second = end;
-			return true; //replace the event with a superset of addresses
-		}
-		else if ( begin == range.second+1 )
+		if ( begin == range.second+1 )
 		{
 			range.second = end;
 			return true;
@@ -252,6 +300,16 @@ bool AddrRange::insert(Addr begin, Addr end)
 		{
 			range.first = begin;
 			return true;
+		}
+		else if (addrOverlap(begin, end, range.first, range.second))
+		{
+			return false; //memory addresses already stored
+		}
+		else if (addrOverlap(range.first, range.second, begin, end))
+		{
+			range.first = begin;
+			range.second = end;
+			return true; //replace the event with a superset of addresses
 		}
 		//TODO partial overlap not implemented, considered new address
 	}

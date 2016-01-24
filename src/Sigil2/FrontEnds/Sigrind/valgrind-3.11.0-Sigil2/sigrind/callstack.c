@@ -109,6 +109,11 @@ static void function_entered(fn_node* fn)
 {
   CLG_ASSERT(fn != 0);
 
+  if ( VG_(strcmp)(fn->name, "main") == 0 )
+  {
+	  VG_(printf)("Entering main!");
+	  is_in_main = 1;
+  }
   /* send to sigil */
   log_fn_entry(fn);
 
@@ -129,6 +134,11 @@ static void function_left(fn_node* fn)
 {
   CLG_ASSERT(fn != 0);
 
+  if ( VG_(strcmp)(fn->name, "main") == 0 )
+  {
+	  VG_(printf)("Leaving main!");
+	  is_in_main = 0;
+  }
   /*send to sigil*/
   log_fn_leave(fn);
 

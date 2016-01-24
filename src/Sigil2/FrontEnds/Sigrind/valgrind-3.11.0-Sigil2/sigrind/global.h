@@ -49,6 +49,9 @@
 #include "events.h" // defines CLG_ macro
 
 
+//FOR TESTING, deleteme
+extern Bool is_in_main;
+
 /*------------------------------------------------------------*/
 /*--- Callgrind compile options                           --- */
 /*------------------------------------------------------------*/

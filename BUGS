@@ -1,2 +1,5 @@
 Sigrind.cpp:
 	user program arguments that contain quotes are not parsed correctly
+
+SynchroTraceGen:
+	segfaults if initial thread is not set up
