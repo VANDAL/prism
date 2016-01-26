@@ -142,7 +142,6 @@ void STCompEvent::detailedFlush()
 bool STCompEvent::updateWrites(Addr begin, Addr size)
 {
 	is_active = true;
-	store_cnt += size;
 	total_events++;
 	return stores_unique.insert(begin, begin+size-1);
 }
@@ -150,7 +149,6 @@ bool STCompEvent::updateWrites(Addr begin, Addr size)
 bool STCompEvent::updateWrites(SglMemEv ev)
 {
 	is_active = true;
-	store_cnt += ev.size;
 	total_events++;
 	return stores_unique.insert(ev.begin_addr, ev.begin_addr+ev.size-1);
 }
@@ -158,7 +156,6 @@ bool STCompEvent::updateWrites(SglMemEv ev)
 bool STCompEvent::updateReads(Addr begin, Addr size)
 {
 	is_active = true;
-	load_cnt += size;
 	total_events++;
 	return loads_unique.insert(begin, begin+size-1);
 }
@@ -166,7 +163,6 @@ bool STCompEvent::updateReads(Addr begin, Addr size)
 bool STCompEvent::updateReads(SglMemEv ev)
 {
 	is_active = true;
-	load_cnt += ev.size;
 	total_events++;
 	return loads_unique.insert(ev.begin_addr, ev.begin_addr+ev.size-1);
 }

@@ -51,6 +51,7 @@ OutputSink sigil_sink;
 
 static void send_to_sigil_socket(const char *const buf, const UInt size)
 {
+	//TODO check that this is a blocking write
 	Int rc = VG_(write_socket)( sigil_sink.fd, buf, size );
 
 	if (rc == -1) 

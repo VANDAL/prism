@@ -126,6 +126,9 @@ void EventHandlers::onMemEv(SglMemEv ev)
 
 void EventHandlers::onLoad(const SglMemEv& ev)
 {
+	//incremented per event
+	st_comp_ev.load_cnt++;
+
 	//Each byte of the read may have been touched by a different thread
 	for/*each byte*/( UInt i=0; i<ev.size; ++i )
 	{
@@ -152,6 +155,9 @@ void EventHandlers::onLoad(const SglMemEv& ev)
 
 void EventHandlers::onStore(const SglMemEv& ev)
 {
+	//incremented per event
+	st_comp_ev.store_cnt++;
+
 	st_comp_ev.updateWrites(ev);
 	shad_mem.updateWriter(
 			ev.begin_addr, 

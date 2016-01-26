@@ -86,9 +86,19 @@ struct STCompEvent : public STEvent
 {
 	UInt iop_cnt;
 	UInt flop_cnt;	
-	/// Stores and Loads originating from the current thread
+	/* Stores and Loads originating from the current thread
+	 * I.e. non-edge mem events. These are the count for 'events',
+	 * not a count for bytes stored/loaded */
 	UInt store_cnt;
 	UInt load_cnt;
+
+	/* Holds a range for the addresses touched by local stores/loads
+	 *
+	 * ML: the ranges themselves are unique, in that I try to not list
+	 * the same address twice even if it was stored or loaded twice.
+	 * Only consecutive addresses, or addresses that completely overlap
+	 * are not-duplicated. If two reads have an address range that 
+	 * partially overlaps, this is not detected */
 	AddrRange stores_unique; 
 	AddrRange loads_unique;
 	UInt total_events;

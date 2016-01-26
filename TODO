@@ -1,0 +1,6 @@
+Sigrind event generation to a socket is hardcoded to '127.0.0.1:1500'
+
+Sigrind event generation is hardcoded to start/stop at 'main' enter/leave
+
+Sigrind option parsing is the same as Callgrind's. Needs to be culled of 
+unused options. Keep toggle-collect and separate-callers options, for now
