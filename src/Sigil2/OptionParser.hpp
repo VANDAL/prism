@@ -11,7 +11,7 @@ class OptionParser
 	bool registerFrontendArgument(const std::string& frontend, const std::string& exec);
 
 public:
-	std::function<void()> start_backend = nullptr;
+	std::function<void()> register_backend = nullptr;
 	std::function<void()> start_frontend = nullptr;
 	OptionParser(int argc, char* argv[]);
 };

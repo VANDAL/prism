@@ -59,7 +59,7 @@ OptionParser::OptionParser(int argc, char* argv[])
 		exit( EXIT_FAILURE );
 	}
 
-	if ( start_backend == nullptr || start_frontend == nullptr )
+	if ( register_backend == nullptr || start_frontend == nullptr )
 	{
 		std::cerr << "Error | missing options" << std::endl;
 		exit( EXIT_FAILURE );
@@ -88,7 +88,7 @@ bool OptionParser::registerBackendArgument(const std::string& backend)
 		//TODO output a list of available backends
 	}
 
-	start_backend = ((void (*)(void))(fptr));
+	register_backend = ((void (*)(void))(fptr));
 	return true;
 }
 
