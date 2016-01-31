@@ -48,14 +48,17 @@ static SigrindSharedData* SGL_(shared);
 
 static inline void SGL_(incr_head)(void)
 {
-	if ( SGL_(shared)->head == SIGRIND_BUFSIZE-1 )
+	/* cache read */
+	unsigned int head = SGL_(shared)->head;
+
+	if ( head == SIGRIND_BUFSIZE-1 )
 	{
 		while (SGL_(shared)->tail == 0);
 		SGL_(shared)->head = 0;
 	}
 	else
 	{
-		while (SGL_(shared)->head == (SGL_(shared)->tail-1));
+		while ( head == (SGL_(shared)->tail-1) );
 		SGL_(shared)->head++;
 	}
 }

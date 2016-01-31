@@ -18,7 +18,7 @@ struct SigrindSharedData
 	volatile char sigrind_finish;
 	volatile unsigned int head;
 	volatile unsigned int tail;
-	BufferedSglEv buf[SIGRIND_BUFSIZE];
+	volatile BufferedSglEv buf[SIGRIND_BUFSIZE];
 
 };
 

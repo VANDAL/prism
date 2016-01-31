@@ -61,28 +61,58 @@ ShMem::~ShMem()
  * reverting to a buffering system, and having both 
  * Valgrind and Sigil2 block on a pipe for 
  * buffer full/empty notifications */
+/* FIXME ML: this assumes a cache coherent processor!
+ * Where to document? */
 void ShMem::readFromSigrind()
 {
-	volatile unsigned int& tail = shared_mem->tail;
-	volatile unsigned int& head = shared_mem->head;
-	volatile char& sigrind_finish = shared_mem->sigrind_finish;
-	BufferedSglEv (&buf)[SIGRIND_BUFSIZE] = shared_mem->buf;
+	/* All data in shared memory should be volatile */
 
-	while (!sigrind_finish)
+	while (shared_mem->sigrind_finish == false)
 	{
-		while ( tail != head )
+		//cache read
+		unsigned int tail = shared_mem->tail;
+
+		while (tail != shared_mem->head)
 		{
-			BufferedSglEv& ev = buf[tail];
-			switch(ev.tag)
+			EvTag tag = shared_mem->buf[tail].tag;
+
+			switch(tag)
 			{
 			case SGL_MEM_TAG:
-				SGLnotifyMem(ev.mem_ev);
+			{
+				SglMemEv ev
+				{
+					shared_mem->buf[tail].mem.type,
+					shared_mem->buf[tail].mem.begin_addr,
+					shared_mem->buf[tail].mem.size,
+					shared_mem->buf[tail].mem.alignment
+				};
+				SGLnotifyMem(ev);
+			}
 				break;
 			case SGL_COMP_TAG:
-				SGLnotifyComp(ev.comp_ev);
+			{
+				/* volatile copy */
+				SglCompEv ev
+				{
+					shared_mem->buf[tail].comp.type,
+					shared_mem->buf[tail].comp.arity,
+					shared_mem->buf[tail].comp.op,
+					shared_mem->buf[tail].comp.size,
+				};
+				SGLnotifyComp(ev);
+			}
 				break;
 			case SGL_SYNC_TAG:
-				SGLnotifySync(ev.sync_ev);
+			{
+				/* volatile copy */
+				SglSyncEv ev
+				{
+					shared_mem->buf[tail].sync.type,
+					shared_mem->buf[tail].sync.id
+				};
+				SGLnotifySync(ev);
+			}
 				break;
 			default:
 				break;
@@ -92,6 +122,8 @@ void ShMem::readFromSigrind()
 			{
 				tail = 0;
 			}
+
+			shared_mem->tail = tail;
 		}
 	}
 }

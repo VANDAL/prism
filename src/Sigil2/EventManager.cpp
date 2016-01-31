@@ -85,7 +85,7 @@ void EventManager::notifyMemObservers(const EventNotifcation& notification)
 {
 	for( auto& notify : *reinterpret_cast<Observers<SglMemEv>*>(notification.observers) )
 	{
-		notify(notification.ev.mem_ev);
+		notify(notification.ev.mem);
 	}
 }
 
@@ -93,7 +93,7 @@ void EventManager::notifyCompObservers(const EventNotifcation& notification)
 {
 	for( auto& notify : *reinterpret_cast<Observers<SglCompEv>*>(notification.observers) )
 	{
-		notify(notification.ev.comp_ev);
+		notify(notification.ev.comp);
 	}
 }
 
@@ -101,7 +101,7 @@ void EventManager::notifySyncObservers(const EventNotifcation& notification)
 {
 	for( auto& notify : *reinterpret_cast<Observers<SglSyncEv>*>(notification.observers) )
 	{
-		notify(notification.ev.sync_ev);
+		notify(notification.ev.sync);
 	}
 }
 
@@ -109,7 +109,7 @@ void EventManager::notifyCxtObservers(const EventNotifcation& notification)
 {
 	for( auto& notify : *reinterpret_cast<Observers<SglCxtEv>*>(notification.observers) )
 	{
-		notify(notification.ev.cxt_ev);
+		notify(notification.ev.cxt);
 	}
 }
 
@@ -121,7 +121,7 @@ void EventManager::produceEvent(const SglMemEv& ev)
 
 	buf[used].notifyObservers = notifyMemObservers;
 	buf[used].observers = reinterpret_cast<void*>(&mem_observers);
-	buf[used].ev.mem_ev = ev;
+	buf[used].ev.mem = ev;
 	used++;
 }
 void EventManager::produceEvent(const SglCompEv& ev)
@@ -132,7 +132,7 @@ void EventManager::produceEvent(const SglCompEv& ev)
 
 	buf[used].notifyObservers = notifyCompObservers;
 	buf[used].observers = reinterpret_cast<void*>(&comp_observers);
-	buf[used].ev.comp_ev = ev;
+	buf[used].ev.comp = ev;
 	used++;
 }
 void EventManager::produceEvent(const SglSyncEv& ev)
@@ -143,7 +143,7 @@ void EventManager::produceEvent(const SglSyncEv& ev)
 
 	buf[used].notifyObservers = notifySyncObservers;
 	buf[used].observers = reinterpret_cast<void*>(&sync_observers);
-	buf[used].ev.sync_ev = ev;
+	buf[used].ev.sync = ev;
 	used++;
 }
 void EventManager::produceEvent(const SglCxtEv& ev)
@@ -154,7 +154,7 @@ void EventManager::produceEvent(const SglCxtEv& ev)
 
 	buf[used].notifyObservers = notifyCxtObservers;
 	buf[used].observers = reinterpret_cast<void*>(&cxt_observers);
-	buf[used].ev.cxt_ev = ev;
+	buf[used].ev.cxt = ev;
 	used++;
 }
 

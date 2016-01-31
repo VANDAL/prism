@@ -86,11 +86,11 @@ struct BufferedSglEv
 	EvTag tag;
 	union 
 	{
-		SglMemEv  mem_ev;
-		SglCompEv comp_ev;
-		SglCFEv   cf_ev;
-		SglCxtEv  cxt_ev;
-		SglSyncEv sync_ev;
+		SglMemEv  mem;
+		SglCompEv comp;
+		SglCFEv   cf;
+		SglCxtEv  cxt;
+		SglSyncEv sync;
 	};
 };
 

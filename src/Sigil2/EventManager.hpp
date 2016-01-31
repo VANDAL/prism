@@ -58,7 +58,7 @@ public:
 	 * */
 	//TODO clean up implementation, cohesion is lacking here...
 	template<typename T>
-	void addEvent(T ev)
+	void addEvent(const T& ev)
 	{
 		if/*not full*/( prod_buf->used < MAX_EVENTS )
 		{

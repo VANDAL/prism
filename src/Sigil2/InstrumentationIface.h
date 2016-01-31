@@ -1,6 +1,5 @@
 #ifndef SGL_INSTRUMENTATIONIFACE_H
 #define SGL_INSTRUMENTATIONIFACE_H
-
 #include "Primitive.h"
 
 /*
