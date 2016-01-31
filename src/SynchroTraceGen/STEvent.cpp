@@ -19,19 +19,17 @@ void initThreadLog(TId tid)
 {
 	assert( tid >= 0 );
 
-	char filename[32] = "sigil.events-";
-	sprintf(filename, "%s%u.txt", filename, tid);
+	std::string thread_filename = filename + std::to_string(tid);
 
 	spdlog::set_async_mode(8192);
-	spdlog::create<spdlog::sinks::simple_file_sink_st>(filename, filename);
-	spdlog::get(filename)->set_pattern("%v");
-
+	spdlog::create<spdlog::sinks::simple_file_sink_st>(thread_filename, thread_filename);
+	spdlog::get(thread_filename)->set_pattern("%v");
 
 	if ( static_cast<int>(loggers.size()) <= tid )
 	{
 		loggers.resize(loggers.size()*2, nullptr);
 	}
-	loggers[tid] = spdlog::get(filename);
+	loggers[tid] = spdlog::get(thread_filename);
 
 	curr_logger = loggers[tid];
 }

@@ -10,7 +10,14 @@ class EventHandlers
 {
 	typedef int32_t TId; 
 public:
-	EventHandlers(){};
+	EventHandlers()
+	{
+		/* spdlog's API isn't conducive to truncating files,
+		 * so clean up any left overs from previous runs */
+		std::string rm_logs = "rm -f ";
+		rm_logs += std::string(filename) + "*";
+		system(rm_logs.c_str());
+	}
 
 	void onSyncEv(SglSyncEv ev);
 	void onCompEv(SglCompEv ev);

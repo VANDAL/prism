@@ -16,6 +16,8 @@
 
 namespace STGen
 {
+constexpr const char filename[32] = "sigil.events-";
+
 using EId = long long;
 using TId = int;
 

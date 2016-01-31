@@ -3,7 +3,7 @@
 
 #include "Sigil2/Primitive.h"
 
-#define SIGRIND_BUFSIZE (1 << 20)
+#define SIGRIND_BUFSIZE (1 << 23)
 #define SIGRIND_SHMEM_NAME ("sgl2-vg-ipc")
 
 #ifdef __cpluscplus

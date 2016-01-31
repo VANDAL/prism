@@ -144,9 +144,9 @@ void SGL_(log_0I1Dr)(InstrInfo* ii, Addr data_addr, Word data_size)
 {
 	unsigned int head = SGL_(shared)->head;
 	SGL_(shared)->buf[head].tag = SGL_MEM_TAG;
-	SGL_(shared)->buf[head].mem_ev.type = SGLPRIM_MEM_LOAD;
-	SGL_(shared)->buf[head].mem_ev.begin_addr = data_addr;
-	SGL_(shared)->buf[head].mem_ev.size = data_size;
+	SGL_(shared)->buf[head].mem.type = SGLPRIM_MEM_LOAD;
+	SGL_(shared)->buf[head].mem.begin_addr = data_addr;
+	SGL_(shared)->buf[head].mem.size = data_size;
 
 	SGL_(incr_head)();
 }
@@ -156,9 +156,9 @@ void SGL_(log_0I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size)
 {
 	unsigned int head = SGL_(shared)->head;
 	SGL_(shared)->buf[head].tag = SGL_MEM_TAG;
-	SGL_(shared)->buf[head].mem_ev.type = SGLPRIM_MEM_STORE;
-	SGL_(shared)->buf[head].mem_ev.begin_addr = data_addr;
-	SGL_(shared)->buf[head].mem_ev.size = data_size;
+	SGL_(shared)->buf[head].mem.type = SGLPRIM_MEM_STORE;
+	SGL_(shared)->buf[head].mem.begin_addr = data_addr;
+	SGL_(shared)->buf[head].mem.size = data_size;
 
 	SGL_(incr_head)();
 }
@@ -170,11 +170,11 @@ void SGL_(log_comp_event)(InstrInfo* ii, IRType type, IRExprTag arity)
 
 	if/*IOP*/( type < Ity_F32 )
 	{
-		SGL_(shared)->buf[head].comp_ev.type = SGLPRIM_COMP_IOP;
+		SGL_(shared)->buf[head].comp.type = SGLPRIM_COMP_IOP;
 	}
 	else if/*FLOP*/( type < Ity_V128 )
 	{
-		SGL_(shared)->buf[head].comp_ev.type = SGLPRIM_COMP_FLOP;
+		SGL_(shared)->buf[head].comp.type = SGLPRIM_COMP_FLOP;
 	}
 	else
 	{
@@ -185,16 +185,16 @@ void SGL_(log_comp_event)(InstrInfo* ii, IRType type, IRExprTag arity)
 	switch (arity)
 	{
 	case Iex_Unop:
-		SGL_(shared)->buf[head].comp_ev.arity = SGLPRIM_COMP_UNARY;
+		SGL_(shared)->buf[head].comp.arity = SGLPRIM_COMP_UNARY;
 		break;
 	case Iex_Binop:
-		SGL_(shared)->buf[head].comp_ev.arity = SGLPRIM_COMP_BINARY;
+		SGL_(shared)->buf[head].comp.arity = SGLPRIM_COMP_BINARY;
 		break;
 	case Iex_Triop:
-		SGL_(shared)->buf[head].comp_ev.arity = SGLPRIM_COMP_TERNARY;
+		SGL_(shared)->buf[head].comp.arity = SGLPRIM_COMP_TERNARY;
 		break;
 	case Iex_Qop:
-		SGL_(shared)->buf[head].comp_ev.arity = SGLPRIM_COMP_QUARTERNARY;
+		SGL_(shared)->buf[head].comp.arity = SGLPRIM_COMP_QUARTERNARY;
 		break;
 	default:
 		tl_assert(0);
@@ -212,8 +212,8 @@ void SGL_(log_sync)(UChar type, UWord data)
 {
 	unsigned int head = SGL_(shared)->head;
 	SGL_(shared)->buf[head].tag = SGL_SYNC_TAG;
-	SGL_(shared)->buf[head].sync_ev.type = type;
-	SGL_(shared)->buf[head].sync_ev.id = data;
+	SGL_(shared)->buf[head].sync.type = type;
+	SGL_(shared)->buf[head].sync.id = data;
 
 	SGL_(incr_head)();
 }
