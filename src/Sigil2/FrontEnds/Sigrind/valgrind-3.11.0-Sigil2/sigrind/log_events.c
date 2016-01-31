@@ -44,16 +44,21 @@ Addr   CLG_(bb_base);
 ULong* CLG_(cost_base);
 
 /* Shared memory IPC */
-SigrindSharedData* SGL_(shared);
-unsigned int SGL_(used) = 0;
+static SigrindSharedData* SGL_(shared);
 
-/* wait for shared memory buffer slots to become available */
-#define WAIT_BUFFER_AVAIL                   \
-	if ( SGL_(used) == SIGRIND_BUFSIZE ) {  \
-		SGL_(shared)->buffer_full = True;   \
-		while (SGL_(shared)->buffer_full);  \
-		SGL_(used) = 0;                     \
-	}                                       
+static inline void SGL_(incr_head)(void)
+{
+	if ( SGL_(shared)->head == SIGRIND_BUFSIZE-1 )
+	{
+		while (SGL_(shared)->tail == 0);
+		SGL_(shared)->head = 0;
+	}
+	else
+	{
+		while (SGL_(shared)->head == (SGL_(shared)->tail-1));
+		SGL_(shared)->head++;
+	}
+}
 
 void SGL_(open_shmem)(void)
 {
@@ -92,7 +97,6 @@ void SGL_(open_shmem)(void)
 
 void SGL_(close_shmem)(void)
 {
-	SGL_(shared)->leftover = SGL_(used);
 	SGL_(shared)->sigrind_finish = True;
 }
 
@@ -135,39 +139,39 @@ void SGL_(log_1I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size)
    change addEvent_D_guarded too. */
 void SGL_(log_0I1Dr)(InstrInfo* ii, Addr data_addr, Word data_size)
 {
-	WAIT_BUFFER_AVAIL;
-	SGL_(shared)->buf[SGL_(used)].tag = SGL_MEM_TAG;
-	SGL_(shared)->buf[SGL_(used)].mem_ev.type = SGLPRIM_MEM_LOAD;
-	SGL_(shared)->buf[SGL_(used)].mem_ev.begin_addr = data_addr;
-	SGL_(shared)->buf[SGL_(used)].mem_ev.size = data_size;
-	++SGL_(used);
+	unsigned int head = SGL_(shared)->head;
+	SGL_(shared)->buf[head].tag = SGL_MEM_TAG;
+	SGL_(shared)->buf[head].mem_ev.type = SGLPRIM_MEM_LOAD;
+	SGL_(shared)->buf[head].mem_ev.begin_addr = data_addr;
+	SGL_(shared)->buf[head].mem_ev.size = data_size;
+
+	SGL_(incr_head)();
 }
 
 /* See comment on log_0I1Dr. */
 void SGL_(log_0I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size)
 {
-	WAIT_BUFFER_AVAIL;
-	
-	SGL_(shared)->buf[SGL_(used)].tag = SGL_MEM_TAG;
-	SGL_(shared)->buf[SGL_(used)].mem_ev.type = SGLPRIM_MEM_STORE;
-	SGL_(shared)->buf[SGL_(used)].mem_ev.begin_addr = data_addr;
-	SGL_(shared)->buf[SGL_(used)].mem_ev.size = data_size;
-	++SGL_(used);
+	unsigned int head = SGL_(shared)->head;
+	SGL_(shared)->buf[head].tag = SGL_MEM_TAG;
+	SGL_(shared)->buf[head].mem_ev.type = SGLPRIM_MEM_STORE;
+	SGL_(shared)->buf[head].mem_ev.begin_addr = data_addr;
+	SGL_(shared)->buf[head].mem_ev.size = data_size;
+
+	SGL_(incr_head)();
 }
 
 void SGL_(log_comp_event)(InstrInfo* ii, IRType type, IRExprTag arity)
 {
-	WAIT_BUFFER_AVAIL;
-
-	SGL_(shared)->buf[SGL_(used)].tag = SGL_COMP_TAG;
+	unsigned int head = SGL_(shared)->head;
+	SGL_(shared)->buf[head].tag = SGL_COMP_TAG;
 
 	if/*IOP*/( type < Ity_F32 )
 	{
-		SGL_(shared)->buf[SGL_(used)].comp_ev.type = SGLPRIM_COMP_IOP;
+		SGL_(shared)->buf[head].comp_ev.type = SGLPRIM_COMP_IOP;
 	}
 	else if/*FLOP*/( type < Ity_V128 )
 	{
-		SGL_(shared)->buf[SGL_(used)].comp_ev.type = SGLPRIM_COMP_FLOP;
+		SGL_(shared)->buf[head].comp_ev.type = SGLPRIM_COMP_FLOP;
 	}
 	else
 	{
@@ -178,37 +182,37 @@ void SGL_(log_comp_event)(InstrInfo* ii, IRType type, IRExprTag arity)
 	switch (arity)
 	{
 	case Iex_Unop:
-		SGL_(shared)->buf[SGL_(used)].comp_ev.arity = SGLPRIM_COMP_UNARY;
+		SGL_(shared)->buf[head].comp_ev.arity = SGLPRIM_COMP_UNARY;
 		break;
 	case Iex_Binop:
-		SGL_(shared)->buf[SGL_(used)].comp_ev.arity = SGLPRIM_COMP_BINARY;
+		SGL_(shared)->buf[head].comp_ev.arity = SGLPRIM_COMP_BINARY;
 		break;
 	case Iex_Triop:
-		SGL_(shared)->buf[SGL_(used)].comp_ev.arity = SGLPRIM_COMP_TERNARY;
+		SGL_(shared)->buf[head].comp_ev.arity = SGLPRIM_COMP_TERNARY;
 		break;
 	case Iex_Qop:
-		SGL_(shared)->buf[SGL_(used)].comp_ev.arity = SGLPRIM_COMP_QUARTERNARY;
+		SGL_(shared)->buf[head].comp_ev.arity = SGLPRIM_COMP_QUARTERNARY;
 		break;
 	default:
 		tl_assert(0);
 		break;
 	}
 
-	++SGL_(used);
-
 	/* See VEX/pub/libvex_ir.h : IROp for 
 	 * future updates on specific ops */
 	/* TODO unimplemented */
+
+	SGL_(incr_head)();
 }
 
 void SGL_(log_sync)(UChar type, UWord data)
 {
-	WAIT_BUFFER_AVAIL;
+	unsigned int head = SGL_(shared)->head;
+	SGL_(shared)->buf[head].tag = SGL_SYNC_TAG;
+	SGL_(shared)->buf[head].sync_ev.type = type;
+	SGL_(shared)->buf[head].sync_ev.id = data;
 
-	SGL_(shared)->buf[SGL_(used)].tag = SGL_SYNC_TAG;
-	SGL_(shared)->buf[SGL_(used)].sync_ev.type = type;
-	SGL_(shared)->buf[SGL_(used)].sync_ev.id = data;
-	++SGL_(used);
+	SGL_(incr_head)();
 }
 
 void SGL_(log_fn_entry)(fn_node* fn)

@@ -16,9 +16,10 @@ typedef struct SigrindSharedData SigrindSharedData;
 struct SigrindSharedData
 {
 	volatile char sigrind_finish;
-	volatile char buffer_full;
-	volatile unsigned int leftover;
+	volatile unsigned int head;
+	volatile unsigned int tail;
 	BufferedSglEv buf[SIGRIND_BUFSIZE];
+
 };
 
 #ifdef __cpluscplus

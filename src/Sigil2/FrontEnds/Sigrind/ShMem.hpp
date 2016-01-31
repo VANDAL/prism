@@ -21,9 +21,6 @@ public:
 	 * signaling ShMem to finish. Implementing a named pipe allows us
 	 * to detect this */
 	void readFromSigrind();
-
-private:
-	void flush_sigrind_to_sigil(unsigned int size);
 };	
 
 }; //end namespace sigrind

@@ -16,8 +16,8 @@ ShMem::ShMem()
 {
 	std::unique_ptr<SigrindSharedData> init(new SigrindSharedData());
 	init->sigrind_finish = false;
-	init->buffer_full = false;
-	init->leftover = 0;
+	init->head = 0;
+	init->tail = 0;
 
 	//FIXME clean up file if there's an error...possibly register signal handler???
 
@@ -57,43 +57,41 @@ ShMem::~ShMem()
 	}
 }
 
+/* TODO ML: we can save ourselves from burning cycles by
+ * reverting to a buffering system, and having both 
+ * Valgrind and Sigil2 block on a pipe for 
+ * buffer full/empty notifications */
 void ShMem::readFromSigrind()
 {
-	while (!shared_mem->sigrind_finish)
+	volatile unsigned int& tail = shared_mem->tail;
+	volatile unsigned int& head = shared_mem->head;
+	volatile char& sigrind_finish = shared_mem->sigrind_finish;
+	BufferedSglEv (&buf)[SIGRIND_BUFSIZE] = shared_mem->buf;
+
+	while (!sigrind_finish)
 	{
-		while (!shared_mem->buffer_full)
+		while ( tail != head )
 		{
-			if (shared_mem->sigrind_finish)
+			BufferedSglEv& ev = buf[tail];
+			switch(ev.tag)
 			{
-				goto end;
+			case SGL_MEM_TAG:
+				SGLnotifyMem(ev.mem_ev);
+				break;
+			case SGL_COMP_TAG:
+				SGLnotifyComp(ev.comp_ev);
+				break;
+			case SGL_SYNC_TAG:
+				SGLnotifySync(ev.sync_ev);
+				break;
+			default:
+				break;
 			}
-		}
 
-		flush_sigrind_to_sigil(SIGRIND_BUFSIZE);
-		shared_mem->buffer_full = false;
-	}
-
-end:	flush_sigrind_to_sigil(shared_mem->leftover);
-}
-
-void ShMem::flush_sigrind_to_sigil(unsigned int size)
-{
-	for (unsigned int i=0; i<size; ++i)
-	{
-		BufferedSglEv* ev = &shared_mem->buf[i];
-		switch(ev->tag)
-		{
-		case SGL_MEM_TAG:
-			SGLnotifyMem(ev->mem_ev);
-			break;
-		case SGL_COMP_TAG:
-			SGLnotifyComp(ev->comp_ev);
-			break;
-		case SGL_SYNC_TAG:
-			SGLnotifySync(ev->sync_ev);
-			break;
-		default:
-			break;
+			if ( ++tail == SIGRIND_BUFSIZE )
+			{
+				tail = 0;
+			}
 		}
 	}
 }
