@@ -14,42 +14,46 @@ void EventManager::startConsumer()
 
 void EventManager::consumeEvents()
 {
+	assert( cons_buf != nullptr && prod_buf != nullptr );
+
 	while (1)
 	{
 		full.P();
 		cons_buf = &buf[cons_idx.increment()];
 		if/*full*/( cons_buf->used == MAX_EVENTS )
 		{
-			flushEvents(*cons_buf);
+			flushNotifications(*cons_buf);
 			empty.V();
 		}
 	}
 }
 
-void EventManager::flushEvents(Buffer& buf)
-{
-	for (UInt i=0; i < buf.used; ++i)
-	{
-		buf.events[i].notifyObservers(buf.events[i]);
-	}
-	buf.used = 0;
-}
-
 void EventManager::finish()
 {
+	assert( prod_buf != nullptr );
+
 	//let consumer finish and flush remaning buffers
-	while ( full.num > 0 ) 
+	while ( full.count > 0 ) 
 	{
 		using namespace std::chrono;
 		std::this_thread::sleep_for(milliseconds(500));
 	}
-	flushEvents(*prod_buf);
+	flushNotifications(*prod_buf);
 
 	//let everyone know its cleanup time
 	for( auto& cleanup : cleanup_observers )
 	{
 		cleanup();
 	}
+}
+
+void EventManager::flushNotifications(NotificationBuffer& buf)
+{
+	for (UInt i=0; i < buf.used; ++i)
+	{
+		buf.notifications[i].notifyObservers(buf.notifications[i]);
+	}
+	buf.used = 0;
 }
 
 void EventManager::addObserver(std::function<void(SglMemEv)> obs)
@@ -77,76 +81,80 @@ void EventManager::addCleanup(std::function<void()> obs)
 	cleanup_observers.push_back(obs);
 }
 
-void EventManager::notifyMemObservers(const BufferedEvent& ev)
+void EventManager::notifyMemObservers(const EventNotifcation& notification)
 {
-	for( auto& notify : *reinterpret_cast<Observers<SglMemEv>*>(ev.observers) )
+	for( auto& notify : *reinterpret_cast<Observers<SglMemEv>*>(notification.observers) )
 	{
-		notify(ev.mem_ev);
+		notify(notification.ev.mem_ev);
 	}
 }
 
-void EventManager::notifyCompObservers(const BufferedEvent& ev)
+void EventManager::notifyCompObservers(const EventNotifcation& notification)
 {
-	for( auto& notify : *reinterpret_cast<Observers<SglCompEv>*>(ev.observers) )
+	for( auto& notify : *reinterpret_cast<Observers<SglCompEv>*>(notification.observers) )
 	{
-		notify(ev.comp_ev);
+		notify(notification.ev.comp_ev);
 	}
 }
 
-void EventManager::notifySyncObservers(const BufferedEvent& ev)
+void EventManager::notifySyncObservers(const EventNotifcation& notification)
 {
-	for( auto& notify : *reinterpret_cast<Observers<SglSyncEv>*>(ev.observers) )
+	for( auto& notify : *reinterpret_cast<Observers<SglSyncEv>*>(notification.observers) )
 	{
-		notify(ev.sync_ev);
+		notify(notification.ev.sync_ev);
 	}
 }
 
-void EventManager::notifyCxtObservers(const BufferedEvent& ev)
+void EventManager::notifyCxtObservers(const EventNotifcation& notification)
 {
-	for( auto& notify : *reinterpret_cast<Observers<SglCxtEv>*>(ev.observers) )
+	for( auto& notify : *reinterpret_cast<Observers<SglCxtEv>*>(notification.observers) )
 	{
-		notify(ev.cxt_ev);
+		notify(notification.ev.cxt_ev);
 	}
 }
 
 void EventManager::produceEvent(const SglMemEv& ev)
 {
+	assert( prod_buf != nullptr );
 	UInt& used = prod_buf->used;
-	BufferedEvent (&buf)[MAX_EVENTS] = prod_buf->events;
+	EventNotifcation (&buf)[MAX_EVENTS] = prod_buf->notifications;
 
 	buf[used].notifyObservers = notifyMemObservers;
 	buf[used].observers = reinterpret_cast<void*>(&mem_observers);
-	buf[used].mem_ev = ev;
+	buf[used].ev.mem_ev = ev;
 	used++;
 }
 void EventManager::produceEvent(const SglCompEv& ev)
 {
+	assert( prod_buf != nullptr );
 	UInt& used = prod_buf->used;
-	BufferedEvent (&buf)[MAX_EVENTS] = prod_buf->events;
+	EventNotifcation (&buf)[MAX_EVENTS] = prod_buf->notifications;
 
 	buf[used].notifyObservers = notifyCompObservers;
 	buf[used].observers = reinterpret_cast<void*>(&comp_observers);
-	buf[used].comp_ev = ev;
+	buf[used].ev.comp_ev = ev;
 	used++;
 }
 void EventManager::produceEvent(const SglSyncEv& ev)
 {
+	assert( prod_buf != nullptr );
 	UInt& used = prod_buf->used;
-	BufferedEvent (&buf)[MAX_EVENTS] = prod_buf->events;
+	EventNotifcation (&buf)[MAX_EVENTS] = prod_buf->notifications;
 
 	buf[used].notifyObservers = notifySyncObservers;
 	buf[used].observers = reinterpret_cast<void*>(&sync_observers);
-	buf[used].sync_ev = ev;
+	buf[used].ev.sync_ev = ev;
 	used++;
 }
 void EventManager::produceEvent(const SglCxtEv& ev)
 {
+	assert( prod_buf != nullptr );
 	UInt& used = prod_buf->used;
-	BufferedEvent (&buf)[MAX_EVENTS] = prod_buf->events;
+	EventNotifcation (&buf)[MAX_EVENTS] = prod_buf->notifications;
 
 	buf[used].notifyObservers = notifyCxtObservers;
 	buf[used].observers = reinterpret_cast<void*>(&cxt_observers);
-	buf[used].cxt_ev = ev;
+	buf[used].ev.cxt_ev = ev;
 	used++;
 }
 

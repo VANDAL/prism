@@ -4,8 +4,8 @@
 
 #include <getopt.h>
 #include <dlfcn.h>
-#include <iostream>
 #include <cstring>
+#include <iostream>
 
 extern char* optarg;
 
@@ -41,8 +41,7 @@ OptionParser::OptionParser(int argc, char* argv[])
 		case 'b':
 			if ( registerBackendArgument(optarg) == false )
 			{
-				std::cerr << "Error initializing backend" << std::endl;
-				exit( EXIT_FAILURE );
+				throw std::runtime_error("Error initializing backend");
 			}
 			break;
 		case 'f':
@@ -74,8 +73,6 @@ bool OptionParser::registerBackendArgument(const std::string& backend)
 	if ( hndl == nullptr )
 	{
 		std::cerr << "dlopen failed: " << dlerror()	<< std::endl;
-		std::cerr << "Please report this issue at:" << std::endl;
-		std::cerr << "\thttps://github.com/mdlui/Sigil2" << std::endl;
 		return false;
 	}
 
@@ -97,7 +94,7 @@ bool OptionParser::registerFrontendArgument(const std::string& frontend, const s
 	if (frontend.compare("vg") == 0)
 	{
 		//TODO option or env var for valgrind/sigrind install directory
-		start_frontend = std::bind(&sigrind_frontend, exec, std::string("./vg-bin/bin"));
+		start_frontend = std::bind(&frontendSigrind, exec, std::string("./vg-bin/bin"));
 		return true;
 	}
 	else

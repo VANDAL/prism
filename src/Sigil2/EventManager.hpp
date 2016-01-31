@@ -11,14 +11,15 @@
 #include "Primitive.h"
 
 /**
- * Tracks events coming from the event generator instrumentation front-end;
- * this manager is accessed via a singleton instance.
+ * The sigil EventManager receives sigil event primitives from 
+ * a frontend, typically an instrumentation tool. These events
+ * are buffered, and full buffers are consumed by the backend
+ * in a separate thread.
  *
- * Event primitives are added to a buffer, which is then flushed to all 
- * registered observers. 
+ * Multiple buffers exist to ensure that the backend is never
+ * waiting for data to consume.
  *
- * finish() is expected to be called just before the end of its lifetime.
- *
+ * TODO does a lock-free queue make more sense here?
  */
 namespace sgl
 {
@@ -39,6 +40,7 @@ public:
 		return mgr;
 	}
 
+	/* Plugins add observers in the form of function callbacks */
 	void addObserver(std::function<void(SglMemEv)> obs);
 	void addObserver(std::function<void(SglCompEv)> obs);
 	void addObserver(std::function<void(SglSyncEv)> obs);
@@ -49,7 +51,7 @@ public:
 	/* Simple queuing producer->consumer
 	 * 
 	 * Each buffer is a resource that is either produced or consumed. 
-	 * That is, a full buffer = 1 resource. Two semaphores are used
+	 * That is, a full buffer is 1 resource. Two semaphores are used
 	 * to track access. The 'count' values of each semaphore are used
 	 * to index which buffer the producer(frontend)/consumer(backend) 
 	 * should use. 
@@ -91,66 +93,56 @@ private:
 	Observers<SglCxtEv> cxt_observers;
 	CleanupObservers cleanup_observers;
 
-	/* One structure to hold any type of Sigil event.
-	 * Buffering events in an constant sized array
-	 * turns out to be much faster than allocating each
-	 * new event on the heap, for billions+ events 
-	 *
-	 * Each BufferedEvent has 
-	 *	- a list of all observers to be called
-	 *	- the event itself
-	 *	- a pointer to a function that knows the correct event type, 
+	/* 
+	 * A notification has 
+	 *	- a function that knows the correct event type, 
 	 *	  so it can correctly notify all observers
+	 *	- a list of all observers of the event
+	 *	- the event itself
 	 *
-	 *    ML: I felt this function call would be faster 
+	 *    ML: I felt this would be faster and clearer 
 	 *    than looking at a type tag, for every event
 	 * */
-	struct BufferedEvent
+	struct EventNotifcation
 	{
-		void (*notifyObservers)(const BufferedEvent&);
+		void (*notifyObservers)(const EventNotifcation&);
 		void* observers;
-		union 
-		{
-			SglMemEv  mem_ev;
-			SglCompEv comp_ev;
-			SglCFEv   cf_ev;
-			SglCxtEv  cxt_ev;
-			SglSyncEv sync_ev;
-		};
+		BufferedSglEv ev;
 	};
-	static void notifyMemObservers( const BufferedEvent& ev );
-	static void notifyCompObservers( const BufferedEvent& ev );
-	static void notifySyncObservers( const BufferedEvent& ev );
-	static void notifyCxtObservers( const BufferedEvent& ev );
+	static void notifyMemObservers( const EventNotifcation& notification );
+	static void notifyCompObservers( const EventNotifcation& notification );
+	static void notifySyncObservers( const EventNotifcation& notification );
+	static void notifyCxtObservers( const EventNotifcation& notification );
 
-	struct Buffer 
+	struct NotificationBuffer 
 	{
-		BufferedEvent events[MAX_EVENTS];
+		EventNotifcation notifications[MAX_EVENTS];
 		UInt used = 0;
 	};
 
+	/* Simple semaphore implementation */
 	class Sem 
 	{
 	public:
-		Sem (int init) : num(num_), num_(init) {}
+		Sem (int init) : count(count_), count_(init) {}
 		int P()
 		{
 			std::unique_lock<std::mutex> ulock(mut);
-			cond.wait(ulock, [&]{ return num > 0; });
-			--num_;
-			return num_;
+			cond.wait(ulock, [&]{ return count > 0; });
+			--count_;
+			return count_;
 		}
 		int V()
 		{
 			std::unique_lock<std::mutex> ulock(mut);
-			++num_;
+			++count_;
 			cond.notify_one();
-			return num_;
+			return count_;
 		}
 
-		const int& num;
+		const int& count;
 	private:
-		int num_;
+		int count_;
 		std::mutex mut;
 		std::condition_variable cond;
 	};
@@ -175,18 +167,19 @@ private:
 	};
 
 	Sem full, empty;
-	Buffer *prod_buf, *cons_buf;
-	Buffer buf[MAX_BUFFERS];
+	NotificationBuffer *prod_buf, *cons_buf;
+	NotificationBuffer buf[MAX_BUFFERS];
 	CircularCounter prod_idx, cons_idx;
 	void produceEvent(const SglMemEv& ev);
 	void produceEvent(const SglCompEv& ev);
 	void produceEvent(const SglSyncEv& ev);
 	void produceEvent(const SglCxtEv& ev);
 
+	/* plugins implemented as separate thread */
 	std::thread consumer;
 	void startConsumer();
 	void consumeEvents();
-	void flushEvents(Buffer& buf);
+	void flushNotifications(NotificationBuffer& buf);
 };
 }; //end namespace sigil
 

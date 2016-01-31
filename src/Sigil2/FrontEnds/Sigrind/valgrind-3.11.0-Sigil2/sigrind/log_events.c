@@ -1,5 +1,4 @@
-/*
-   This file is part of Callgrind, a Valgrind tool for call graph profiling programs.
+/* This file is part of Callgrind, a Valgrind tool for call graph profiling programs.
 
    Copyright (C) 2003-2015, Josef Weidendorfer (Josef.Weidendorfer@gmx.de)
 
@@ -26,13 +25,16 @@
 
 #include "log_events.h"
 #include "sg_msg_fmt.h"
+#include "Sigil2/FrontEnds/Sigrind/ShMemData.h"
 
 #include <stdint.h>
 #include "coregrind/pub_core_libcfile.h"
 
-/* Sigrind only supports socket logging */
+#include "coregrind/pub_core_aspacemgr.h"
+#include "coregrind/pub_core_syscall.h"
+#include "pub_tool_basics.h"
 
-//FIXME these isn't needed for Sigil, but deleting them causes 
+//FIXME these aren't needed for Sigil, but deleting them causes 
 /* Following global vars are setup before by setup_bbcc():
  *
  * - Addr   CLG_(bb_base)     (instruction start address of original BB)
@@ -41,30 +43,57 @@
 Addr   CLG_(bb_base);
 ULong* CLG_(cost_base);
 
+/* Shared memory IPC */
+SigrindSharedData* SGL_(shared);
+unsigned int SGL_(used) = 0;
 
+/* wait for shared memory buffer slots to become available */
+#define WAIT_BUFFER_AVAIL                   \
+	if ( SGL_(used) == SIGRIND_BUFSIZE ) {  \
+		SGL_(shared)->buffer_full = True;   \
+		while (SGL_(shared)->buffer_full);  \
+		SGL_(used) = 0;                     \
+	}                                       
 
-/*------------------------------------------------------------*/
-/*--- Helper functions called by instrumented code         ---*/
-/*------------------------------------------------------------*/
-
-OutputSink sigil_sink;
-
-static void send_to_sigil_socket(const char *const buf, const UInt size)
+void SGL_(open_shmem)(void)
 {
-	//TODO check that this is a blocking write
-	Int rc = VG_(write_socket)( sigil_sink.fd, buf, size );
+	int shared_mem_fd;
+	Addr addr_shared;
 
-	if (rc == -1) 
+	/* from remote-utils.c */
+	SysRes o = VG_(open) (SIGRIND_SHMEM_NAME, VKI_O_RDWR, 0600);
+	if (sr_isError (o)) 
 	{
-		 // FIXME handle gracefully
-         // For example, the listener process died.  Switch back to stderr.
-		 const char msg[32] = "Could not write to socket\n";
-         sigil_sink.is_socket = False;
-         sigil_sink.fd = 2;
-         VG_(write)( sigil_sink.fd, msg, 32 );
-
-		 VG_(exit)(-1);
+		VG_(umsg) ("error %lu %s\n", sr_Err(o), VG_(strerror)(sr_Err(o)));
+		VG_(umsg)("cannot open shared_mem file %s\n", SIGRIND_SHMEM_NAME);
+		VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
+		VG_(exit) (1);
+	} 
+	else 
+	{
+		shared_mem_fd = sr_Res(o);
 	}
+
+	SysRes res = VG_(am_shared_mmap_file_float_valgrind)
+		(sizeof(SigrindSharedData), VKI_PROT_READ|VKI_PROT_WRITE, 
+		 shared_mem_fd, (Off64T)0);
+	if (sr_isError(res)) 
+	{
+		VG_(umsg) ("error %lu %s\n", sr_Err(res), VG_(strerror)(sr_Err(res)));
+		VG_(umsg)("error VG_(am_shared_mmap_file_float_valgrind) %s\n", SIGRIND_SHMEM_NAME);
+		VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
+		VG_(exit) (1);
+	}  
+
+	addr_shared = sr_Res (res);
+	VG_(close) (shared_mem_fd);
+	SGL_(shared) = (SigrindSharedData*) addr_shared;
+}
+
+void SGL_(close_shmem)(void)
+{
+	SGL_(shared)->leftover = SGL_(used);
+	SGL_(shared)->sigrind_finish = True;
 }
 
 
@@ -73,91 +102,130 @@ static void send_to_sigil_socket(const char *const buf, const UInt size)
  * Can track addresses by modifying addEvent_IR and log_<event>
  * to change arguments
  */
-void log_1I0D(InstrInfo* ii)
+void SGL_(log_1I0D)(InstrInfo* ii)
 {
-	ALLOCA_SGLMSG(sglmsg, CXT_BUF_SIZE);
-	SET_SGLMSG_EVTYPE(sglmsg, MSG_CXT_EV);
-
-	sglmsg[MSG_CXT_TYPE_IDX] |= 0x20; //< Instruction Marker
 }
-void log_2I0D(InstrInfo* ii1, InstrInfo* ii2)
+void SGL_(log_2I0D)(InstrInfo* ii1, InstrInfo* ii2)
 {
-	log_1I0D(ii1);
-	log_1I0D(ii2);
+	SGL_(log_1I0D)(ii1);
+	SGL_(log_1I0D)(ii2);
 }
-void log_3I0D(InstrInfo* ii1, InstrInfo* ii2, InstrInfo* ii3)
+void SGL_(log_3I0D)(InstrInfo* ii1, InstrInfo* ii2, InstrInfo* ii3)
 {
-	log_1I0D(ii1);
-	log_1I0D(ii2);
-	log_1I0D(ii3);
+	SGL_(log_1I0D)(ii1);
+	SGL_(log_1I0D)(ii2);
+	SGL_(log_1I0D)(ii3);
 }
 
 /* Instruction doing a read access */
-void log_1I1Dr(InstrInfo* ii, Addr data_addr, Word data_size)
+void SGL_(log_1I1Dr)(InstrInfo* ii, Addr data_addr, Word data_size)
 {
-	log_1I0D(ii);
-	log_0I1Dr(ii, data_addr, data_size);
+	SGL_(log_1I0D)(ii);
+	SGL_(log_0I1Dr)(ii, data_addr, data_size);
+}
+/* Instruction doing a write access */
+void SGL_(log_1I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size)
+{
+	SGL_(log_1I0D)(ii);
+	SGL_(log_0I1Dw)(ii, data_addr, data_size);
 }
 
 /* Note that addEvent_D_guarded assumes that log_0I1Dr and log_0I1Dw
    have exactly the same prototype.  If you change them, you must
    change addEvent_D_guarded too. */
-void log_0I1Dr(InstrInfo* ii, Addr data_addr, Word data_size)
+void SGL_(log_0I1Dr)(InstrInfo* ii, Addr data_addr, Word data_size)
 {
-	ALLOCA_SGLMSG(dr_sglmsg, MEM_BUF_SIZE);
-	genMemEvMsg(dr_sglmsg, SGLPRIM_MEM_LOAD, data_addr, data_size);
-	send_to_sigil_socket(dr_sglmsg, MEM_BUF_SIZE);
-}
-
-/* Instruction doing a write access */
-void log_1I1Dw(InstrInfo* ii, Addr data_addr, Word data_size)
-{
-	log_1I0D(ii);
-	log_0I1Dw(ii, data_addr, data_size);
+	WAIT_BUFFER_AVAIL;
+	SGL_(shared)->buf[SGL_(used)].tag = SGL_MEM_TAG;
+	SGL_(shared)->buf[SGL_(used)].mem_ev.type = SGLPRIM_MEM_LOAD;
+	SGL_(shared)->buf[SGL_(used)].mem_ev.begin_addr = data_addr;
+	SGL_(shared)->buf[SGL_(used)].mem_ev.size = data_size;
+	++SGL_(used);
 }
 
 /* See comment on log_0I1Dr. */
-void log_0I1Dw(InstrInfo* ii, Addr data_addr, Word data_size)
+void SGL_(log_0I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size)
 {
-	ALLOCA_SGLMSG(dw_sglmsg, MEM_BUF_SIZE);
-	genMemEvMsg(dw_sglmsg, SGLPRIM_MEM_STORE, data_addr, data_size);
-	send_to_sigil_socket(dw_sglmsg, MEM_BUF_SIZE);
+	WAIT_BUFFER_AVAIL;
+	
+	SGL_(shared)->buf[SGL_(used)].tag = SGL_MEM_TAG;
+	SGL_(shared)->buf[SGL_(used)].mem_ev.type = SGLPRIM_MEM_STORE;
+	SGL_(shared)->buf[SGL_(used)].mem_ev.begin_addr = data_addr;
+	SGL_(shared)->buf[SGL_(used)].mem_ev.size = data_size;
+	++SGL_(used);
 }
 
-void log_comp_event(InstrInfo* ii, IRType type, IRExprTag arity)
+void SGL_(log_comp_event)(InstrInfo* ii, IRType type, IRExprTag arity)
 {
-	ALLOCA_SGLMSG(comp_sglmsg, COMP_BUF_SIZE);
-	genCompEvMsg(comp_sglmsg, type, arity);
-	send_to_sigil_socket(comp_sglmsg, COMP_BUF_SIZE);
+	WAIT_BUFFER_AVAIL;
+
+	SGL_(shared)->buf[SGL_(used)].tag = SGL_COMP_TAG;
+
+	if/*IOP*/( type < Ity_F32 )
+	{
+		SGL_(shared)->buf[SGL_(used)].comp_ev.type = SGLPRIM_COMP_IOP;
+	}
+	else if/*FLOP*/( type < Ity_V128 )
+	{
+		SGL_(shared)->buf[SGL_(used)].comp_ev.type = SGLPRIM_COMP_FLOP;
+	}
+	else
+	{
+		/*unhandled*/
+		return;
+	}
+
+	switch (arity)
+	{
+	case Iex_Unop:
+		SGL_(shared)->buf[SGL_(used)].comp_ev.arity = SGLPRIM_COMP_UNARY;
+		break;
+	case Iex_Binop:
+		SGL_(shared)->buf[SGL_(used)].comp_ev.arity = SGLPRIM_COMP_BINARY;
+		break;
+	case Iex_Triop:
+		SGL_(shared)->buf[SGL_(used)].comp_ev.arity = SGLPRIM_COMP_TERNARY;
+		break;
+	case Iex_Qop:
+		SGL_(shared)->buf[SGL_(used)].comp_ev.arity = SGLPRIM_COMP_QUARTERNARY;
+		break;
+	default:
+		tl_assert(0);
+		break;
+	}
+
+	++SGL_(used);
+
+	/* See VEX/pub/libvex_ir.h : IROp for 
+	 * future updates on specific ops */
+	/* TODO unimplemented */
 }
 
-void log_fn_entry(fn_node* fn)
+void SGL_(log_sync)(UChar type, UWord data)
+{
+	WAIT_BUFFER_AVAIL;
+
+	SGL_(shared)->buf[SGL_(used)].tag = SGL_SYNC_TAG;
+	SGL_(shared)->buf[SGL_(used)].sync_ev.type = type;
+	SGL_(shared)->buf[SGL_(used)].sync_ev.id = data;
+	++SGL_(used);
+}
+
+void SGL_(log_fn_entry)(fn_node* fn)
 {
 }
 
-void log_fn_leave(fn_node* fn)
-{
-}
-
-void log_sync(UChar type, UWord data)
-{
-	ALLOCA_SGLMSG(sync_sglmsg, SYNC_BUF_SIZE);
-	SET_SGLMSG_EVTYPE(sync_sglmsg, MSG_SYNC_EV);
-	genSyncEvMsg(sync_sglmsg, type, data); 
-	send_to_sigil_socket(sync_sglmsg, SYNC_BUF_SIZE);
-}
-
-void log_global_event(InstrInfo* ii)
+void SGL_(log_fn_leave)(fn_node* fn)
 {
 }
 
 
-/********************************************/
-/* Branches aren't implemented by Sigil yet */
-/********************************************/
-void log_cond_branch(InstrInfo* ii, Word taken)
+void SGL_(log_global_event)(InstrInfo* ii)
 {
 }
-void log_ind_branch(InstrInfo* ii, UWord actual_dst)
+void SGL_(log_cond_branch)(InstrInfo* ii, Word taken)
+{
+}
+void SGL_(log_ind_branch)(InstrInfo* ii, UWord actual_dst)
 {
 }

@@ -56,6 +56,7 @@ flags = [
 # For a C project, you would set this to 'c' instead of 'c++'.
 '-x',
 'c',
+'-DVGO_linux',
 '-isystem',
 '../BoostParts',
 '-isystem',
@@ -74,6 +75,7 @@ flags = [
 '-I','../VEX/priv',
 '-I','../inst/include/valgrind',
 '-I','../../',
+'-I','../../../../..',
 '-I',
 './ClangCompleter',
 '-isystem',

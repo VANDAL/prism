@@ -111,11 +111,11 @@ static void function_entered(fn_node* fn)
 
   if ( VG_(strcmp)(fn->name, "main") == 0 )
   {
-	  VG_(printf)("Entering main!");
+	  VG_(printf)("Entering main!\n");
 	  is_in_main = 1;
   }
   /* send to sigil */
-  log_fn_entry(fn);
+  SGL_(log_fn_entry)(fn);
 
 #if CLG_ENABLE_DEBUG
   if (fn->verbosity >=0) {
@@ -136,11 +136,11 @@ static void function_left(fn_node* fn)
 
   if ( VG_(strcmp)(fn->name, "main") == 0 )
   {
-	  VG_(printf)("Leaving main!");
+	  VG_(printf)("Leaving main!\n");
 	  is_in_main = 0;
   }
   /*send to sigil*/
-  log_fn_leave(fn);
+  SGL_(log_fn_leave)(fn);
 
 #if CLG_ENABLE_DEBUG
   if (fn->verbosity >=0) {

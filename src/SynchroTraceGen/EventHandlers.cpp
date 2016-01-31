@@ -174,7 +174,11 @@ void EventHandlers::cleanup()
 {
 	st_comm_ev.flush();
 	st_comp_ev.flush();
-	curr_logger->flush();
+
+	if ( curr_logger != nullptr )
+	{
+		curr_logger->flush();
+	}
 }
 
 }; //end namespace STGen

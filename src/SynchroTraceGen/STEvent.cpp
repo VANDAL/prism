@@ -10,18 +10,8 @@ namespace STGen
 ////////////////////////////////////////////////////////////
 // SynchroTrace - Logging
 ////////////////////////////////////////////////////////////
-/**
- * The event log is updated often.
- * Directly using spdlog for performance, instead of Sigil's
- * logging abstraction.
- *
- * The log is created and set up by changing the current thread
- * to a thread not seen before.
- *
- * Each ST event type flushes itself to the specific log file.
- */
 static std::vector<std::shared_ptr<spdlog::logger>> loggers(16);
-std::shared_ptr<spdlog::logger> curr_logger;
+std::shared_ptr<spdlog::logger> curr_logger = nullptr;
 
 namespace
 {

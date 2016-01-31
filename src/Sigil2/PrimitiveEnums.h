@@ -2,6 +2,17 @@
 #define SGL_PRIM_ENUM_H
 
 ////////////////
+/*   Memory   */
+////////////////
+enum MemType
+{
+	SGLPRIM_MEM_TYPE_UNDEF = 0,
+	SGLPRIM_MEM_LOAD,
+	SGLPRIM_MEM_STORE
+};
+
+
+////////////////
 /*  Compute   */
 ////////////////
 enum CompCostType
@@ -30,17 +41,6 @@ enum CompCostOp
 	SGLPRIM_COMP_DIV,
 	SGLPRIM_COMP_SHFT,
 	SGLPRIM_COMP_MOV
-};
-
-
-////////////////
-/*   Memory   */
-////////////////
-enum MemType
-{
-	SGLPRIM_MEM_TYPE_UNDEF = 0,
-	SGLPRIM_MEM_LOAD,
-	SGLPRIM_MEM_STORE
 };
 
 
@@ -91,18 +91,31 @@ enum SyncType
 	SGLPRIM_SYNC_SPINUNLOCK
 };
 
+enum EvTag
+{
+	SGL_MEM_TAG = 0,
+	SGL_COMP_TAG,
+	SGL_CF_TAG,
+	SGL_CXT_TAG,
+	SGL_SYNC_TAG
+};
+
 #ifndef __cpluscplus
+//////////////////////////////////////
 typedef enum CompArity CompArity;
 typedef enum CompCostType CompCostType;
 typedef enum CompCostOp CompCostOp;
-
+//////////////////////////////////////
 typedef enum MemType MemType;
-
+//////////////////////////////////////
 typedef enum CFType CFType;
-
+//////////////////////////////////////
 typedef enum CxtType CxtType;
-
+//////////////////////////////////////
 typedef enum SyncType SyncType;
+//////////////////////////////////////
+typedef enum EvTag EvTag;
+//////////////////////////////////////
 #endif
 
 #endif //SGL_PRIM_ENUM_H

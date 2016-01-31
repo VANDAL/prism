@@ -571,7 +571,7 @@ void CLG_(setup_bbcc)(BB* bb)
   if (UNLIKELY(tid != CLG_(current_tid)))
   {
      CLG_(switch_thread)(tid);
-  	 log_sync(SGLPRIM_SYNC_SWAP, CLG_(current_tid));
+  	 SGL_(log_sync)(SGLPRIM_SYNC_SWAP, CLG_(current_tid));
   }
 #else
   CLG_ASSERT(VG_(get_running_tid)() == CLG_(current_tid));

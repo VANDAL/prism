@@ -40,6 +40,7 @@ typedef struct SglCompEv SglCompEv;
 typedef struct SglCFEv SglCFEv;
 typedef struct SglCxtEv SglCxtEv;
 typedef struct SglSyncEv SglSyncEv;
+typedef struct BufferedSglEv BufferedSglEv;
 #endif
 
 struct SglMemEv
@@ -78,6 +79,19 @@ struct SglSyncEv
 {
 	SyncType type;
 	Addr id;
+};
+
+struct BufferedSglEv
+{
+	EvTag tag;
+	union 
+	{
+		SglMemEv  mem_ev;
+		SglCompEv comp_ev;
+		SglCFEv   cf_ev;
+		SglCxtEv  cxt_ev;
+		SglSyncEv sync_ev;
+	};
 };
 
 #ifdef __cpluscplus

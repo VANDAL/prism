@@ -34,7 +34,6 @@
 #include "pub_tool_basics.h"
 
 #define CLG_(str) VGAPPEND(vgCallgrind_,str)
-#define SGL_(str) VGAPPEND(vgCallgrind_,str)
 
 /* Event groups consist of one or more named event types.
  * Event sets are constructed from such event groups.

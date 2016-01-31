@@ -746,7 +746,7 @@ static void flushEvents ( ClgState* clgs )
 													immediately preceding Ir.  Same applies to analogous
 													assertions in the subsequent cases. */
 				helperName = "log_1I1Dr";
-				helperAddr = log_1I1Dr;
+				helperAddr = SGL_(log_1I1Dr);
 				argv = mkIRExprVec_3( 
 						i_node_expr,
 						get_Event_dea(ev2),
@@ -760,7 +760,7 @@ static void flushEvents ( ClgState* clgs )
 			{
 				tl_assert(ev2->inode == ev->inode);
 				helperName = "log_1I1Dw";
-				helperAddr = log_1I1Dw;
+				helperAddr = SGL_(log_1I1Dw);
 				argv = mkIRExprVec_3( 
 						i_node_expr,
 						get_Event_dea(ev2),
@@ -773,7 +773,7 @@ static void flushEvents ( ClgState* clgs )
 			else if (ev2 && ev3 && ev2->tag == Ev_Ir && ev3->tag == Ev_Ir) 
 			{
 				helperName = "log_3I0D";
-				helperAddr = log_3I0D;
+				helperAddr = SGL_(log_3I0D);
 				argv = mkIRExprVec_3( 
 						i_node_expr,
 						mkIRExpr_HWord((HWord)ev2->inode),
@@ -786,7 +786,7 @@ static void flushEvents ( ClgState* clgs )
 			else
 			if (ev2 && ev2->tag == Ev_Ir) {
 				helperName = "log_2I0D";
-				helperAddr = log_2I0D;
+				helperAddr = SGL_(log_2I0D);
 				argv = mkIRExprVec_2(
 						i_node_expr,
 						mkIRExpr_HWord((HWord)ev2->inode) 
@@ -797,7 +797,7 @@ static void flushEvents ( ClgState* clgs )
 			/* No merging possible; emit as-is. */
 			else {
 				helperName = "log_1I0D";
-				helperAddr = log_1I0D;
+				helperAddr = SGL_(log_1I0D);
 				argv = mkIRExprVec_1( i_node_expr );
 				regparms = 1;
 				inew = i+1;
@@ -806,7 +806,7 @@ static void flushEvents ( ClgState* clgs )
 		case Ev_Dr:
 			/* Data read or modify */
 			helperName = "log_0I1Dr";
-			helperAddr = log_0I1Dr;
+			helperAddr = SGL_(log_0I1Dr);
 			argv = mkIRExprVec_3( 
 					i_node_expr,
 					get_Event_dea(ev),
@@ -819,7 +819,7 @@ static void flushEvents ( ClgState* clgs )
 		case Ev_Dm:
 		   /* Data write */
 		   helperName = "log_0I1Dw";
-		   helperAddr = log_0I1Dw;
+		   helperAddr = SGL_(log_0I1Dw);
 		   argv = mkIRExprVec_3( 
 				   i_node_expr,
 		   		   get_Event_dea(ev),
@@ -831,7 +831,7 @@ static void flushEvents ( ClgState* clgs )
 		case Ev_Bc:
 			/* Conditional branch */
 			helperName = "log_cond_branch";
-			helperAddr = &log_cond_branch;
+			helperAddr = SGL_(log_cond_branch);
 			argv = mkIRExprVec_2( i_node_expr, ev->Ev.Bc.taken );
 			regparms = 2;
 			inew = i+1;
@@ -839,7 +839,7 @@ static void flushEvents ( ClgState* clgs )
 		case Ev_Bi:
 			/* Branch to an unknown destination */
 			helperName = "log_ind_branch";
-			helperAddr = &log_ind_branch;
+			helperAddr = SGL_(log_ind_branch);
 			argv = mkIRExprVec_2( i_node_expr, ev->Ev.Bi.dst );
 			regparms = 2;
 			inew = i+1;
@@ -847,7 +847,7 @@ static void flushEvents ( ClgState* clgs )
 		case Ev_G:
 			/* Global bus event (CAS, LOCK-prefix, LL-SC, etc) */
 			helperName = "log_global_event";
-			helperAddr = &log_global_event;
+			helperAddr = SGL_(log_global_event);
 			argv = mkIRExprVec_1( i_node_expr );
 			regparms = 1;
 			inew = i+1;
@@ -855,7 +855,7 @@ static void flushEvents ( ClgState* clgs )
 		case Ev_Comp:
 		   /* Compute */
 		   helperName = "log_comp_event";
-		   helperAddr = log_comp_event;
+		   helperAddr = SGL_(log_comp_event);
 		   argv = mkIRExprVec_3( 
 				   i_node_expr,
 		   		   mkIRExpr_HWord(ev->Ev.Comp.op_type),
@@ -994,8 +994,8 @@ void addEvent_D_guarded ( ClgState* clgs, InstrInfo* inode,
    i_node_expr = mkIRExpr_HWord( (HWord)inode );
    helperName  = isWrite ? "log_0I1Dw"
                          : "log_0I1Dr";
-   helperAddr  = isWrite ? log_0I1Dw
-                         : log_0I1Dr;
+   helperAddr  = isWrite ? SGL_(log_0I1Dw)
+                         : SGL_(log_0I1Dr);
    argv        = mkIRExprVec_3( i_node_expr,
                                 ea, mkIRExpr_HWord( datasize ) );
    regparms    = 3;
@@ -1384,13 +1384,13 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       break;
    case VG_USERREQ__SIGIL_PTHREAD_CREATE_LEAVE:
       /* log once the thread has been CREATED and waiting */
-      log_sync((UChar)SGLPRIM_SYNC_CREATE, args[1]);
+      SGL_(log_sync)((UChar)SGLPRIM_SYNC_CREATE, args[1]);
       is_in_synccall = 0;
       break;
 
    case VG_USERREQ__SIGIL_PTHREAD_JOIN_ENTER:
       /* log when the thread join is ENTERED */
-      log_sync((UChar)SGLPRIM_SYNC_JOIN, args[1]);
+      SGL_(log_sync)((UChar)SGLPRIM_SYNC_JOIN, args[1]);
       is_in_synccall = 1;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_JOIN_LEAVE:
@@ -1402,7 +1402,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       break;
    case VG_USERREQ__SIGIL_PTHREAD_LOCK_LEAVE:
       /* log once the lock has been acquired */
-      log_sync((UChar)SGLPRIM_SYNC_LOCK, args[1]);
+      SGL_(log_sync)((UChar)SGLPRIM_SYNC_LOCK, args[1]);
       is_in_synccall = 0;
       break;
 
@@ -1410,13 +1410,13 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       is_in_synccall = 1;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_UNLOCK_LEAVE:
-      log_sync((UChar)SGLPRIM_SYNC_UNLOCK, args[1]);
+      SGL_(log_sync)((UChar)SGLPRIM_SYNC_UNLOCK, args[1]);
       is_in_synccall = 0;
       break;
 
    case VG_USERREQ__SIGIL_PTHREAD_BARRIER_ENTER:
       /* log once the barrier is ENTERED and waiting */
-      log_sync((UChar)SGLPRIM_SYNC_BARRIER, args[1]);
+      SGL_(log_sync)((UChar)SGLPRIM_SYNC_BARRIER, args[1]);
       is_in_synccall = 1;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_BARRIER_LEAVE:
@@ -1427,7 +1427,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       is_in_synccall = 1;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_CONDWAIT_LEAVE:
-      log_sync((UChar)SGLPRIM_SYNC_CONDWAIT, args[1]);
+      SGL_(log_sync)((UChar)SGLPRIM_SYNC_CONDWAIT, args[1]);
       is_in_synccall = 0;
       break;
 
@@ -1435,7 +1435,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       is_in_synccall = 1;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_CONDSIG_LEAVE:
-      log_sync((UChar)SGLPRIM_SYNC_CONDSIG, args[1]);
+      SGL_(log_sync)((UChar)SGLPRIM_SYNC_CONDSIG, args[1]);
       is_in_synccall = 0;
       break;
 
@@ -1443,7 +1443,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       is_in_synccall = 1;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_SPINLOCK_LEAVE:
-      log_sync((UChar)SGLPRIM_SYNC_SPINLOCK, args[1]);
+      SGL_(log_sync)((UChar)SGLPRIM_SYNC_SPINLOCK, args[1]);
       is_in_synccall = 0;
       break;
 
@@ -1451,7 +1451,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       is_in_synccall = 1;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_SPINUNLOCK_LEAVE:
-      log_sync((UChar)SGLPRIM_SYNC_SPINUNLOCK, args[1]);
+      SGL_(log_sync)((UChar)SGLPRIM_SYNC_SPINUNLOCK, args[1]);
       is_in_synccall = 0;
       break;
 
@@ -1478,9 +1478,7 @@ void clg_print_stats(void)
 {
 }
 
-
-static
-void finish(void)
+static void finish(void)
 {
   CLG_DEBUG(0, "finish()\n");
 
@@ -1488,6 +1486,8 @@ void finish(void)
    */
   CLG_(forall_threads)(unwind_thread);
 
+  /* finish IPC with Sigil2 */
+  SGL_(close_shmem)();
 }
 
 
@@ -1569,28 +1569,11 @@ void CLG_(post_clo_init)(void)
 
    CLG_(instrument_state) = CLG_(clo).instrument_atstart;
 
-
-   /* initialize communication socket to sigil */
-   const HChar* default_socket = "127.0.0.1:1500";
-   Int sd = VG_(connect_via_socket)( default_socket );
-   tl_assert( sd >= 0 );
-
-   /* Reuse valgrind's error processing */
-
-   // Move log_fd into the safe range, so it doesn't conflict with
-   // any app fds.
-   sd = VG_(fcntl)(sd, VKI_F_DUPFD, VG_(fd_hard_limit));
-   if (sd < 0) {
-      VG_(message)(Vg_UserMsg, "valgrind: failed to move logfile fd "
-                               "into safe range, exiting\n");
-      VG_(exit)(-1);
-   } else {
-      sigil_sink.fd = sd;
-      VG_(fcntl)(sigil_sink.fd, VKI_F_SETFD, VKI_FD_CLOEXEC);
-   }
-
-   //Initialize backend with first thread
-   log_sync(SGLPRIM_SYNC_SWAP, CLG_(current_tid));
+   // initialize interface to Sigil
+   SGL_(open_shmem)();
+   
+   // initialize backend with first thread
+   SGL_(log_sync)(SGLPRIM_SYNC_SWAP, CLG_(current_tid));
 }
 
 static
