@@ -80,6 +80,7 @@ private:
 	{ 
 		empty.P();
 		prod_buf = &buf[prod_idx.increment()];
+		finish_consumer = false;
 		startConsumer();
 	}
 	EventManager(const EventManager&) = delete;
@@ -178,6 +179,7 @@ private:
 	/* plugins implemented as separate thread */
 	std::thread consumer;
 	void startConsumer();
+	bool finish_consumer;
 	void consumeEvents();
 	void flushNotifications(NotificationBuffer& buf);
 };

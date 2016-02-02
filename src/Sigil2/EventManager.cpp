@@ -16,7 +16,7 @@ void EventManager::consumeEvents()
 {
 	assert( cons_buf != nullptr && prod_buf != nullptr );
 
-	while (1)
+	while (finish_consumer == false)
 	{
 		full.P();
 		cons_buf = &buf[cons_idx.increment()];
@@ -39,6 +39,7 @@ void EventManager::finish()
 		std::this_thread::sleep_for(milliseconds(500));
 	}
 	flushNotifications(*prod_buf);
+	finish_consumer = true;
 
 	//let everyone know its cleanup time
 	for( auto& cleanup : cleanup_observers )
