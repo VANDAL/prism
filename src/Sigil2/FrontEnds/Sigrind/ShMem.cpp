@@ -5,7 +5,7 @@
 #include <memory>
 
 #include "ShMem.hpp"
-#include "Sigil2/InstrumentationIface.h" 
+#include "Sigil2/EventManager.hpp" 
 
 namespace sgl
 {
@@ -15,9 +15,9 @@ namespace sigrind
 ShMem::ShMem()
 {
 	std::unique_ptr<SigrindSharedData> init(new SigrindSharedData());
-	init->sigrind_finish = false;
-	init->head = 0;
-	init->tail = 0;
+	atomic_init(&(init->sigrind_finish), (char)(false));
+	atomic_init(&(init->head), (unsigned int)0);
+	atomic_init(&(init->tail), (unsigned int)0);
 
 	//FIXME clean up file if there's an error...possibly register signal handler???
 
@@ -61,58 +61,28 @@ ShMem::~ShMem()
  * reverting to a buffering system, and having both 
  * Valgrind and Sigil2 block on a pipe for 
  * buffer full/empty notifications */
-/* FIXME ML: this assumes a cache coherent processor!
- * Where to document? */
 void ShMem::readFromSigrind()
 {
 	/* All data in shared memory should be volatile */
 
-	while (shared_mem->sigrind_finish == false)
+	while (atomic_load_explicit(&(shared_mem->sigrind_finish), memory_order_relaxed) == false)
 	{
 		//cache read
-		unsigned int tail = shared_mem->tail;
+		unsigned int tail = atomic_load_explicit(&(shared_mem->tail), memory_order_acquire);
 
 		while (tail != shared_mem->head)
 		{
 			EvTag tag = shared_mem->buf[tail].tag;
-
 			switch(tag)
 			{
 			case SGL_MEM_TAG:
-			{
-				SglMemEv ev
-				{
-					shared_mem->buf[tail].mem.type,
-					shared_mem->buf[tail].mem.begin_addr,
-					shared_mem->buf[tail].mem.size,
-					shared_mem->buf[tail].mem.alignment
-				};
-				SGLnotifyMem(ev);
-			}
+				EventManager::instance().addEvent(shared_mem->buf[tail].mem);
 				break;
 			case SGL_COMP_TAG:
-			{
-				/* volatile copy */
-				SglCompEv ev
-				{
-					shared_mem->buf[tail].comp.type,
-					shared_mem->buf[tail].comp.arity,
-					shared_mem->buf[tail].comp.op,
-					shared_mem->buf[tail].comp.size,
-				};
-				SGLnotifyComp(ev);
-			}
+				EventManager::instance().addEvent(shared_mem->buf[tail].comp);
 				break;
 			case SGL_SYNC_TAG:
-			{
-				/* volatile copy */
-				SglSyncEv ev
-				{
-					shared_mem->buf[tail].sync.type,
-					shared_mem->buf[tail].sync.id
-				};
-				SGLnotifySync(ev);
-			}
+				EventManager::instance().addEvent(shared_mem->buf[tail].sync);
 				break;
 			default:
 				break;
@@ -123,7 +93,7 @@ void ShMem::readFromSigrind()
 				tail = 0;
 			}
 
-			shared_mem->tail = tail;
+			atomic_store_explicit(&(shared_mem->tail), tail, memory_order_relaxed);
 		}
 	}
 }

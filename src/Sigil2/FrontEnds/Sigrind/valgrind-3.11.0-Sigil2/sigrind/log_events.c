@@ -24,10 +24,8 @@
 */
 
 #include "log_events.h"
-#include "sg_msg_fmt.h"
 #include "Sigil2/FrontEnds/Sigrind/ShMemData.h"
 
-#include <stdint.h>
 #include "coregrind/pub_core_libcfile.h"
 
 #include "coregrind/pub_core_aspacemgr.h"
@@ -46,21 +44,20 @@ ULong* CLG_(cost_base);
 /* Shared memory IPC */
 static SigrindSharedData* SGL_(shared);
 
-static inline void SGL_(incr_head)(void)
+static inline unsigned int SGL_(incr)(unsigned int head)
 {
 	/* cache read */
-	unsigned int head = SGL_(shared)->head;
-
 	if ( head == SIGRIND_BUFSIZE-1 )
 	{
-		while (SGL_(shared)->tail == 0);
-		SGL_(shared)->head = 0;
+		while (atomic_load_explicit(&(SGL_(shared)->tail), memory_order_relaxed) == 0);
+		head = 0;
 	}
 	else
 	{
-		while ( head == (SGL_(shared)->tail-1) );
-		SGL_(shared)->head++;
+		while (head == (atomic_load_explicit(&(SGL_(shared)->tail), memory_order_relaxed)-1));
+		++head;
 	}
+	return head;
 }
 
 void SGL_(open_shmem)(void)
@@ -100,7 +97,7 @@ void SGL_(open_shmem)(void)
 
 void SGL_(close_shmem)(void)
 {
-	SGL_(shared)->sigrind_finish = True;
+	atomic_store_explicit(&(SGL_(shared)->sigrind_finish), True, memory_order_relaxed);
 }
 
 
@@ -142,30 +139,30 @@ void SGL_(log_1I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size)
    change addEvent_D_guarded too. */
 void SGL_(log_0I1Dr)(InstrInfo* ii, Addr data_addr, Word data_size)
 {
-	unsigned int head = SGL_(shared)->head;
+	unsigned int head = atomic_load_explicit(&(SGL_(shared)->head), memory_order_relaxed);
 	SGL_(shared)->buf[head].tag = SGL_MEM_TAG;
 	SGL_(shared)->buf[head].mem.type = SGLPRIM_MEM_LOAD;
 	SGL_(shared)->buf[head].mem.begin_addr = data_addr;
 	SGL_(shared)->buf[head].mem.size = data_size;
 
-	SGL_(incr_head)();
+	atomic_store_explicit(&(SGL_(shared)->head), SGL_(incr)(head), memory_order_release);
 }
 
 /* See comment on log_0I1Dr. */
 void SGL_(log_0I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size)
 {
-	unsigned int head = SGL_(shared)->head;
+	unsigned int head = atomic_load_explicit(&(SGL_(shared)->head), memory_order_relaxed);
 	SGL_(shared)->buf[head].tag = SGL_MEM_TAG;
 	SGL_(shared)->buf[head].mem.type = SGLPRIM_MEM_STORE;
 	SGL_(shared)->buf[head].mem.begin_addr = data_addr;
 	SGL_(shared)->buf[head].mem.size = data_size;
 
-	SGL_(incr_head)();
+	atomic_store_explicit(&(SGL_(shared)->head), SGL_(incr)(head), memory_order_release);
 }
 
 void SGL_(log_comp_event)(InstrInfo* ii, IRType type, IRExprTag arity)
 {
-	unsigned int head = SGL_(shared)->head;
+	unsigned int head = atomic_load_explicit(&(SGL_(shared)->head), memory_order_relaxed);
 	SGL_(shared)->buf[head].tag = SGL_COMP_TAG;
 
 	if/*IOP*/( type < Ity_F32 )
@@ -205,17 +202,17 @@ void SGL_(log_comp_event)(InstrInfo* ii, IRType type, IRExprTag arity)
 	 * future updates on specific ops */
 	/* TODO unimplemented */
 
-	SGL_(incr_head)();
+	atomic_store_explicit(&(SGL_(shared)->head), SGL_(incr)(head), memory_order_release);
 }
 
 void SGL_(log_sync)(UChar type, UWord data)
 {
-	unsigned int head = SGL_(shared)->head;
+	unsigned int head = atomic_load_explicit(&(SGL_(shared)->head), memory_order_relaxed);
 	SGL_(shared)->buf[head].tag = SGL_SYNC_TAG;
 	SGL_(shared)->buf[head].sync.type = type;
 	SGL_(shared)->buf[head].sync.id = data;
 
-	SGL_(incr_head)();
+	atomic_store_explicit(&(SGL_(shared)->head), SGL_(incr)(head), memory_order_release);
 }
 
 void SGL_(log_fn_entry)(fn_node* fn)
