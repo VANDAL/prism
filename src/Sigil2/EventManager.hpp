@@ -6,7 +6,6 @@
 #include <thread>
 #include <condition_variable>
 #include <mutex>
-#include <iostream>
 
 #include "Primitive.h"
 
@@ -67,7 +66,7 @@ public:
 		else
 		{
 			empty.P();
-			prod_buf = &buf[prod_idx.increment()];
+			prod_buf = &bufbuf[prod_idx.increment()];
 			full.V();
 			produceEvent( ev );
 		}
@@ -79,7 +78,7 @@ private:
 		prod_idx(MAX_BUFFERS), cons_idx(MAX_BUFFERS)
 	{ 
 		empty.P();
-		prod_buf = &buf[prod_idx.increment()];
+		prod_buf = &bufbuf[prod_idx.increment()];
 		finish_consumer = false;
 		startConsumer();
 	}
@@ -93,33 +92,6 @@ private:
 	Observers<SglSyncEv> sync_observers;
 	Observers<SglCxtEv> cxt_observers;
 	CleanupObservers cleanup_observers;
-
-	/* 
-	 * A notification has 
-	 *	- a function that knows the correct event type, 
-	 *	  so it can correctly notify all observers
-	 *	- a list of all observers of the event
-	 *	- the event itself
-	 *
-	 *    ML: I felt this would be faster and clearer 
-	 *    than looking at a type tag, for every event
-	 * */
-	struct EventNotifcation
-	{
-		void (*notifyObservers)(const EventNotifcation&);
-		void* observers;
-		BufferedSglEv ev;
-	};
-	static void notifyMemObservers( const EventNotifcation& notification );
-	static void notifyCompObservers( const EventNotifcation& notification );
-	static void notifySyncObservers( const EventNotifcation& notification );
-	static void notifyCxtObservers( const EventNotifcation& notification );
-
-	struct NotificationBuffer 
-	{
-		EventNotifcation notifications[MAX_EVENTS];
-		UInt used = 0;
-	};
 
 	/* Simple semaphore implementation */
 	class Sem 
@@ -167,9 +139,15 @@ private:
 		int mod_val;
 	};
 
+	struct EventBuffer 
+	{
+		BufferedSglEv events[MAX_EVENTS];
+		UInt used = 0;
+	};
+
 	Sem full, empty;
-	NotificationBuffer *prod_buf, *cons_buf;
-	NotificationBuffer buf[MAX_BUFFERS];
+	EventBuffer *prod_buf, *cons_buf;
+	EventBuffer bufbuf[MAX_BUFFERS];
 	CircularCounter prod_idx, cons_idx;
 	void produceEvent(const SglMemEv& ev);
 	void produceEvent(const SglCompEv& ev);
@@ -181,7 +159,7 @@ private:
 	void startConsumer();
 	bool finish_consumer;
 	void consumeEvents();
-	void flushNotifications(NotificationBuffer& buf);
+	void flushNotifications(EventBuffer& buf);
 };
 }; //end namespace sigil
 

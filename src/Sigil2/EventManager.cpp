@@ -14,12 +14,12 @@ void EventManager::startConsumer()
 
 void EventManager::consumeEvents()
 {
-	assert( cons_buf != nullptr && prod_buf != nullptr );
+	assert( prod_buf != nullptr );
 
 	while (finish_consumer == false)
 	{
 		full.P();
-		cons_buf = &buf[cons_idx.increment()];
+		cons_buf = &bufbuf[cons_idx.increment()];
 		if/*full*/( cons_buf->used == MAX_EVENTS )
 		{
 			flushNotifications(*cons_buf);
@@ -48,11 +48,35 @@ void EventManager::finish()
 	}
 }
 
-void EventManager::flushNotifications(NotificationBuffer& buf)
+void EventManager::flushNotifications(EventBuffer& buf)
 {
 	for (UInt i=0; i < buf.used; ++i)
 	{
-		buf.notifications[i].notifyObservers(buf.notifications[i]);
+		BufferedSglEv& ev = buf.events[i];
+		switch(ev.tag)
+		{
+		case EvTag::SGL_MEM_TAG:
+			for (auto notify : mem_observers)
+			{
+				notify(ev.mem);
+			}
+			break;
+		case EvTag::SGL_COMP_TAG:
+			for (auto notify : comp_observers)
+			{
+				notify(ev.comp);
+			}
+			break;
+		case EvTag::SGL_SYNC_TAG:
+			for (auto notify : sync_observers)
+			{
+				notify(ev.sync);
+			}
+			break;
+		default:
+			/* Context and Control Flow events not implemented yet */
+			break;
+		}
 	}
 	buf.used = 0;
 }
@@ -82,81 +106,49 @@ void EventManager::addCleanup(std::function<void()> obs)
 	cleanup_observers.push_back(obs);
 }
 
-void EventManager::notifyMemObservers(const EventNotifcation& notification)
-{
-	for( auto& notify : *reinterpret_cast<Observers<SglMemEv>*>(notification.observers) )
-	{
-		notify(notification.ev.mem);
-	}
-}
-
-void EventManager::notifyCompObservers(const EventNotifcation& notification)
-{
-	for( auto& notify : *reinterpret_cast<Observers<SglCompEv>*>(notification.observers) )
-	{
-		notify(notification.ev.comp);
-	}
-}
-
-void EventManager::notifySyncObservers(const EventNotifcation& notification)
-{
-	for( auto& notify : *reinterpret_cast<Observers<SglSyncEv>*>(notification.observers) )
-	{
-		notify(notification.ev.sync);
-	}
-}
-
-void EventManager::notifyCxtObservers(const EventNotifcation& notification)
-{
-	for( auto& notify : *reinterpret_cast<Observers<SglCxtEv>*>(notification.observers) )
-	{
-		notify(notification.ev.cxt);
-	}
-}
-
 void EventManager::produceEvent(const SglMemEv& ev)
 {
 	assert( prod_buf != nullptr );
-	UInt& used = prod_buf->used;
-	EventNotifcation (&buf)[MAX_EVENTS] = prod_buf->notifications;
 
-	buf[used].notifyObservers = notifyMemObservers;
-	buf[used].observers = reinterpret_cast<void*>(&mem_observers);
-	buf[used].ev.mem = ev;
-	used++;
+	UInt& used = prod_buf->used;
+	BufferedSglEv (&buf)[MAX_EVENTS] = prod_buf->events;
+
+	buf[used].tag = EvTag::SGL_MEM_TAG;
+	buf[used].mem = ev;
+	++used;
 }
 void EventManager::produceEvent(const SglCompEv& ev)
 {
 	assert( prod_buf != nullptr );
-	UInt& used = prod_buf->used;
-	EventNotifcation (&buf)[MAX_EVENTS] = prod_buf->notifications;
 
-	buf[used].notifyObservers = notifyCompObservers;
-	buf[used].observers = reinterpret_cast<void*>(&comp_observers);
-	buf[used].ev.comp = ev;
-	used++;
+	UInt& used = prod_buf->used;
+	BufferedSglEv (&buf)[MAX_EVENTS] = prod_buf->events;
+
+	buf[used].tag = EvTag::SGL_COMP_TAG;
+	buf[used].comp = ev;
+	++used;
 }
 void EventManager::produceEvent(const SglSyncEv& ev)
 {
 	assert( prod_buf != nullptr );
-	UInt& used = prod_buf->used;
-	EventNotifcation (&buf)[MAX_EVENTS] = prod_buf->notifications;
 
-	buf[used].notifyObservers = notifySyncObservers;
-	buf[used].observers = reinterpret_cast<void*>(&sync_observers);
-	buf[used].ev.sync = ev;
-	used++;
+	UInt& used = prod_buf->used;
+	BufferedSglEv (&buf)[MAX_EVENTS] = prod_buf->events;
+
+	buf[used].tag = EvTag::SGL_SYNC_TAG;
+	buf[used].sync = ev;
+	++used;
 }
 void EventManager::produceEvent(const SglCxtEv& ev)
 {
 	assert( prod_buf != nullptr );
-	UInt& used = prod_buf->used;
-	EventNotifcation (&buf)[MAX_EVENTS] = prod_buf->notifications;
 
-	buf[used].notifyObservers = notifyCxtObservers;
-	buf[used].observers = reinterpret_cast<void*>(&cxt_observers);
-	buf[used].ev.cxt = ev;
-	used++;
+	UInt& used = prod_buf->used;
+	BufferedSglEv (&buf)[MAX_EVENTS] = prod_buf->events;
+
+	buf[used].tag = EvTag::SGL_CXT_TAG;
+	buf[used].cxt = ev;
+	++used;
 }
 
 }; //end namespace sgl
