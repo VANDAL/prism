@@ -5,7 +5,7 @@ project(sigil2)
 # TODO ONLY WORKING FOR 64-BIT X86 LINUX RIGHT NOW #
 ####################################################
 set(VALGRIND_FLAGS "-DVGP_amd64_linux -DVGO_linux -DVGA_amd64")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${VALGRIND_FLAGS} -std=c++11 -DNDEBUG -O3 -rdynamic -lpthread -ldl")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${VALGRIND_FLAGS} -std=c++11 -rdynamic -lpthread -ldl")
 
 enable_testing( true )
 include( CTest )

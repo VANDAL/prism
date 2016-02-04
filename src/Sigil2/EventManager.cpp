@@ -33,7 +33,7 @@ void EventManager::finish()
 	assert( prod_buf != nullptr );
 
 	//let consumer finish and flush remaning buffers
-	while ( full.count > 0 ) 
+	while ( empty.count < MAX_BUFFERS-1 ) 
 	{
 		using namespace std::chrono;
 		std::this_thread::sleep_for(milliseconds(500));
@@ -48,6 +48,9 @@ void EventManager::finish()
 	}
 }
 
+
+/* Not thread-safe!!! Only the producer or consumer can 
+ * flush at any instance */
 void EventManager::flushNotifications(EventBuffer& buf)
 {
 	for (UInt i=0; i < buf.used; ++i)

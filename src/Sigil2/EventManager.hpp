@@ -113,9 +113,9 @@ private:
 			return count_;
 		}
 
-		const int& count;
+		const unsigned int& count;
 	private:
-		int count_;
+		unsigned int count_;
 		std::mutex mut;
 		std::condition_variable cond;
 	};

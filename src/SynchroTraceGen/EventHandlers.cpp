@@ -9,12 +9,13 @@ namespace STGen
 ////////////////////////////////////////////////////////////
 void EventHandlers::onSyncEv(SglSyncEv ev)
 {
-	if ( ev.type == SyncType::SGLPRIM_SYNC_SWAP 
+	/* flush any outstanding ST events */
+	st_comm_ev.flush();
+	st_comp_ev.flush();
+
+	if/*switching threads*/( ev.type == SyncType::SGLPRIM_SYNC_SWAP 
 			&& STEvent::curr_thread_id != static_cast<TId>(ev.id) )
 	{
-		st_comm_ev.flush();
-		st_comp_ev.flush();
-
 		STEvent::setThread(ev.id);
 	}
 	else
@@ -70,11 +71,11 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 			STtype = 9;
 			break;
 		default:
-			//ignore sync event
+			/* ignore sync event */
 			break;
 		}
 
-		if/*set*/( STtype > 0 )
+		if/*valid sync event*/( STtype > 0 )
 		{
 			st_sync_ev.logSync(STtype, ev.id);
 		}
@@ -86,8 +87,9 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 ////////////////////////////////////////////////////////////
 void EventHandlers::onCompEv(SglCompEv ev)
 {
-	st_comm_ev.flush(); /* local compute event, 
-						   flush most recent communication event */
+	/* local compute event, flush most recent comm event */
+	st_comm_ev.flush(); 
+
 	switch( ev.type )
 	{
 	case CompCostType::SGLPRIM_COMP_IOP:
@@ -126,10 +128,10 @@ void EventHandlers::onMemEv(SglMemEv ev)
 
 void EventHandlers::onLoad(const SglMemEv& ev)
 {
-	//incremented per event
+	/* incremented per event */
 	st_comp_ev.load_cnt++;
 
-	//Each byte of the read may have been touched by a different thread
+	/* each byte of the read may have been touched by a different thread */
 	for/*each byte*/( UInt i=0; i<ev.size; ++i )
 	{
 		Addr curr_addr = ev.begin_addr+i;
@@ -155,7 +157,7 @@ void EventHandlers::onLoad(const SglMemEv& ev)
 
 void EventHandlers::onStore(const SglMemEv& ev)
 {
-	//incremented per event
+	/* incremented per event */
 	st_comp_ev.store_cnt++;
 
 	st_comp_ev.updateWrites(ev);
@@ -174,6 +176,7 @@ void EventHandlers::cleanup()
 {
 	st_comm_ev.flush();
 	st_comp_ev.flush();
+	/* sync events already flush immediately */
 
 	if ( curr_logger != nullptr )
 	{
