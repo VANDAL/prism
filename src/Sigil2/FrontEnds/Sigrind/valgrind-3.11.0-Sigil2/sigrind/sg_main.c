@@ -1384,13 +1384,19 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       break;
    case VG_USERREQ__SIGIL_PTHREAD_CREATE_LEAVE:
       /* log once the thread has been CREATED and waiting */
-      SGL_(log_sync)((UChar)SGLPRIM_SYNC_CREATE, args[1]);
+      if ( is_in_main == 1 )
+      {
+         SGL_(log_sync)((UChar)SGLPRIM_SYNC_CREATE, args[1]);
+      }
       is_in_synccall = 0;
       break;
 
    case VG_USERREQ__SIGIL_PTHREAD_JOIN_ENTER:
       /* log when the thread join is ENTERED */
-      SGL_(log_sync)((UChar)SGLPRIM_SYNC_JOIN, args[1]);
+      if ( is_in_main == 1 )
+      {
+         SGL_(log_sync)((UChar)SGLPRIM_SYNC_JOIN, args[1]);
+      }
       is_in_synccall = 1;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_JOIN_LEAVE:
@@ -1402,7 +1408,10 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       break;
    case VG_USERREQ__SIGIL_PTHREAD_LOCK_LEAVE:
       /* log once the lock has been acquired */
-      SGL_(log_sync)((UChar)SGLPRIM_SYNC_LOCK, args[1]);
+      if ( is_in_main == 1 )
+      {
+         SGL_(log_sync)((UChar)SGLPRIM_SYNC_LOCK, args[1]);
+      }
       is_in_synccall = 0;
       break;
 
@@ -1410,13 +1419,19 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       is_in_synccall = 1;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_UNLOCK_LEAVE:
-      SGL_(log_sync)((UChar)SGLPRIM_SYNC_UNLOCK, args[1]);
+      if ( is_in_main == 1 )
+      {
+         SGL_(log_sync)((UChar)SGLPRIM_SYNC_UNLOCK, args[1]);
+      }
       is_in_synccall = 0;
       break;
 
    case VG_USERREQ__SIGIL_PTHREAD_BARRIER_ENTER:
       /* log once the barrier is ENTERED and waiting */
-      SGL_(log_sync)((UChar)SGLPRIM_SYNC_BARRIER, args[1]);
+      if ( is_in_main == 1 )
+      {
+         SGL_(log_sync)((UChar)SGLPRIM_SYNC_BARRIER, args[1]);
+      }
       is_in_synccall = 1;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_BARRIER_LEAVE:
@@ -1427,7 +1442,10 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       is_in_synccall = 1;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_CONDWAIT_LEAVE:
-      SGL_(log_sync)((UChar)SGLPRIM_SYNC_CONDWAIT, args[1]);
+      if ( is_in_main == 1 )
+      {
+         SGL_(log_sync)((UChar)SGLPRIM_SYNC_CONDWAIT, args[1]);
+      }
       is_in_synccall = 0;
       break;
 
@@ -1435,7 +1453,10 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       is_in_synccall = 1;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_CONDSIG_LEAVE:
-      SGL_(log_sync)((UChar)SGLPRIM_SYNC_CONDSIG, args[1]);
+      if ( is_in_main == 1 )
+      {
+         SGL_(log_sync)((UChar)SGLPRIM_SYNC_CONDSIG, args[1]);
+      }
       is_in_synccall = 0;
       break;
 
@@ -1443,7 +1464,10 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       is_in_synccall = 1;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_SPINLOCK_LEAVE:
-      SGL_(log_sync)((UChar)SGLPRIM_SYNC_SPINLOCK, args[1]);
+      if ( is_in_main == 1 )
+      {
+         SGL_(log_sync)((UChar)SGLPRIM_SYNC_SPINLOCK, args[1]);
+      }
       is_in_synccall = 0;
       break;
 
@@ -1451,7 +1475,10 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       is_in_synccall = 1;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_SPINUNLOCK_LEAVE:
-      SGL_(log_sync)((UChar)SGLPRIM_SYNC_SPINUNLOCK, args[1]);
+      if ( is_in_main == 1 )
+      {
+         SGL_(log_sync)((UChar)SGLPRIM_SYNC_SPINUNLOCK, args[1]);
+      }
       is_in_synccall = 0;
       break;
 
