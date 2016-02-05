@@ -2,7 +2,7 @@
 #define SGL_SIGRIND_SHMEM_H
 
 #include "ShMemData.h"
-#include <memory>
+#include <string>
 
 namespace sgl
 {
@@ -11,9 +11,10 @@ namespace sigrind
 
 class ShMem
 {
+	std::string tmp_file;
 	SigrindSharedData* shared_mem;
 public:
-	ShMem();
+	ShMem(const std::string &tmp_dir);
 	~ShMem();
 
 	/* Get all events from Sigrind until it's signaled to stop by Sigrind */

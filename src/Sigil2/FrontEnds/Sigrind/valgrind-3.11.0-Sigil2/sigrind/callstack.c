@@ -111,7 +111,9 @@ static void function_entered(fn_node* fn)
 
   if ( VG_(strcmp)(fn->name, "main") == 0 )
   {
-	  VG_(printf)("Entering main!\n");
+	  VG_(umsg)("******************************************\n");
+	  VG_(umsg)("Entering main: turning on event collection\n");
+	  VG_(umsg)("******************************************\n");
 	  is_in_main = 1;
   }
   /* send to sigil */
@@ -136,7 +138,9 @@ static void function_left(fn_node* fn)
 
   if ( VG_(strcmp)(fn->name, "main") == 0 )
   {
-	  VG_(printf)("Leaving main!\n");
+	  VG_(umsg)("******************************************\n");
+	  VG_(umsg)("Leaving main: turning off event collection\n");
+	  VG_(umsg)("******************************************\n");
 	  is_in_main = 0;
   }
   /*send to sigil*/

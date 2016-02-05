@@ -2,6 +2,7 @@
 #define STGEN_EVENT_H
 
 #include <vector>
+#include <set>
 #include <unordered_map>
 #include "Sigil2/Primitive.h"
 
@@ -18,27 +19,10 @@ namespace STGen
 {
 constexpr const char filename[32] = "sigil.events-";
 
+/* TODO add asserts that EIds and TIds 
+ * aren't negative during flushing */
 using EId = long long;
 using TId = int;
-
-/* Helper class to track unique ranges of addresses
- * Unordered */
-struct AddrRange
-{
-	std::vector<std::pair<Addr,Addr>> ranges;
-
-public:
-	bool insert(Addr begin, Addr end);
-	void clear();
-
-private:
-	/* Returns true if addr range #2 contains addr range #1, inclusive
-	 * Returns false otherwise */
-	bool addrOverlap(
-			Addr addr1_begin, Addr addr1_end,
-			Addr addr2_begin, Addr addr2_end
-			);
-};
 
 /**
  * Base SynchroTrace event. SynchroTrace events can be made of multiple
@@ -86,31 +70,42 @@ public:
  */
 struct STCompEvent : public STEvent
 {
+	/* Helper class to track unique ranges of addresses */
+	struct AddrSet
+	{
+		using AddrRange = std::pair<Addr,Addr>;
+		/* A range of addresses is specified by the pair.
+		 * This call inserts that range and merges existing ranges
+		 * in order to keep the set of addresses unique */
+		void insert(const AddrRange &range);
+		void clear();
+		const std::multiset<AddrRange>& get(){ return ms; }
+	
+	private:
+		std::multiset<AddrRange> ms;
+	};
+
 	UInt iop_cnt;
 	UInt flop_cnt;	
+
 	/* Stores and Loads originating from the current thread
 	 * I.e. non-edge mem events. These are the count for 'events',
 	 * not a count for bytes stored/loaded */
 	UInt store_cnt;
 	UInt load_cnt;
 
-	/* Holds a range for the addresses touched by local stores/loads
-	 *
-	 * ML: the ranges themselves are unique, in that I try to not list
-	 * the same address twice even if it was stored or loaded twice.
-	 * Only consecutive addresses, or addresses that completely overlap
-	 * are not-duplicated. If two reads have an address range that 
-	 * partially overlaps, this is not detected */
-	AddrRange stores_unique; 
-	AddrRange loads_unique;
+	/* Holds a range for the addresses touched by local stores/loads */
+	AddrSet stores_unique; 
+	AddrSet loads_unique;
+
 	UInt total_events;
 
 public:
 	STCompEvent();
-	bool updateWrites(SglMemEv ev);
-	bool updateWrites(Addr begin, Addr size);
-	bool updateReads(SglMemEv ev);
-	bool updateReads(Addr begin, Addr size);
+	void updateWrites(SglMemEv ev);
+	void updateWrites(Addr begin, Addr size);
+	void updateReads(SglMemEv ev);
+	void updateReads(Addr begin, Addr size);
 	void incIOP();
 	void incFLOP();
 	
@@ -142,6 +137,7 @@ struct STCommEvent : public STEvent
 
 public:
 	STCommEvent();
+
 	/** 
 	 * Adds communication edges originated from a single load/read primitive.
 	 * Use this function when reading data that was written by a different thread.
@@ -176,9 +172,11 @@ class STSyncEvent : public STEvent
 	Addr sync_addr = 0;
 
 public:
-	/* Only logging is required */
-	//TODO clarify name
-	void logSync(UChar type, Addr sync_addr);
+	using STEvent::flush;
+
+	/* extend flush from base; 
+	 * only behavior is immediate flush */
+	void flush(UChar type, Addr sync_addr);
 
 private:
 	virtual void detailedFlush() override;

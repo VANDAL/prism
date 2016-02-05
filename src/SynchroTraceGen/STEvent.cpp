@@ -106,7 +106,7 @@ void STCompEvent::detailedFlush()
 		<< std::hex;
 
 	/* log write addresses */
-	for (auto& addr_pair : stores_unique.ranges)
+	for (auto& addr_pair : stores_unique.get())
 	{
 		logmsg << " $ " //unique write delimiter
 			<< addr_pair.first 
@@ -115,7 +115,7 @@ void STCompEvent::detailedFlush()
 	}
 
 	/* log read addresses */
-	for (auto& addr_pair : loads_unique.ranges)
+	for (auto& addr_pair : loads_unique.get())
 	{
 		logmsg << " * " //unique read delimiter
 			<< addr_pair.first 
@@ -127,32 +127,32 @@ void STCompEvent::detailedFlush()
 	reset();
 }
 
-bool STCompEvent::updateWrites(Addr begin, Addr size)
+void STCompEvent::updateWrites(Addr begin, Addr size)
 {
 	is_active = true;
 	total_events++;
-	return stores_unique.insert(begin, begin+size-1);
+	stores_unique.insert(std::make_pair(begin, begin+size-1));
 }
 
-bool STCompEvent::updateWrites(SglMemEv ev)
+void STCompEvent::updateWrites(SglMemEv ev)
 {
 	is_active = true;
 	total_events++;
-	return stores_unique.insert(ev.begin_addr, ev.begin_addr+ev.size-1);
+	stores_unique.insert(std::make_pair(ev.begin_addr, ev.begin_addr+ev.size-1));
 }
 
-bool STCompEvent::updateReads(Addr begin, Addr size)
+void STCompEvent::updateReads(Addr begin, Addr size)
 {
 	is_active = true;
 	total_events++;
-	return loads_unique.insert(begin, begin+size-1);
+	loads_unique.insert(std::make_pair(begin, begin+size-1));
 }
 
-bool STCompEvent::updateReads(SglMemEv ev)
+void STCompEvent::updateReads(SglMemEv ev)
 {
 	is_active = true;
 	total_events++;
-	return loads_unique.insert(ev.begin_addr, ev.begin_addr+ev.size-1);
+	loads_unique.insert(std::make_pair(ev.begin_addr, ev.begin_addr+ev.size-1));
 }
 
 void STCompEvent::incIOP()
@@ -243,7 +243,7 @@ void STCommEvent::reset()
 ////////////////////////////////////////////////////////////
 // SynchroTrace - Synchronization Event
 ////////////////////////////////////////////////////////////
-void STSyncEvent::logSync(UChar type, Addr sync_addr)
+void STSyncEvent::flush(UChar type, Addr sync_addr)
 {
 	std::stringstream logmsg;
 	logmsg << curr_event_id
@@ -268,53 +268,85 @@ void STSyncEvent::reset()
 ////////////////////////////////////////////////////////////
 // Address Range
 ////////////////////////////////////////////////////////////
-
-/* FIXME ML: occasionally I see addresses, in the traces, that are consecutive, 
- * but they're not getting condensed for some reason */
-bool AddrRange::insert(Addr begin, Addr end)
+void STCompEvent::AddrSet::insert(const AddrRange &range)
 {
-	for(auto& range : ranges)
+	assert (range.first <= range.second);
+
+	/* insert if this is the first addr */
+	if (ms.empty() == true)
 	{
-		if ( begin == range.second+1 )
-		{
-			range.second = end;
-			return true;
-		}
-		else if ( end+1 == range.first )
-		{
-			range.first = begin;
-			return true;
-		}
-		else if (addrOverlap(begin, end, range.first, range.second))
-		{
-			return false; //memory addresses already stored
-		}
-		else if (addrOverlap(range.first, range.second, begin, end))
-		{
-			range.first = begin;
-			range.second = end;
-			return true; //replace the event with a superset of addresses
-		}
-		//TODO partial overlap not implemented, considered new address
+		ms.insert(range);
+		return;
 	}
 
-	ranges.push_back(std::make_pair(begin, end));
-	return true;
+	/* get the first addr pair that is not less than range */
+	/* see http://en.cppreference.com/w/cpp/utility/pair/operator_cmp */
+	auto it = ms.lower_bound(range);
+
+	if (it != ms.cbegin())
+	{
+		if (it == ms.cend())
+		/* if no address range starts at a higher address, 
+		 * check the last element */
+		{
+			it = --(ms.rbegin().base());
+		}
+		else
+		/* check if the previous addr pair overlaps with range */
+		{
+			--it;
+			if (range.first > it->second)
+			{
+				++it;
+			}
+		}
+	}
+
+	/* merge addr ranges if possible */
+
+	if (range.first >= it->first)
+	{
+		if (range.second > it->second)
+		/* case 1: extending 'it' to the end of 'range' */
+		{
+			/* merge, delete, and recheck; may overrun other addresses */
+			auto tmp = std::make_pair(it->first, range.second);
+			ms.erase(it);
+			insert(tmp);
+		}
+		/* else do not insert */
+	}
+	else /* if (range.first < it->first) */
+	/* case 2: */
+	{
+		if (range.second < it->first)
+		/* no overlap */
+		{
+			/* nothing to merge */
+			ms.insert(range);
+		}
+		else if(range.second <= it->second)
+		/* begin address is extended */
+		{
+			/* merge, delete, and insert; no need to recheck */
+			auto tmp = std::make_pair(range.first, it->second);
+			ms.erase(it);
+			ms.insert(tmp);
+		}
+		else /* if(range.second > it->second) */
+		/* 'range' encompasses 'it' */
+		{
+			/* merge, delete, and recheck; may overrun other addresses */
+			auto tmp = std::make_pair(it->first, range.second);
+			ms.erase(it);
+			insert(tmp);
+		}
+		/* else do not insert; 'it' encompasses 'range' */
+	}
 }
 
-bool AddrRange::addrOverlap(
-				Addr addr1_begin, Addr addr1_end,
-				Addr addr2_begin, Addr addr2_end
-				)
+void STCompEvent::AddrSet::clear()
 {
-	if (addr1_begin >= addr2_begin && addr1_end <= addr2_end)
-		return true;
-	else
-		return false;
-}
-
-void AddrRange::clear()
-{
-	ranges.clear();
+	ms.clear();
 }
 }; //end namespace STGen

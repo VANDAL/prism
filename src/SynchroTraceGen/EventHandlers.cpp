@@ -77,7 +77,7 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 
 		if/*valid sync event*/( STtype > 0 )
 		{
-			st_sync_ev.logSync(STtype, ev.id);
+			st_sync_ev.flush(STtype, ev.id);
 		}
 	}
 }
@@ -183,5 +183,30 @@ void EventHandlers::cleanup()
 		curr_logger->flush();
 	}
 }
+
+namespace
+{
+EventHandlers handler;
+};
+void onSyncEv(SglSyncEv ev)
+{
+	handler.onSyncEv(ev);
+}
+
+void onCompEv(SglCompEv ev)
+{
+	handler.onCompEv(ev);
+}
+
+void onMemEv(SglMemEv ev)
+{
+	handler.onMemEv(ev);
+}
+
+void cleanup()
+{
+	handler.cleanup();
+}
+
 
 }; //end namespace STGen

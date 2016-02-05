@@ -3,4 +3,4 @@
 	url = https://github.com/philsquared/Catch
 [submodule "include/spdlog"]
 	path = include/spdlog
-	url = https://github.com/gabime/spdlog
+	url = https://github.com/mdlui/spdlog

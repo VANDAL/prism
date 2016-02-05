@@ -16,7 +16,7 @@ namespace sgl
 {
 namespace sigrind
 {
-char* const* tokenizeOpts (const std::string& user_exec)
+char* const* tokenizeOpts (const std::string &tmp_dir, const std::string &user_exec)
 {
 	assert( !user_exec.empty() );
 
@@ -27,13 +27,14 @@ char* const* tokenizeOpts (const std::string& user_exec)
 		std::istream_iterator<std::string>(iss),
 		std::istream_iterator<std::string>()};
 
-	//                 program name + valgrind options + user program options + null
-	int vg_opts_size = 1            + 1                + tokens.size()        + 1;
+	//                 program name + valgrind options + tmp_dir + user program options + null
+	int vg_opts_size = 1            + 1                + 1       + tokens.size()        + 1;
 	char** vg_opts = static_cast<char**>( malloc(vg_opts_size * sizeof(char*)) );
 
 	int i = 0;
 	vg_opts[i++] = strdup("valgrind");
 	vg_opts[i++] = strdup("--tool=sigrind");
+	vg_opts[i++] = strdup((std::string("--tmp-dir=") + tmp_dir).c_str());
 	for (std::string token : tokens) 
 	{
 		vg_opts[i++] = strdup(token.c_str());
@@ -43,14 +44,18 @@ char* const* tokenizeOpts (const std::string& user_exec)
 	return vg_opts;
 }
 
-void start (const std::string& user_exec, const std::string& sigrind_dir)
+void start (
+		const std::string &user_exec, 
+		const std::string &sigrind_dir, 
+		const std::string &tmp_dir
+		) 
 {
 	assert ( !(user_exec.empty() || sigrind_dir.empty()) );
 
 	std::string vg_exec = sigrind_dir + "/valgrind";
 
 	// execvp() expects a const char* const*
-	auto vg_opts = tokenizeOpts(user_exec);
+	auto vg_opts = tokenizeOpts(tmp_dir, user_exec);
 
 	// kickoff Valgrind
 	if ( execvp(vg_exec.c_str(), vg_opts) == -1 )
@@ -61,19 +66,23 @@ void start (const std::string& user_exec, const std::string& sigrind_dir)
 }
 }; //end namespace sigrind
 
-void frontendSigrind (const std::string& user_exec, const std::string& sigrind_dir) 
+void frontendSigrind (
+		const std::string &user_exec, 
+		const std::string &sigrind_dir, 
+		const std::string &tmp_dir
+		) 
 {
 	try
 	{
 		/* init shared memory interface */
-		sigrind::ShMem sigrind_iface;
+		sigrind::ShMem sigrind_iface(tmp_dir);
 
 		pid_t pid = fork();
 		if ( pid >= 0 )
 		{
 			if ( pid == 0 )
 			{
-				sigrind::start(user_exec, sigrind_dir);
+				sigrind::start(user_exec, sigrind_dir, tmp_dir);
 			}
 			else
 			{

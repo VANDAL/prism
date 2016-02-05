@@ -165,8 +165,11 @@ typedef struct {
 /*--- Global variables                                     ---*/
 /*------------------------------------------------------------*/
 
+SglCommandLineOptions SGL_(clo);
+
 /* for all threads */
 CommandLineOptions CLG_(clo);
+
 Statistics CLG_(stat);
 Bool CLG_(instrument_state) = True; /* Instrumentation on ? */
 
@@ -191,7 +194,6 @@ static InstrInfo* next_InstrInfo ( ClgState* clgs, UInt instr_size );
 
 /* Inititalization functions */
 static void init_Event ( Event* ev );
-
 /* Helper functions */
 static IRAtom* get_Event_dea ( Event* ev );
 static Int get_Event_dszB ( Event* ev );
@@ -1597,7 +1599,7 @@ void CLG_(post_clo_init)(void)
    CLG_(instrument_state) = CLG_(clo).instrument_atstart;
 
    // initialize interface to Sigil
-   SGL_(open_shmem)();
+   SGL_(open_shmem)(SGL_(clo).tmp_dir, SGL_(clo).tmp_dir_len);
    
    // initialize backend with first thread
    SGL_(log_sync)(SGLPRIM_SYNC_SWAP, CLG_(current_tid));
@@ -1639,6 +1641,7 @@ void CLG_(pre_clo_init)(void)
     VG_(track_pre_deliver_signal) ( & CLG_(pre_signal) );
     VG_(track_post_deliver_signal)( & CLG_(post_signal) );
 
+    SGL_(set_clo_defaults)();
     CLG_(set_clo_defaults)();
 }
 

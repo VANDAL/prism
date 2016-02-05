@@ -94,7 +94,20 @@ bool OptionParser::registerFrontendArgument(const std::string& frontend, const s
 	if (frontend.compare("vg") == 0)
 	{
 		//TODO option or env var for valgrind/sigrind install directory
-		start_frontend = std::bind(&frontendSigrind, exec, std::string("./vg-bin/bin"));
+		
+		char* tmp_path = std::getenv("TMPDIR");
+		if (tmp_path == nullptr)
+		{
+			std::cerr << "TMPDIR not detected, defaulting to /tmp\n";
+			tmp_path = strdup("/tmp");
+		}
+
+		start_frontend = std::bind(&frontendSigrind, 
+				exec, 
+				std::string("./vg-bin/bin"), 
+				std::string(tmp_path)
+				);
+
 		return true;
 	}
 	else

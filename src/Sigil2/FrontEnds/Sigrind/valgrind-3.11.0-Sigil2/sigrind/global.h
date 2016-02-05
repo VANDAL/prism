@@ -48,6 +48,8 @@
 
 #include "events.h" // defines CLG_ macro
 
+#define SGL_(str) VGAPPEND(vgSigrind_,str)
+
 
 //FOR TESTING, deleteme
 extern Bool is_in_main;
@@ -73,6 +75,13 @@ extern Bool is_in_main;
 /*------------------------------------------------------------*/
 
 #define DEFAULT_OUTFORMAT   "callgrind.out.%p"
+
+typedef struct _SglCommandLineOptions SglCommandLineOptions;
+struct _SglCommandLineOptions {
+   /* directory that will hold mmap'd file */
+   Int tmp_dir_len;
+   HChar* tmp_dir;
+};
 
 typedef struct _CommandLineOptions CommandLineOptions;
 struct _CommandLineOptions {
@@ -674,6 +683,7 @@ struct event_sets {
 
 /* from clo.c */
 
+void SGL_(set_clo_defaults)(void);
 void CLG_(set_clo_defaults)(void);
 void CLG_(update_fn_config)(fn_node*);
 Bool CLG_(process_cmd_line_option)(const HChar*);
@@ -779,6 +789,7 @@ void CLG_(init_dumps)(void);
 /*--- Exported global variables                            ---*/
 /*------------------------------------------------------------*/
 
+extern SglCommandLineOptions SGL_(clo);
 extern CommandLineOptions CLG_(clo);
 extern Statistics CLG_(stat);
 extern EventMapping* CLG_(dumpmap);

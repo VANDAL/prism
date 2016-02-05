@@ -28,9 +28,9 @@ SIGIL_REGISTER(MyBackEnd)
 #include "SynchroTraceGen/EventHandlers.hpp"
 SIGIL_REGISTER(STGen)
 {
-	static STGen::EventHandlers handler;
-	sigil().addObserver(std::bind(&STGen::EventHandlers::onCompEv, &handler, _1));
-	sigil().addObserver(std::bind(&STGen::EventHandlers::onMemEv, &handler, _1));
-	sigil().addObserver(std::bind(&STGen::EventHandlers::onSyncEv, &handler, _1));
-	sigil().addCleanup(std::bind(&STGen::EventHandlers::cleanup, &handler));
+	/* calling a member function from std::bind was causing too many mallocs/frees */
+	sigil().addObserver(STGen::onSyncEv);
+	sigil().addObserver(STGen::onCompEv);
+	sigil().addObserver(STGen::onMemEv);
+	sigil().addCleanup(STGen::cleanup);
 }

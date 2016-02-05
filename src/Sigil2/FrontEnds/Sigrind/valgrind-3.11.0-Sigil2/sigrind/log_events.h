@@ -4,8 +4,6 @@
 #include "global.h"
 #include "coregrind/pub_core_libcprint.h"
 
-#define SGL_(str) VGAPPEND(vgSigrind_,str)
-
 /********************************************************************
  * Event Logging in Sigrind
  *
@@ -19,7 +17,7 @@
  * Initializes interprocess communication with Sigil2.
  * THIS MUST BE RUN BEFORE ANY LOGGING FUNCTIONS ARE INVOKED 
  */
-void SGL_(open_shmem)(void);
+void SGL_(open_shmem)(HChar* tmp_dir, Int len);
 void SGL_(close_shmem)(void);
 
 /* 1 Instruction */

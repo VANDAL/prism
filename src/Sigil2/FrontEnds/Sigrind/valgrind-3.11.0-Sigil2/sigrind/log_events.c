@@ -60,13 +60,22 @@ static inline unsigned int SGL_(incr)(unsigned int head)
 	return head;
 }
 
-void SGL_(open_shmem)(void)
+void SGL_(open_shmem)(HChar* tmp_dir, Int len)
 {
-	int shared_mem_fd;
-	Addr addr_shared;
+	if (len < 2)
+	{
+	   VG_(fmsg)("No --tmp-dir argument found, shutting down...\n");
+	   VG_(exit)(1);
+	}
+
+	//+1 for '/'; len should be strlen + null
+	Int filename_len = len + VG_(strlen)(SIGRIND_SHMEM_NAME) + 1; 
+	
+	HChar *filename = VG_(malloc)("sgl.open_shmem",filename_len*sizeof(*filename));
+	VG_(snprintf)(filename, filename_len, "%s/%s", tmp_dir, SIGRIND_SHMEM_NAME); 
 
 	/* from remote-utils.c */
-	SysRes o = VG_(open) (SIGRIND_SHMEM_NAME, VKI_O_RDWR, 0600);
+	SysRes o = VG_(open) (filename, VKI_O_RDWR, 0600);
 	if (sr_isError (o)) 
 	{
 		VG_(umsg) ("error %lu %s\n", sr_Err(o), VG_(strerror)(sr_Err(o)));
@@ -74,10 +83,8 @@ void SGL_(open_shmem)(void)
 		VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
 		VG_(exit) (1);
 	} 
-	else 
-	{
-		shared_mem_fd = sr_Res(o);
-	}
+
+	int shared_mem_fd = sr_Res(o);
 
 	SysRes res = VG_(am_shared_mmap_file_float_valgrind)
 		(sizeof(SigrindSharedData), VKI_PROT_READ|VKI_PROT_WRITE, 
@@ -90,7 +97,7 @@ void SGL_(open_shmem)(void)
 		VG_(exit) (1);
 	}  
 
-	addr_shared = sr_Res (res);
+	Addr addr_shared = sr_Res (res);
 	VG_(close) (shared_mem_fd);
 	SGL_(shared) = (SigrindSharedData*) addr_shared;
 }

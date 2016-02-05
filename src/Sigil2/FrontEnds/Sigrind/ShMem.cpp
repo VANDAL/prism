@@ -12,7 +12,7 @@ namespace sgl
 namespace sigrind
 {
 
-ShMem::ShMem()
+ShMem::ShMem(const std::string &tmp_dir)
 {
 	std::unique_ptr<SigrindSharedData> init(new SigrindSharedData());
 	atomic_init(&(init->sigrind_finish), (char)(false));
@@ -21,7 +21,8 @@ ShMem::ShMem()
 
 	//FIXME clean up file if there's an error...possibly register signal handler???
 
-	int fd = open(SIGRIND_SHMEM_NAME, O_CREAT|O_RDWR|O_TRUNC, 0600);
+	tmp_file = tmp_dir + "/" + SIGRIND_SHMEM_NAME;
+	int fd = open(tmp_file.c_str(), O_CREAT|O_RDWR|O_TRUNC, 0600);
 	if ( fd == -1 )
 	{
 		std::perror("shared memory initialization");
@@ -51,7 +52,7 @@ ShMem::ShMem()
 ShMem::~ShMem()
 {
 	munmap(shared_mem, sizeof(SigrindSharedData));
-	if ( std::remove(SIGRIND_SHMEM_NAME) != 0 )
+	if ( std::remove(tmp_file.c_str()) != 0 )
 	{
 		std::perror("deleting shared memory");
 	}

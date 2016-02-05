@@ -42,6 +42,14 @@ private:
 	ShadowMemory shad_mem;
 };
 
+/* optimization: 
+ * calling a normal function from std::function is much 
+ * cheaper than calling a member function using std::bind */
+void onSyncEv(SglSyncEv ev);
+void onCompEv(SglCompEv ev);
+void onMemEv(SglMemEv ev);
+void cleanup();
+
 }; //end namespace STGen
 
 #endif
