@@ -188,6 +188,7 @@ namespace
 {
 EventHandlers handler;
 };
+
 void onSyncEv(SglSyncEv ev)
 {
 	handler.onSyncEv(ev);

@@ -16,7 +16,7 @@ void prettyPrintSigil2()
 "     P\"Ybmmd\"  .JMML. `\"bmmmdPY .JMML..JMMmmmmMMM Ammmmmmm  \n"
 "                                                               \n"
 "                                                               \n";
-	std::cout << title;
+	std::cerr << title;
 }
 
 int main(int argc, char* argv[])

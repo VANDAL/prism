@@ -33,7 +33,8 @@ TId ShadowMemory::getReaderTID(Addr addr)
 	return getSMFromAddr(addr).last_readers[getSMidx(addr)];
 }
 
-TId ShadowMemory::getWriterTID(Addr addr) {
+TId ShadowMemory::getWriterTID(Addr addr) 
+{
 	return getSMFromAddr(addr).last_writers[getSMidx(addr)];
 }
 
@@ -68,9 +69,9 @@ ShadowMemory::ShadowMemory(Addr addr_bits, Addr pm_bits)
 	}
 }
 
-/*************************************/
-/********** Utility Functions ********/
-/*************************************/
+///////////////////////////////////////
+// Utility Functions 
+///////////////////////////////////////
 inline ShadowMemory::SecondaryMap& ShadowMemory::getSMFromAddr(Addr addr)
 {
 	SecondaryMap*& SM = PM[getPMidx(addr)];

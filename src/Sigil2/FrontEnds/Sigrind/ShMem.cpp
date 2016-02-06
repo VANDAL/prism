@@ -19,7 +19,7 @@ ShMem::ShMem(const std::string &tmp_dir)
 	atomic_init(&(init->head), (unsigned int)0);
 	atomic_init(&(init->tail), (unsigned int)0);
 
-	//FIXME clean up file if there's an error...possibly register signal handler???
+	/* FIXME clean up file if there's an error; possibly register signal handler? */
 
 	tmp_file = tmp_dir + "/" + SIGRIND_SHMEM_NAME;
 	int fd = open(tmp_file.c_str(), O_CREAT|O_RDWR|O_TRUNC, 0600);
@@ -64,11 +64,9 @@ ShMem::~ShMem()
  * buffer full/empty notifications */
 void ShMem::readFromSigrind()
 {
-	/* All data in shared memory should be volatile */
-
 	while (atomic_load_explicit(&(shared_mem->sigrind_finish), memory_order_relaxed) == false)
 	{
-		//cache read
+		/* cache tail */
 		unsigned int tail = atomic_load_explicit(&(shared_mem->tail), memory_order_acquire);
 
 		while (tail != shared_mem->head)
@@ -99,5 +97,5 @@ void ShMem::readFromSigrind()
 	}
 }
 
-}; // end namespace sigrind
+}; //end namespace sigrind
 }; //end namespace sgl

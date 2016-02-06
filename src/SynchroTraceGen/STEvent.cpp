@@ -266,10 +266,16 @@ void STSyncEvent::reset()
 }
 	
 ////////////////////////////////////////////////////////////
-// Address Range
+// Unique Address Set
 ////////////////////////////////////////////////////////////
 void STCompEvent::AddrSet::insert(const AddrRange &range)
 {
+/* XXX ML: profiled SynchroTraceGen and this function is
+ * costing the majority of performance in the backend;
+ * consider implementing a custom data structure */
+
+/* TODO clean up flow control */
+
 	assert (range.first <= range.second);
 
 	/* insert if this is the first addr */
@@ -289,37 +295,61 @@ void STCompEvent::AddrSet::insert(const AddrRange &range)
 		/* if no address range starts at a higher address, 
 		 * check the last element */
 		{
-			it = --(ms.rbegin().base());
+			it = --ms.cend();
 		}
 		else
 		/* check if the previous addr pair overlaps with range */
 		{
 			--it;
-			if (range.first > it->second)
+			if (range.first > it->second+1)
 			{
 				++it;
 			}
 		}
 	}
 
-	/* merge addr ranges if possible */
-
-	if (range.first >= it->first)
+	if (range.first == it->second+1)
+	{
+		/* extend 'it' by 'range' */
+		auto tmp = std::make_pair(it->first, range.second);
+		ms.erase(it);
+		insert(tmp);
+	}
+	else if (range.second+1 == it->first)
+	{
+		/* extend 'it' by 'range' */
+		auto tmp = std::make_pair(range.first, it->second);
+		ms.erase(it);
+		insert(tmp);
+	}
+	else if (range.first > it->second)
+	{
+		/* can't merge, just insert (at end) */
+		ms.insert(range);
+	}
+	else if (range.first >= it->first)
 	{
 		if (range.second > it->second)
-		/* case 1: extending 'it' to the end of 'range' */
+		/* extending 'it' to the end of 'range' */
 		{
 			/* merge, delete, and recheck; may overrun other addresses */
 			auto tmp = std::make_pair(it->first, range.second);
 			ms.erase(it);
 			insert(tmp);
 		}
-		/* else do not insert */
+		/* else do not insert; 'it' encompasses 'range' */
 	}
 	else /* if (range.first < it->first) */
-	/* case 2: */
 	{
-		if (range.second < it->first)
+		if (range.second+1 == it->first)
+		/* can append 'it' to 'range' */
+		{
+			/* merge, delete, and insert; no need to recheck */
+			auto tmp = std::make_pair(range.first, it->second);
+			ms.erase(it);
+			ms.insert(tmp);
+		}
+		else if (range.second < it->first)
 		/* no overlap */
 		{
 			/* nothing to merge */
@@ -336,12 +366,10 @@ void STCompEvent::AddrSet::insert(const AddrRange &range)
 		else /* if(range.second > it->second) */
 		/* 'range' encompasses 'it' */
 		{
-			/* merge, delete, and recheck; may overrun other addresses */
-			auto tmp = std::make_pair(it->first, range.second);
+			/* delete old range and insert bigger range */
 			ms.erase(it);
-			insert(tmp);
+			insert(range);
 		}
-		/* else do not insert; 'it' encompasses 'range' */
 	}
 }
 

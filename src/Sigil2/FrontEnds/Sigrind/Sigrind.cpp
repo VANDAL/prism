@@ -54,10 +54,10 @@ void start (
 
 	std::string vg_exec = sigrind_dir + "/valgrind";
 
-	// execvp() expects a const char* const*
+	/* execvp() expects a const char* const* */
 	auto vg_opts = tokenizeOpts(tmp_dir, user_exec);
 
-	// kickoff Valgrind
+	/* kickoff Valgrind */
 	if ( execvp(vg_exec.c_str(), vg_opts) == -1 )
 	{
 		std::perror("starting valgrind");

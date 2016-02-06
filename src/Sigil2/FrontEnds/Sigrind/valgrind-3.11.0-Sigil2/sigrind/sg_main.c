@@ -1376,11 +1376,13 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       return handled;
    }
 
-   /***********************************/
-   /***** Pthread API intercepts ******/
-   /***********************************/
-   // TODO confirm when these should be logged - at enter or leave?
-   // ML: by default I chose to log on a LEAVE once the syscall finished
+   /*******************************************
+    * Synchronixation API intercepts 
+	*
+	* FIXME default OpenMP behavior modeled after
+	* KS need for SynchroTrace, reassess if this
+	* is appropriate */
+										 
    case VG_USERREQ__SIGIL_PTHREAD_CREATE_ENTER:
       is_in_synccall = 1;
       break;
@@ -1405,9 +1407,19 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       is_in_synccall = 0;
       break;
 
+   case VG_USERREQ__SIGIL_GOMP_LOCK_ENTER:
+   case VG_USERREQ__SIGIL_GOMP_SETLOCK_ENTER:
+   case VG_USERREQ__SIGIL_GOMP_CRITSTART_ENTER:
+   case VG_USERREQ__SIGIL_GOMP_CRITNAMESTART_ENTER:
+   case VG_USERREQ__SIGIL_GOMP_ATOMICSTART_ENTER:
    case VG_USERREQ__SIGIL_PTHREAD_LOCK_ENTER:
       is_in_synccall = 1;
       break;
+   case VG_USERREQ__SIGIL_GOMP_SETLOCK_LEAVE:
+   case VG_USERREQ__SIGIL_GOMP_LOCK_LEAVE:
+   case VG_USERREQ__SIGIL_GOMP_CRITSTART_LEAVE:
+   case VG_USERREQ__SIGIL_GOMP_CRITNAMESTART_LEAVE:
+   case VG_USERREQ__SIGIL_GOMP_ATOMICSTART_LEAVE:
    case VG_USERREQ__SIGIL_PTHREAD_LOCK_LEAVE:
       /* log once the lock has been acquired */
       if ( is_in_main == 1 )
@@ -1417,9 +1429,19 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       is_in_synccall = 0;
       break;
 
+   case VG_USERREQ__SIGIL_GOMP_UNLOCK_ENTER:
+   case VG_USERREQ__SIGIL_GOMP_UNSETLOCK_ENTER:
+   case VG_USERREQ__SIGIL_GOMP_CRITEND_ENTER:
+   case VG_USERREQ__SIGIL_GOMP_CRITNAMEEND_ENTER:
+   case VG_USERREQ__SIGIL_GOMP_ATOMICEND_ENTER:
    case VG_USERREQ__SIGIL_PTHREAD_UNLOCK_ENTER:
       is_in_synccall = 1;
       break;
+   case VG_USERREQ__SIGIL_GOMP_UNLOCK_LEAVE:
+   case VG_USERREQ__SIGIL_GOMP_UNSETLOCK_LEAVE:
+   case VG_USERREQ__SIGIL_GOMP_CRITEND_LEAVE:
+   case VG_USERREQ__SIGIL_GOMP_CRITNAMEEND_LEAVE:
+   case VG_USERREQ__SIGIL_GOMP_ATOMICEND_LEAVE:
    case VG_USERREQ__SIGIL_PTHREAD_UNLOCK_LEAVE:
       if ( is_in_main == 1 )
       {
@@ -1428,6 +1450,9 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       is_in_synccall = 0;
       break;
 
+   case VG_USERREQ__SIGIL_GOMP_BARRIER_ENTER:
+   case VG_USERREQ__SIGIL_GOMP_TEAMBARRIERWAIT_ENTER:
+   case VG_USERREQ__SIGIL_GOMP_TEAMBARRIERWAITFINAL_ENTER:
    case VG_USERREQ__SIGIL_PTHREAD_BARRIER_ENTER:
       /* log once the barrier is ENTERED and waiting */
       if ( is_in_main == 1 )
@@ -1436,6 +1461,9 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       }
       is_in_synccall = 1;
       break;
+   case VG_USERREQ__SIGIL_GOMP_BARRIER_LEAVE:
+   case VG_USERREQ__SIGIL_GOMP_TEAMBARRIERWAIT_LEAVE:
+   case VG_USERREQ__SIGIL_GOMP_TEAMBARRIERWAITFINAL_LEAVE:
    case VG_USERREQ__SIGIL_PTHREAD_BARRIER_LEAVE:
       is_in_synccall = 0;
       break;

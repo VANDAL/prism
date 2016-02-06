@@ -28,6 +28,7 @@
 
 #include "PrimitiveEnums.h"
 
+typedef int64_t SLong;
 typedef uint64_t Addr;
 typedef uint32_t UInt;
 typedef uint8_t UChar;
@@ -78,7 +79,7 @@ struct SglCxtEv
 struct SglSyncEv
 {
 	SyncType type;
-	Addr id;
+	SLong id;
 };
 
 struct BufferedSglEv
