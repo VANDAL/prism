@@ -13,8 +13,7 @@ bin_SCRIPTS =
 noinst_HEADERS = \
 	events.h \
 	global.h \
-	log_events.h \
-	sg_msg_fmt.h 
+	log_events.h
 
 
 #----------------------------------------------------------------------------
@@ -38,7 +37,6 @@ SIGRIND_SOURCES_COMMON = \
 	jumps.c \
 	threads.c \
 	log_events.c \
-	sg_msg_fmt.c \
 	sg_main.c 
 
 # We sneakily include "PrimitveEnums.h" from Sigil2

@@ -361,8 +361,13 @@ void I_WRAP_SONAME_FNNAME_ZZ(libgompZdsoZd1,gompZubarrierZuwait)(gomp_barrier_t 
 
 ////////////////////////////////////////////
 // KS: With nested loops, GOMP_atomic is called.
-// Inside, gomp_mutex_lock is called from $LIBGOMP_LIB/config/linux/mutex.h.
-// TODO How to get the static gomp_mutex_t object for this call?
+//
+// HACK FOR SYNCHROTRACE:
+// KS & ML: Inside, gomp_mutex_lock is called from $LIBGOMP_LIB/config/linux/mutex.h.
+// FIXME How to get the static gomp_mutex_t object for this call?
+// SynchroTraceSim just needs a valid address in the address space for these locks.
+static gomp_mutex_t atomic_lock;
+static gomp_mutex_t default_lock;
 //
 // GOMP_ATOMIC_START
 ////////////////////////////////////////////
@@ -370,17 +375,17 @@ void I_WRAP_SONAME_FNNAME_ZZ(NONE,GOMPZuatomicZustart)() {
   OrigFn func;
   VALGRIND_GET_ORIG_FN(func);
 
-  SIGIL_GOMP_ATOMICSTART_ENTER();
+  SIGIL_GOMP_ATOMICSTART_ENTER(&atomic_lock);
   CALL_FN_v_v(func);
-  SIGIL_GOMP_ATOMICSTART_LEAVE();
+  SIGIL_GOMP_ATOMICSTART_LEAVE(&atomic_lock);
 }
 void I_WRAP_SONAME_FNNAME_ZZ(libgompZdsoZd1,GOMPZuatomicZustart)() {
   OrigFn func;
   VALGRIND_GET_ORIG_FN(func);
 
-  SIGIL_GOMP_ATOMICSTART_ENTER();
+  SIGIL_GOMP_ATOMICSTART_ENTER(&atomic_lock);
   CALL_FN_v_v(func);
-  SIGIL_GOMP_ATOMICSTART_LEAVE();
+  SIGIL_GOMP_ATOMICSTART_LEAVE(&atomic_lock);
 }
 
 
@@ -391,17 +396,17 @@ void I_WRAP_SONAME_FNNAME_ZZ(NONE,GOMPZuatomicZuend)() {
   OrigFn func;
   VALGRIND_GET_ORIG_FN(func);
 
-  SIGIL_GOMP_ATOMICEND_ENTER();
+  SIGIL_GOMP_ATOMICEND_ENTER(&atomic_lock);
   CALL_FN_v_v(func);
-  SIGIL_GOMP_ATOMICEND_LEAVE();
+  SIGIL_GOMP_ATOMICEND_LEAVE(&atomic_lock);
 }
 void I_WRAP_SONAME_FNNAME_ZZ(libgompZdsoZd1,GOMPZuatomicZuend)() {
   OrigFn func;
   VALGRIND_GET_ORIG_FN(func);
 
-  SIGIL_GOMP_ATOMICEND_ENTER();
+  SIGIL_GOMP_ATOMICEND_ENTER(&atomic_lock);
   CALL_FN_v_v(func);
-  SIGIL_GOMP_ATOMICEND_LEAVE();
+  SIGIL_GOMP_ATOMICEND_LEAVE(&atomic_lock);
 }
 
 
@@ -412,9 +417,9 @@ void I_WRAP_SONAME_FNNAME_ZZ(libgompZdsoZd1,GOMPZucriticalZustart)() {
   OrigFn func;
   VALGRIND_GET_ORIG_FN(func);
 
-  SIGIL_GOMP_CRITSTART_ENTER();
+  SIGIL_GOMP_CRITSTART_ENTER(&default_lock);
   CALL_FN_v_v(func);
-  SIGIL_GOMP_CRITSTART_LEAVE();
+  SIGIL_GOMP_CRITSTART_LEAVE(&default_lock);
 }
 
 
@@ -425,9 +430,9 @@ void I_WRAP_SONAME_FNNAME_ZZ(libgompZdsoZd1,GOMPZucriticalZuend)() {
   OrigFn func;
   VALGRIND_GET_ORIG_FN(func);
 
-  SIGIL_GOMP_CRITEND_ENTER();
+  SIGIL_GOMP_CRITEND_ENTER(&default_lock);
   CALL_FN_v_v(func);
-  SIGIL_GOMP_CRITEND_LEAVE();
+  SIGIL_GOMP_CRITEND_LEAVE(&default_lock);
 }
 
 
@@ -435,6 +440,7 @@ void I_WRAP_SONAME_FNNAME_ZZ(libgompZdsoZd1,GOMPZucriticalZuend)() {
 // GOMP_CRITICAL_NAME_START
 // FIXME what is 'plock' and why is it being passed to the original function?
 // Originally added by KS
+// KS & ML: keep until further investigation
 ////////////////////////////////////////////
 gomp_mutex_t *plock;
 
@@ -442,23 +448,24 @@ void I_WRAP_SONAME_FNNAME_ZZ(libgompZdsoZd1,GOMPZucriticalZunameZustart)(void **
   OrigFn func;
   VALGRIND_GET_ORIG_FN(func);
 
-  SIGIL_GOMP_CRITNAMESTART_ENTER();
+  SIGIL_GOMP_CRITNAMESTART_ENTER(plock);
   CALL_FN_v_W(func,plock);
-  SIGIL_GOMP_CRITNAMESTART_LEAVE();
+  SIGIL_GOMP_CRITNAMESTART_LEAVE(plock);
 }
 
 
 ////////////////////////////////////////////
 // GOMP_CRITICAL_NAME_END
 // FIXME what is 'plock' and why is it being passed to the original function?
+// KS & ML: keep until further investigation
 ////////////////////////////////////////////
 void I_WRAP_SONAME_FNNAME_ZZ(libgompZdsoZd1,GOMPZucriticalZunameZuend)(void **pptr) {
   OrigFn func;
   VALGRIND_GET_ORIG_FN(func);
 
-  SIGIL_GOMP_CRITNAMEEND_ENTER();
+  SIGIL_GOMP_CRITNAMEEND_ENTER(plock);
   CALL_FN_v_W(func,plock);
-  SIGIL_GOMP_CRITNAMEEND_LEAVE();
+  SIGIL_GOMP_CRITNAMEEND_LEAVE(plock);
 }
 
 

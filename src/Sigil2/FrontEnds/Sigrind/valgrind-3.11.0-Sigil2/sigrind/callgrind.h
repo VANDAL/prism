@@ -271,67 +271,52 @@ typedef
                                   bar, 0, 0, 0, 0) 
 
 
-/* FIXME hardcoding to -1, see sglwrapper.c */
-#define SIGIL_GOMP_ATOMICSTART_ENTER() \
+#define SIGIL_GOMP_ATOMICSTART_ENTER(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_ATOMICSTART_ENTER,     \
-                                  -1, 0, 0, 0, 0) 
-#define SIGIL_GOMP_ATOMICSTART_LEAVE() \
+                                  lock, 0, 0, 0, 0) 
+#define SIGIL_GOMP_ATOMICSTART_LEAVE(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_ATOMICSTART_LEAVE,     \
-                                  -1, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0) 
 
 
-/* FIXME hardcoding to -1, see sglwrapper.c */
-#define SIGIL_GOMP_ATOMICEND_ENTER() \
+#define SIGIL_GOMP_ATOMICEND_ENTER(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_ATOMICEND_ENTER,     \
-                                  -1, 0, 0, 0, 0) 
-#define SIGIL_GOMP_ATOMICEND_LEAVE() \
+                                  lock, 0, 0, 0, 0) 
+#define SIGIL_GOMP_ATOMICEND_LEAVE(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_ATOMICEND_LEAVE,     \
-                                  -1, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0) 
 
 
-/* FIXME hardcoding to -1, see sglwrapper.c */
-#define SIGIL_GOMP_CRITSTART_ENTER() \
+#define SIGIL_GOMP_CRITSTART_ENTER(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_CRITSTART_ENTER,     \
-                                  -1, 0, 0, 0, 0) 
-#define SIGIL_GOMP_CRITSTART_LEAVE() \
+                                  lock, 0, 0, 0, 0) 
+#define SIGIL_GOMP_CRITSTART_LEAVE(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_CRITSTART_LEAVE,     \
-                                  -1, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0) 
 
 
-/* FIXME hardcoding to -1, see sglwrapper.c */
-#define SIGIL_GOMP_CRITEND_ENTER() \
+#define SIGIL_GOMP_CRITEND_ENTER(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_CRITEND_ENTER,     \
-                                  -1, 0, 0, 0, 0) 
-#define SIGIL_GOMP_CRITEND_LEAVE() \
+                                  lock, 0, 0, 0, 0) 
+#define SIGIL_GOMP_CRITEND_LEAVE(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_CRITEND_LEAVE,     \
-                                  -1, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0) 
 
 
-/* FIXME hardcoding to -1, see sglwrapper.c */
-#define SIGIL_GOMP_CRITNAMESTART_ENTER() \
+#define SIGIL_GOMP_CRITNAMESTART_ENTER(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_CRITNAMESTART_ENTER,     \
-                                  -1, 0, 0, 0, 0) 
-#define SIGIL_GOMP_CRITNAMESTART_LEAVE() \
+                                  lock, 0, 0, 0, 0) 
+#define SIGIL_GOMP_CRITNAMESTART_LEAVE(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_CRITNAMESTART_LEAVE,     \
-                                  -1, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0) 
 
 
-/* FIXME hardcoding to -1, see sglwrapper.c */
-#define SIGIL_GOMP_CRITNAMEEND_ENTER() \
+#define SIGIL_GOMP_CRITNAMEEND_ENTER(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_CRITNAMEEND_ENTER,     \
-                                  -1, 0, 0, 0, 0) 
-#define SIGIL_GOMP_CRITNAMEEND_LEAVE() \
+                                  lock, 0, 0, 0, 0) 
+#define SIGIL_GOMP_CRITNAMEEND_LEAVE(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_CRITNAMEEND_LEAVE,     \
-                                  -1, 0, 0, 0, 0) 
-
-
-/* FIXME hardcoding to -1, see sglwrapper.c */
-#define SIGIL_GOMP_ATOMICEND_ENTER() \
-  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_ATOMICEND_ENTER,     \
-                                  -1, 0, 0, 0, 0) 
-#define SIGIL_GOMP_ATOMICEND_LEAVE() \
-  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_ATOMICEND_LEAVE,     \
-                                  -1, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0) 
 
 
 #define SIGIL_GOMP_SETLOCK_ENTER(lock) \
