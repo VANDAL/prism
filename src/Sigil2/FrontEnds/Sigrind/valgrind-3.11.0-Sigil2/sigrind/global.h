@@ -790,6 +790,8 @@ void CLG_(init_dumps)(void);
 /*------------------------------------------------------------*/
 
 extern SglCommandLineOptions SGL_(clo);
+extern Bool* SGL_(thread_in_synccall);
+
 extern CommandLineOptions CLG_(clo);
 extern Statistics CLG_(stat);
 extern EventMapping* CLG_(dumpmap);

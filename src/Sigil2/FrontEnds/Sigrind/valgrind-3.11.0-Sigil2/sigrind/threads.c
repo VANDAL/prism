@@ -27,6 +27,7 @@
 */
 
 #include "log_events.h"
+#include "Sigil2/PrimitiveEnums.h"
 #include "global.h"
 
 #include "pub_tool_threadstate.h"
@@ -63,6 +64,7 @@ static exec_stack current_states;
 ThreadId CLG_(current_tid);
 
 static thread_info** thread;
+Bool* SGL_(thread_in_synccall);
 
 thread_info** CLG_(get_threads)()
 {
@@ -79,9 +81,13 @@ void CLG_(init_threads)()
     UInt i;
 
     thread = CLG_MALLOC("cl.threads.it.1", VG_N_THREADS * sizeof thread[0]);
+    SGL_(thread_in_synccall) = CLG_MALLOC("cl.threads.it.1", VG_N_THREADS * sizeof *SGL_(thread_in_synccall));
 
     for(i=0;i<VG_N_THREADS;i++)
-	thread[i] = 0;
+    {   
+        thread[i] = 0;
+        SGL_(thread_in_synccall)[i] = False;
+    }   
     CLG_(current_tid) = VG_INVALID_THREADID;
 }
 
@@ -170,6 +176,8 @@ void CLG_(switch_thread)(ThreadId tid)
     CLG_(set_current_bbcc_hash) ( &(t->bbccs) );
     CLG_(set_current_jcc_hash)  ( &(t->jccs) );
   }
+
+  SGL_(log_sync)(SGLPRIM_SYNC_SWAP, CLG_(current_tid));
 }
 
 

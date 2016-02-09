@@ -242,7 +242,6 @@ static void addBBSetupCall(ClgState* clgs)
 //to the user, along with the exact name of the function.
 Bool is_in_main = 0; 
 
-static Bool is_in_synccall = 0;
 static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
                         IRSB* sbIn,
 			const VexGuestLayout* layout,
@@ -330,7 +329,7 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
       }
 
       /* Ignore all Sigil event processing when inside a synchronization syscall */
-      if ( !is_in_synccall && is_in_main)
+      if ( (SGL_(thread_in_synccall)[CLG_(current_tid)] == False) && is_in_main)
       {
          switch (st->tag) 
          {
@@ -546,7 +545,7 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
                                  : IRExpr_RdTmp(guardW)
                                  ));
              /* And post the event. */
-             if ( !is_in_synccall && is_in_main )
+             if ( (SGL_(thread_in_synccall)[CLG_(current_tid)] == False) && is_in_main )
                addEvent_Bc( &clgs, curr_inode, IRExpr_RdTmp(guard) );
          }
 
@@ -608,7 +607,7 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
          case Iex_Const:
             break; /* boring - branch to known address */
          case Iex_RdTmp:
-            if ( !is_in_synccall && is_in_main )
+            if ( (SGL_(thread_in_synccall)[CLG_(current_tid)] == False) && is_in_main )
                /* looks like an indirect branch (branch to unknown) */
                addEvent_Bi( &clgs, curr_inode, sbIn->next );
             break;
@@ -1384,7 +1383,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
 	* is appropriate */
 										 
    case VG_USERREQ__SIGIL_PTHREAD_CREATE_ENTER:
-      is_in_synccall = 1;
+      SGL_(thread_in_synccall)[CLG_(current_tid)] = True;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_CREATE_LEAVE:
       /* log once the thread has been CREATED and waiting */
@@ -1392,7 +1391,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       {
          SGL_(log_sync)((UChar)SGLPRIM_SYNC_CREATE, args[1]);
       }
-      is_in_synccall = 0;
+      SGL_(thread_in_synccall)[CLG_(current_tid)] = False;
       break;
 
    case VG_USERREQ__SIGIL_PTHREAD_JOIN_ENTER:
@@ -1401,10 +1400,10 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       {
          SGL_(log_sync)((UChar)SGLPRIM_SYNC_JOIN, args[1]);
       }
-      is_in_synccall = 1;
+      SGL_(thread_in_synccall)[CLG_(current_tid)] = True;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_JOIN_LEAVE:
-      is_in_synccall = 0;
+      SGL_(thread_in_synccall)[CLG_(current_tid)] = False;
       break;
 
    case VG_USERREQ__SIGIL_GOMP_LOCK_ENTER:
@@ -1413,7 +1412,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
    case VG_USERREQ__SIGIL_GOMP_CRITNAMESTART_ENTER:
    case VG_USERREQ__SIGIL_GOMP_ATOMICSTART_ENTER:
    case VG_USERREQ__SIGIL_PTHREAD_LOCK_ENTER:
-      is_in_synccall = 1;
+      SGL_(thread_in_synccall)[CLG_(current_tid)] = True;
       break;
    case VG_USERREQ__SIGIL_GOMP_SETLOCK_LEAVE:
    case VG_USERREQ__SIGIL_GOMP_LOCK_LEAVE:
@@ -1426,7 +1425,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       {
          SGL_(log_sync)((UChar)SGLPRIM_SYNC_LOCK, args[1]);
       }
-      is_in_synccall = 0;
+      SGL_(thread_in_synccall)[CLG_(current_tid)] = False;
       break;
 
    case VG_USERREQ__SIGIL_GOMP_UNLOCK_ENTER:
@@ -1435,7 +1434,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
    case VG_USERREQ__SIGIL_GOMP_CRITNAMEEND_ENTER:
    case VG_USERREQ__SIGIL_GOMP_ATOMICEND_ENTER:
    case VG_USERREQ__SIGIL_PTHREAD_UNLOCK_ENTER:
-      is_in_synccall = 1;
+      SGL_(thread_in_synccall)[CLG_(current_tid)] = True;
       break;
    case VG_USERREQ__SIGIL_GOMP_UNLOCK_LEAVE:
    case VG_USERREQ__SIGIL_GOMP_UNSETLOCK_LEAVE:
@@ -1447,7 +1446,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       {
          SGL_(log_sync)((UChar)SGLPRIM_SYNC_UNLOCK, args[1]);
       }
-      is_in_synccall = 0;
+      SGL_(thread_in_synccall)[CLG_(current_tid)] = False;
       break;
 
    case VG_USERREQ__SIGIL_GOMP_BARRIER_ENTER:
@@ -1459,57 +1458,57 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       {
          SGL_(log_sync)((UChar)SGLPRIM_SYNC_BARRIER, args[1]);
       }
-      is_in_synccall = 1;
+      SGL_(thread_in_synccall)[CLG_(current_tid)] = True;
       break;
    case VG_USERREQ__SIGIL_GOMP_BARRIER_LEAVE:
    case VG_USERREQ__SIGIL_GOMP_TEAMBARRIERWAIT_LEAVE:
    case VG_USERREQ__SIGIL_GOMP_TEAMBARRIERWAITFINAL_LEAVE:
    case VG_USERREQ__SIGIL_PTHREAD_BARRIER_LEAVE:
-      is_in_synccall = 0;
+      SGL_(thread_in_synccall)[CLG_(current_tid)] = False;
       break;
 
    case VG_USERREQ__SIGIL_PTHREAD_CONDWAIT_ENTER:
-      is_in_synccall = 1;
+      SGL_(thread_in_synccall)[CLG_(current_tid)] = True;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_CONDWAIT_LEAVE:
       if ( is_in_main == 1 )
       {
          SGL_(log_sync)((UChar)SGLPRIM_SYNC_CONDWAIT, args[1]);
       }
-      is_in_synccall = 0;
+      SGL_(thread_in_synccall)[CLG_(current_tid)] = False;
       break;
 
    case VG_USERREQ__SIGIL_PTHREAD_CONDSIG_ENTER:
-      is_in_synccall = 1;
+      SGL_(thread_in_synccall)[CLG_(current_tid)] = True;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_CONDSIG_LEAVE:
       if ( is_in_main == 1 )
       {
          SGL_(log_sync)((UChar)SGLPRIM_SYNC_CONDSIG, args[1]);
       }
-      is_in_synccall = 0;
+      SGL_(thread_in_synccall)[CLG_(current_tid)] = False;
       break;
 
    case VG_USERREQ__SIGIL_PTHREAD_SPINLOCK_ENTER:
-      is_in_synccall = 1;
+      SGL_(thread_in_synccall)[CLG_(current_tid)] = True;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_SPINLOCK_LEAVE:
       if ( is_in_main == 1 )
       {
          SGL_(log_sync)((UChar)SGLPRIM_SYNC_SPINLOCK, args[1]);
       }
-      is_in_synccall = 0;
+      SGL_(thread_in_synccall)[CLG_(current_tid)] = False;
       break;
 
    case VG_USERREQ__SIGIL_PTHREAD_SPINUNLOCK_ENTER:
-      is_in_synccall = 1;
+      SGL_(thread_in_synccall)[CLG_(current_tid)] = True;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_SPINUNLOCK_LEAVE:
       if ( is_in_main == 1 )
       {
          SGL_(log_sync)((UChar)SGLPRIM_SYNC_SPINUNLOCK, args[1]);
       }
-      is_in_synccall = 0;
+      SGL_(thread_in_synccall)[CLG_(current_tid)] = False;
       break;
 
    default:
@@ -1575,6 +1574,9 @@ static void clg_start_client_code_callback ( ThreadId tid, ULong blocks_done )
 static
 void CLG_(post_clo_init)(void)
 {
+   // initialize interface to Sigil
+   SGL_(open_shmem)(SGL_(clo).tmp_dir, SGL_(clo).tmp_dir_len);
+
    if (VG_(clo_vex_control).iropt_register_updates_default
        != VexRegUpdSpAtMemAccess) {
       CLG_DEBUG(1, " Using user specified value for "
@@ -1625,12 +1627,6 @@ void CLG_(post_clo_init)(void)
    CLG_(run_thread)(1);
 
    CLG_(instrument_state) = CLG_(clo).instrument_atstart;
-
-   // initialize interface to Sigil
-   SGL_(open_shmem)(SGL_(clo).tmp_dir, SGL_(clo).tmp_dir_len);
-   
-   // initialize backend with first thread
-   SGL_(log_sync)(SGLPRIM_SYNC_SWAP, CLG_(current_tid));
 }
 
 static

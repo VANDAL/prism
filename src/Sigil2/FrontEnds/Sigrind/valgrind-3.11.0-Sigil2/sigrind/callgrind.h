@@ -334,7 +334,7 @@ typedef
                                   -1, 0, 0, 0, 0) 
 
 
-#define GOMP_SETLOCK_ENTER(lock) \
+#define SIGIL_GOMP_SETLOCK_ENTER(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_SETLOCK_ENTER,     \
                                   lock, 0, 0, 0, 0) 
 #define SIGIL_GOMP_SETLOCK_LEAVE(lock) \

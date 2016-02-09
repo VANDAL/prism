@@ -27,8 +27,6 @@
 */
 
 #include "global.h"
-#include "log_events.h"
-#include "Sigil2/PrimitiveEnums.h"
 
 #include "pub_tool_threadstate.h"
 
@@ -569,10 +567,7 @@ void CLG_(setup_bbcc)(BB* bb)
    * if tid differs from the CLG_(current_tid).
    */
   if (UNLIKELY(tid != CLG_(current_tid)))
-  {
      CLG_(switch_thread)(tid);
-  	 SGL_(log_sync)(SGLPRIM_SYNC_SWAP, CLG_(current_tid));
-  }
 #else
   CLG_ASSERT(VG_(get_running_tid)() == CLG_(current_tid));
 #endif
