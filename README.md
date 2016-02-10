@@ -16,39 +16,55 @@ of an application in the form of 4 event types:
 Each event has specific attributes that are accessible in the [Sigil2 API](https://github.com/mdlui/Sigil2/wiki)
 
 ### Platform support
-Sigil2's base requires 
 * C++11 compiler support
+  * tested with g++ version 5.3.0
 * cmake v3.0+
-* and any dependencies of each frontend
-and uses:
-* https://github.com/philsquared/Catch
-* https://github.com/gabime/spdlog
-
-Separate support is required from Sigil2 frontends that instrument the application:
-* Valgrind - 3.11.0 support - http://valgrind.org/info/platforms.html
-* Planned frontends: TBD
+* dependencies of each frontend
+  * Valgrind 3.11.9 support - http://valgrind.org/info/platforms.html
+* 64-bit Linux has been officially tested; further 32-bit and ARM testing is planned
 
 ## Building and Installing
 Quick build instructions:
 ```
-$ cd <sigil2 root directory>
-$ mkdir build
-$ cd build
+$ git clone --recursive https://github.com/mdlui/Sigil2 
+$ cd sigil2
+$ mkdir build && cd build
 $ cmake ..
-$ make -j[jobs]
+$ make -j
 ```
 
 No installation is currently available. Typical use is to run in place.
 
 ## Running Sigil2
+### Sigil2 with Valgrind
+####Multi-threaded Workload capture
+Pthread and OpenMP support is available for the **applications** compiled with the following gcc versions:
+* 4.9.2
+* 5.1.0
+* 5.3.0
+
+This can be different than the version used to compile Sigil2. The required gcc headers are provided for convenience.   
+Compile the function wrapper library:
+```
+$ cd src/Sigil2/FrontEnds/Sigrind
+$ my_gcc_ver="gcc-[your gcc version]"
+$ gcc -Wall -I -g -DVGO_linux=1 -fPIC sglwrapper.c -I$my_gcc_ver -Ivalgrind-3.11.0-Sigil2/ -Ivalgrind-3.11.0-Sigil2/include -shared -o sglwrapper.so
+```
+
+####Workload capture
 Users supply at least 3 arguments to Sigil2:
 * which frontend instrumentation tool is used to generate events
 * which backend analysis tool is used to process events
 * what application to profile
 
-Example using Valgrind frontend and [SynchroTraceGen](http://ece.drexel.edu/faculty/taskin/wiki/vlsilab/index.php/SynchroTrace) backend:
+Example using Valgrind frontend and [SynchroTraceGen](http://ece.drexel.edu/faculty/taskin/wiki/vlsilab/index.php/SynchroTrace) backend:  
+**Make sure an environment variable `TMPDIR` is set to a directory mounted as a tmpfs**. Sigil2 uses this for IPC.
 
 `$ ./sigil2 --frontend=vg --backend=STGen --exec="myprogram --with --args"`
+
+**For multi-threaded capture**, make sure you've [compiled the wrapper library as above](#multi-threaded-workload-capture):
+
+`$ LD_PRELOAD=/path/to/wrapper.so ./sigil2 --frontend=vg --backend=STGen --exec="myprogram --with --args"`
 
 ## Developing for Sigil2
 See the [wiki](https://github.com/mdlui/Sigil2/wiki)

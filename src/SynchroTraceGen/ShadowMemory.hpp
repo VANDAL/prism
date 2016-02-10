@@ -23,7 +23,7 @@ constexpr TId SO_UNDEF = -1;
 class ShadowMemory
 {
 public:
-	ShadowMemory(Addr addr_bits = 38, Addr pm_bits = 16);
+	ShadowMemory(Addr addr_bits = 64, Addr pm_bits = 16);
 
 	void updateWriter(Addr addr, UInt bytes, TId tid, EId event_id);
 	void updateReader(Addr addr, UInt bytes, TId tid);

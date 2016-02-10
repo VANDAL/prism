@@ -74,6 +74,8 @@ ShadowMemory::ShadowMemory(Addr addr_bits, Addr pm_bits)
 ///////////////////////////////////////
 inline ShadowMemory::SecondaryMap& ShadowMemory::getSMFromAddr(Addr addr)
 {
+	assert( addr <= max_primary_addr );
+
 	SecondaryMap*& SM = PM[getPMidx(addr)];
 	if (SM == nullptr)
 	{
