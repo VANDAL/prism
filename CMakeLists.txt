@@ -1,8 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 project(sigil2)
 
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${CMAKE_CXX_FLAGS}")
-
+#C++11 support
 if (CMAKE_VERSION VERSION_LESS "3.1")
 	if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 		set (CMAKE_CXX_FLAGS "--std=gnu++11 ${CMAKE_CXX_FLAGS}")
@@ -10,8 +9,6 @@ if (CMAKE_VERSION VERSION_LESS "3.1")
 else ()
 	set (CMAKE_CXX_STANDARD 11)
 endif ()
-
-
 
 enable_testing( true )
 include( CTest )
@@ -21,7 +18,7 @@ include_directories(include/spdlog/include/spdlog)
 include_directories(src)
 set(SIGIL2_DIR src/Sigil2)
 set(SOURCES
-	#${SIGIL2_DIR}/InstrumentationIface.cpp
+	${SIGIL2_DIR}/InstrumentationIface.cpp
 	${SIGIL2_DIR}/OptionParser.cpp
 	${SIGIL2_DIR}/EventManager.cpp
 	${SIGIL2_DIR}/main.cpp)
