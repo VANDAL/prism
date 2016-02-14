@@ -57,6 +57,7 @@ flags = [
 '-x',
 'c',
 '-DVGO_linux',
+'-DVGA_amd64',
 '-isystem',
 '../BoostParts',
 '-isystem',

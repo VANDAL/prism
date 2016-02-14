@@ -24,7 +24,7 @@
 */
 
 #include "log_events.h"
-#include "Sigil2/FrontEnds/Sigrind/ShMemData.h"
+#include "Sigil2/FrontEnds/Sigrind/SigrindIPC.h"
 
 #include "coregrind/pub_core_libcfile.h"
 
@@ -41,26 +41,23 @@
 Addr   CLG_(bb_base);
 ULong* CLG_(cost_base);
 
-/* Shared memory IPC */
-static SigrindSharedData* SGL_(shared);
+/* Sigrind IPC */
+static int emptyfd;
+static int fullfd;
+static int open_fifo(const HChar *fifo_path, int flags);
 
-static inline unsigned int SGL_(incr)(unsigned int head)
-{
-	/* cache read */
-	if ( head == SIGRIND_BUFSIZE-1 )
-	{
-		while (atomic_load_explicit(&(SGL_(shared)->tail), memory_order_relaxed) == 0);
-		head = 0;
-	}
-	else
-	{
-		while (head == (atomic_load_explicit(&(SGL_(shared)->tail), memory_order_relaxed)-1));
-		++head;
-	}
-	return head;
-}
+static SigrindSharedData* shmem;
+static SigrindSharedData* open_shmem(const HChar *shmem_path, int flags);
 
-void SGL_(open_shmem)(HChar* tmp_dir, Int len)
+static BufferedSglEv* curr_buf;
+static Bool is_full[SIGRIND_BUFNUM];
+static UInt curr_idx;
+
+static UInt curr_used;
+static inline void incr_used(void);
+static inline void update_curr_buf(void);
+
+void SGL_(init_IPC)(const HChar *tmp_dir, Int len)
 {
 	if (len < 2)
 	{
@@ -68,45 +65,56 @@ void SGL_(open_shmem)(HChar* tmp_dir, Int len)
 	   VG_(exit)(1);
 	}
 
+	Int filename_len;
 	//+1 for '/'; len should be strlen + null
-	Int filename_len = len + VG_(strlen)(SIGRIND_SHMEM_NAME) + 1; 
-	
-	HChar *filename = VG_(malloc)("sgl.open_shmem",filename_len*sizeof(*filename));
-	VG_(snprintf)(filename, filename_len, "%s/%s", tmp_dir, SIGRIND_SHMEM_NAME); 
+	filename_len = len + VG_(strlen)(SIGRIND_SHMEM_NAME) + 1; 
+	HChar *shmem_path = VG_(malloc)("sgl.open_shmem",filename_len*sizeof(*shmem_path));
+	VG_(snprintf)(shmem_path, filename_len, "%s/%s", tmp_dir, SIGRIND_SHMEM_NAME); 
 
-	/* from remote-utils.c */
-	SysRes o = VG_(open) (filename, VKI_O_RDWR, 0600);
-	if (sr_isError (o)) 
+	filename_len = len + VG_(strlen)(SIGRIND_EMPTYFIFO_NAME) + 1; 
+	HChar *emptyfifo_path = VG_(malloc)("sgl.open_shmem",filename_len*sizeof(*emptyfifo_path));
+	VG_(snprintf)(emptyfifo_path, filename_len, "%s/%s", tmp_dir, SIGRIND_EMPTYFIFO_NAME); 
+
+	filename_len = len + VG_(strlen)(SIGRIND_FULLFIFO_NAME) + 1; 
+	HChar *fullfifo_path = VG_(malloc)("sgl.open_shmem",filename_len*sizeof(*fullfifo_path));
+	VG_(snprintf)(fullfifo_path, filename_len, "%s/%s", tmp_dir, SIGRIND_FULLFIFO_NAME); 
+
+	///////////////////
+	// init values 
+	///////////////////
+	shmem = open_shmem(shmem_path, VKI_O_RDWR);
+	emptyfd = open_fifo(emptyfifo_path, VKI_O_RDONLY);
+	fullfd =  open_fifo(fullfifo_path, VKI_O_WRONLY);
+
+	curr_used = 0;
+	curr_idx = 0;
+	for (UInt i=0; i<SIGRIND_BUFNUM; ++i)
 	{
-		VG_(umsg) ("error %lu %s\n", sr_Err(o), VG_(strerror)(sr_Err(o)));
-		VG_(umsg)("cannot open shared_mem file %s\n", SIGRIND_SHMEM_NAME);
-		VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
-		VG_(exit) (1);
-	} 
-
-	int shared_mem_fd = sr_Res(o);
-
-	SysRes res = VG_(am_shared_mmap_file_float_valgrind)
-		(sizeof(SigrindSharedData), VKI_PROT_READ|VKI_PROT_WRITE, 
-		 shared_mem_fd, (Off64T)0);
-	if (sr_isError(res)) 
-	{
-		VG_(umsg) ("error %lu %s\n", sr_Err(res), VG_(strerror)(sr_Err(res)));
-		VG_(umsg)("error VG_(am_shared_mmap_file_float_valgrind) %s\n", SIGRIND_SHMEM_NAME);
-		VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
-		VG_(exit) (1);
-	}  
-
-	Addr addr_shared = sr_Res (res);
-	VG_(close) (shared_mem_fd);
-	SGL_(shared) = (SigrindSharedData*) addr_shared;
+		is_full[i] = False;
+	}
+	curr_buf = shmem->buf[0];
 }
 
-void SGL_(close_shmem)(void)
+void SGL_(finish_IPC)(void)
 {
-	atomic_store_explicit(&(SGL_(shared)->sigrind_finish), True, memory_order_relaxed);
-}
+	/* send finish sequence */
+	UInt finished = SIGRIND_FINISHED;
+	if ( VG_(write)(fullfd, &finished, sizeof(finished)) != sizeof(finished) 
+		|| VG_(write)(fullfd, &curr_idx, sizeof(curr_idx)) != sizeof(curr_idx) 
+		|| VG_(write)(fullfd, &curr_used, sizeof(curr_used)) != sizeof(curr_idx) )
+	{
+		VG_(umsg)("error VG_(write)\n");
+		VG_(umsg)("error writing to Sigrind fifo\n");
+		VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
+		VG_(exit)(1);
+	}
 
+	/* wait until Sigrind disconnects */
+	while ( VG_(read)(emptyfd, &finished, sizeof(finished)) > 0 );
+
+	VG_(close)(emptyfd);
+	VG_(close)(fullfd);
+}
 
 /** 
  * Address not tracked yet for instructions.
@@ -146,39 +154,42 @@ void SGL_(log_1I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size)
    change addEvent_D_guarded too. */
 void SGL_(log_0I1Dr)(InstrInfo* ii, Addr data_addr, Word data_size)
 {
-	unsigned int head = atomic_load_explicit(&(SGL_(shared)->head), memory_order_relaxed);
-	SGL_(shared)->buf[head].tag = SGL_MEM_TAG;
-	SGL_(shared)->buf[head].mem.type = SGLPRIM_MEM_LOAD;
-	SGL_(shared)->buf[head].mem.begin_addr = data_addr;
-	SGL_(shared)->buf[head].mem.size = data_size;
+	update_curr_buf();
 
-	atomic_store_explicit(&(SGL_(shared)->head), SGL_(incr)(head), memory_order_release);
+	curr_buf[curr_used].tag = SGL_MEM_TAG;
+	curr_buf[curr_used].mem.type = SGLPRIM_MEM_LOAD;
+	curr_buf[curr_used].mem.begin_addr = data_addr;
+	curr_buf[curr_used].mem.size = data_size;
+
+	incr_used();
 }
 
 /* See comment on log_0I1Dr. */
 void SGL_(log_0I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size)
 {
-	unsigned int head = atomic_load_explicit(&(SGL_(shared)->head), memory_order_relaxed);
-	SGL_(shared)->buf[head].tag = SGL_MEM_TAG;
-	SGL_(shared)->buf[head].mem.type = SGLPRIM_MEM_STORE;
-	SGL_(shared)->buf[head].mem.begin_addr = data_addr;
-	SGL_(shared)->buf[head].mem.size = data_size;
+	update_curr_buf();
 
-	atomic_store_explicit(&(SGL_(shared)->head), SGL_(incr)(head), memory_order_release);
+	curr_buf[curr_used].tag = SGL_MEM_TAG;
+	curr_buf[curr_used].mem.type = SGLPRIM_MEM_STORE;
+	curr_buf[curr_used].mem.begin_addr = data_addr;
+	curr_buf[curr_used].mem.size = data_size;
+
+	incr_used();
 }
 
 void SGL_(log_comp_event)(InstrInfo* ii, IRType type, IRExprTag arity)
 {
-	unsigned int head = atomic_load_explicit(&(SGL_(shared)->head), memory_order_relaxed);
-	SGL_(shared)->buf[head].tag = SGL_COMP_TAG;
+	update_curr_buf();
+
+	curr_buf[curr_used].tag = SGL_COMP_TAG;
 
 	if/*IOP*/( type < Ity_F32 )
 	{
-		SGL_(shared)->buf[head].comp.type = SGLPRIM_COMP_IOP;
+		curr_buf[curr_used].comp.type = SGLPRIM_COMP_IOP;
 	}
 	else if/*FLOP*/( type < Ity_V128 )
 	{
-		SGL_(shared)->buf[head].comp.type = SGLPRIM_COMP_FLOP;
+		curr_buf[curr_used].comp.type = SGLPRIM_COMP_FLOP;
 	}
 	else
 	{
@@ -189,16 +200,16 @@ void SGL_(log_comp_event)(InstrInfo* ii, IRType type, IRExprTag arity)
 	switch (arity)
 	{
 	case Iex_Unop:
-		SGL_(shared)->buf[head].comp.arity = SGLPRIM_COMP_UNARY;
+		curr_buf[curr_used].comp.arity = SGLPRIM_COMP_UNARY;
 		break;
 	case Iex_Binop:
-		SGL_(shared)->buf[head].comp.arity = SGLPRIM_COMP_BINARY;
+		curr_buf[curr_used].comp.arity = SGLPRIM_COMP_BINARY;
 		break;
 	case Iex_Triop:
-		SGL_(shared)->buf[head].comp.arity = SGLPRIM_COMP_TERNARY;
+		curr_buf[curr_used].comp.arity = SGLPRIM_COMP_TERNARY;
 		break;
 	case Iex_Qop:
-		SGL_(shared)->buf[head].comp.arity = SGLPRIM_COMP_QUARTERNARY;
+		curr_buf[curr_used].comp.arity = SGLPRIM_COMP_QUARTERNARY;
 		break;
 	default:
 		tl_assert(0);
@@ -208,18 +219,19 @@ void SGL_(log_comp_event)(InstrInfo* ii, IRType type, IRExprTag arity)
 	/* See VEX/pub/libvex_ir.h : IROp for 
 	 * future updates on specific ops */
 	/* TODO unimplemented */
-
-	atomic_store_explicit(&(SGL_(shared)->head), SGL_(incr)(head), memory_order_release);
+	
+	incr_used();
 }
 
 void SGL_(log_sync)(UChar type, UWord data)
 {
-	unsigned int head = atomic_load_explicit(&(SGL_(shared)->head), memory_order_relaxed);
-	SGL_(shared)->buf[head].tag = SGL_SYNC_TAG;
-	SGL_(shared)->buf[head].sync.type = type;
-	SGL_(shared)->buf[head].sync.id = data;
+	update_curr_buf();
 
-	atomic_store_explicit(&(SGL_(shared)->head), SGL_(incr)(head), memory_order_release);
+	curr_buf[curr_used].tag = SGL_SYNC_TAG;
+	curr_buf[curr_used].sync.type = type;
+	curr_buf[curr_used].sync.id = data;
+
+	incr_used();
 }
 
 void SGL_(log_fn_entry)(fn_node* fn)
@@ -239,4 +251,102 @@ void SGL_(log_cond_branch)(InstrInfo* ii, Word taken)
 }
 void SGL_(log_ind_branch)(InstrInfo* ii, UWord actual_dst)
 {
+}
+
+
+static int open_fifo(const HChar *fifo_path, int flags)
+{
+	int fd;
+	SysRes res = VG_(open) (fifo_path, flags, 0600);
+	if (sr_isError (res)) 
+	{
+		VG_(umsg) ("error %lu %s\n", sr_Err(res), VG_(strerror)(sr_Err(res)));
+		VG_(umsg)("cannot open fifo file %s\n", fifo_path);
+		VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
+		VG_(exit) (1);
+	} 
+
+	fd = sr_Res(res);
+	fd = VG_(safe_fd)(fd);
+	if (fd == -1)
+	{
+		VG_(umsg)("empty buffers FIFO for Sigrind failed\n");
+		VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
+		VG_(exit) (1);
+	}
+
+	return fd;
+}
+
+static SigrindSharedData* open_shmem(const HChar *shmem_path, int flags)
+{
+
+	SysRes res = VG_(open) (shmem_path, flags, 0600);
+	if (sr_isError (res)) 
+	{
+		VG_(umsg) ("error %lu %s\n", sr_Err(res), VG_(strerror)(sr_Err(res)));
+		VG_(umsg)("cannot open shared_mem file %s\n", shmem_path);
+		VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
+		VG_(exit) (1);
+	} 
+
+	int shared_mem_fd = sr_Res(res);
+
+	res = VG_(am_shared_mmap_file_float_valgrind)
+		(sizeof(SigrindSharedData), VKI_PROT_READ|VKI_PROT_WRITE, 
+		 shared_mem_fd, (Off64T)0);
+	if (sr_isError(res)) 
+	{
+		VG_(umsg) ("error %lu %s\n", sr_Err(res), VG_(strerror)(sr_Err(res)));
+		VG_(umsg)("error VG_(am_shared_mmap_file_float_valgrind) %s\n", shmem_path);
+		VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
+		VG_(exit) (1);
+	}  
+
+	Addr addr_shared = sr_Res (res);
+	VG_(close) (shared_mem_fd);
+
+	return (SigrindSharedData*) addr_shared;
+}
+
+static inline void update_curr_buf(void)
+{
+	if ( is_full[curr_idx] )
+	{
+		if ( VG_(read)(emptyfd, &curr_idx, sizeof(curr_idx)) != sizeof(curr_idx) )
+		{
+			VG_(umsg)("error VG_(read)\n");
+			VG_(umsg)("error reading from Sigrind fifo\n");
+			VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
+			VG_(exit)(1);
+		}
+		tl_assert(curr_idx < SIGRIND_BUFNUM);
+		is_full[curr_idx] = 0;
+		curr_buf = shmem->buf[curr_idx];
+	}
+}
+
+static inline void incr_used(void)
+{
+	tl_assert( !(curr_used > SIGRIND_BUFSIZE) );
+	if (++curr_used == SIGRIND_BUFSIZE)
+	{
+		is_full[curr_idx] = True;
+
+		if ( VG_(write)(fullfd, &curr_idx, sizeof(curr_idx)) != sizeof(curr_idx) )
+		{
+			VG_(umsg)("error VG_(write)\n");
+			VG_(umsg)("error writing to Sigrind fifo\n");
+			VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
+			VG_(exit)(1);
+		}
+
+		if (++curr_idx == SIGRIND_BUFNUM)
+		{
+			curr_idx = 0;
+		}
+
+		curr_buf = shmem->buf[curr_idx];
+		curr_used = 0;
+	}
 }

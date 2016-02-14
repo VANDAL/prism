@@ -24,7 +24,6 @@ int main(int argc, char* argv[])
 	prettyPrintSigil2();
 
 	sgl::OptionParser options(argc, argv);
-
 	options.register_backend();
 	options.start_frontend(); 
 

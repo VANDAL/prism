@@ -17,8 +17,8 @@
  * Initializes interprocess communication with Sigil2.
  * THIS MUST BE RUN BEFORE ANY LOGGING FUNCTIONS ARE INVOKED 
  */
-void SGL_(open_shmem)(HChar* tmp_dir, Int len);
-void SGL_(close_shmem)(void);
+void SGL_(init_IPC)(const HChar *tmp_dir, Int len);
+void SGL_(finish_IPC)(void);
 
 /* 1 Instruction */
 void SGL_(log_1I0D)(InstrInfo* ii) VG_REGPARM(1);

@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <memory>
 
 /* Shadow Memory tracks 'shadow state' for an address.
  *
@@ -23,7 +24,13 @@ constexpr TId SO_UNDEF = -1;
 class ShadowMemory
 {
 public:
-	ShadowMemory(Addr addr_bits = 64, Addr pm_bits = 16);
+	/* XXX: setting max address bits ABOVE 63
+	 * has undefined behavior; 
+	 *
+	 * XXX: Setting addr/pm bits too large can cause 
+	 * bad_alloc errors */
+	ShadowMemory(Addr addr_bits = 38, Addr pm_bits = 16);
+	~ShadowMemory();
 
 	void updateWriter(Addr addr, UInt bytes, TId tid, EId event_id);
 	void updateReader(Addr addr, UInt bytes, TId tid);
@@ -46,8 +53,10 @@ private:
 		std::vector<TId> last_writers; // Last thread to write to addr
 		std::vector<EId>  last_writers_event; // Last event to write to addr
 		std::vector<TId>  last_readers; // Last thread to read to addr
-	} DSM;
-	std::vector<SecondaryMap*> PM;
+	};
+
+	SecondaryMap* DSM;
+	std::vector<SecondaryMap*> *PM;
 
 	/* Utility Functions */
 	SecondaryMap& getSMFromAddr(Addr addr);

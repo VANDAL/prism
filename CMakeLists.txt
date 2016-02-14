@@ -1,11 +1,17 @@
 cmake_minimum_required(VERSION 2.8)
 project(sigil2)
 
-####################################################
-# TODO ONLY WORKING FOR 64-BIT X86 LINUX RIGHT NOW #
-####################################################
-set(VALGRIND_FLAGS "-DVGP_amd64_linux -DVGO_linux -DVGA_amd64")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${VALGRIND_FLAGS} -std=c++11 -rdynamic -lpthread -ldl")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${CMAKE_CXX_FLAGS}")
+
+if (CMAKE_VERSION VERSION_LESS "3.1")
+	if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+		set (CMAKE_CXX_FLAGS "--std=gnu++11 ${CMAKE_CXX_FLAGS}")
+	endif ()
+else ()
+	set (CMAKE_CXX_STANDARD 11)
+endif ()
+
+
 
 enable_testing( true )
 include( CTest )
@@ -15,11 +21,12 @@ include_directories(include/spdlog/include/spdlog)
 include_directories(src)
 set(SIGIL2_DIR src/Sigil2)
 set(SOURCES
-	${SIGIL2_DIR}/InstrumentationIface.cpp
+	#${SIGIL2_DIR}/InstrumentationIface.cpp
 	${SIGIL2_DIR}/OptionParser.cpp
 	${SIGIL2_DIR}/EventManager.cpp
 	${SIGIL2_DIR}/main.cpp)
 add_executable(sigil2 ${SOURCES})
+target_link_libraries(sigil2 pthread dl)
 
 #Plugin Backends
 set(STGen src/SynchroTraceGen)

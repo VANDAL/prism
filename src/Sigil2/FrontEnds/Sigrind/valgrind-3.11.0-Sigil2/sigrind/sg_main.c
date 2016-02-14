@@ -1543,7 +1543,7 @@ static void finish(void)
   CLG_(forall_threads)(unwind_thread);
 
   /* finish IPC with Sigil2 */
-  SGL_(close_shmem)();
+  SGL_(finish_IPC)();
 }
 
 
@@ -1575,7 +1575,7 @@ static
 void CLG_(post_clo_init)(void)
 {
    // initialize interface to Sigil
-   SGL_(open_shmem)(SGL_(clo).tmp_dir, SGL_(clo).tmp_dir_len);
+   SGL_(init_IPC)(SGL_(clo).tmp_dir, SGL_(clo).tmp_dir_len);
 
    if (VG_(clo_vex_control).iropt_register_updates_default
        != VexRegUpdSpAtMemAccess) {

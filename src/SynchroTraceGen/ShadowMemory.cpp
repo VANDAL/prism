@@ -51,22 +51,19 @@ ShadowMemory::ShadowMemory(Addr addr_bits, Addr pm_bits)
 	, sm_size( 1ULL << sm_bits )
 	, max_primary_addr( (1ULL << addr_bits) - 1 )
 {
-	DSM.last_readers.resize(sm_size);
-	DSM.last_writers.resize(sm_size);
-	DSM.last_writers_event.resize(sm_size);
-	PM.resize(sm_size);
+	DSM = new SecondaryMap;
+	DSM->last_readers.resize(sm_size, SO_UNDEF);
+	DSM->last_writers.resize(sm_size, SO_UNDEF);
+	DSM->last_writers_event.resize(sm_size, SO_UNDEF);
 
-	for (Addr i=0; i<sm_size; ++i)
-	{
-		DSM.last_readers[i] = SO_UNDEF;
-		DSM.last_writers[i] = SO_UNDEF;
-		DSM.last_writers_event[i] = SO_UNDEF;
-	}
+	PM = new std::vector<SecondaryMap*>;
+	PM->resize(pm_size, nullptr);
+}
 
-	for (Addr i=0; i<pm_size; ++i)
-	{
-		PM[i] = nullptr;
-	}
+ShadowMemory::~ShadowMemory()
+{
+	delete DSM;
+	delete PM;
 }
 
 ///////////////////////////////////////
@@ -76,10 +73,10 @@ inline ShadowMemory::SecondaryMap& ShadowMemory::getSMFromAddr(Addr addr)
 {
 	assert( addr <= max_primary_addr );
 
-	SecondaryMap*& SM = PM[getPMidx(addr)];
+	SecondaryMap*& SM = (*PM)[getPMidx(addr)];
 	if (SM == nullptr)
 	{
-		SM = new SecondaryMap(DSM);
+		SM = new SecondaryMap(*DSM);
 	}
 	return *SM;
 }

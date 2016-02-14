@@ -1,5 +1,4 @@
 set(SOURCES
-	ShMem.cpp
 	Sigrind.cpp)
 add_library(Sigrind STATIC ${SOURCES})
 target_include_directories(Sigrind PUBLIC 
@@ -13,7 +12,7 @@ set(VGSRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/valgrind-3.11.0-Sigil2)
 add_custom_target(valgrind
 	DEPENDS vgbuilddir
 	DEPENDS autogen
-	COMMAND ${VGSRC_DIR}/configure --prefix=${VGINST_DIR} --silent && $(MAKE) install
+	COMMAND CC=${CMAKE_C_COMPILER} ${VGSRC_DIR}/configure --prefix=${VGINST_DIR} --silent && $(MAKE) install
 	WORKING_DIRECTORY ${VGBUILD_DIR})
 
 add_custom_target(vgbuilddir
