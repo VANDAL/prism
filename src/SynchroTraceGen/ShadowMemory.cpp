@@ -3,18 +3,23 @@
 
 namespace STGen
 {
+using std::vector;
+using std::unique_ptr;
+using std::shared_ptr;
+using std::make_shared;
+
 void ShadowMemory::updateWriter(Addr addr, UInt bytes, TId tid, EId eid)
 {
 	for (UInt i=0; i<bytes; ++i)
 	{
 		Addr curr_addr = addr+i;
-		SecondaryMap& sm = getSMFromAddr(curr_addr);
+		auto& sm = getSMFromAddr(curr_addr);
 
-		sm.last_writers[getSMidx(curr_addr)] = tid;
-		sm.last_writers_event[getSMidx(curr_addr)] = eid;
+		sm->last_writers[getSMidx(curr_addr)] = tid;
+		sm->last_writers_event[getSMidx(curr_addr)] = eid;
 
 		//reset readers on new write
-		sm.last_readers[getSMidx(curr_addr)] = SO_UNDEF;
+		sm->last_readers[getSMidx(curr_addr)] = SO_UNDEF;
 	}
 }
 
@@ -23,24 +28,24 @@ void ShadowMemory::updateReader(Addr addr, UInt bytes, TId tid)
 	for (UInt i=0; i<bytes; ++i)
 	{
 		Addr curr_addr = addr+i;
-		SecondaryMap& sm = getSMFromAddr(curr_addr);
-		sm.last_readers[getSMidx(curr_addr)] = tid;
+		auto& sm = getSMFromAddr(curr_addr);
+		sm->last_readers[getSMidx(curr_addr)] = tid;
 	}
 }
 
 TId ShadowMemory::getReaderTID(Addr addr)
 {
-	return getSMFromAddr(addr).last_readers[getSMidx(addr)];
+	return getSMFromAddr(addr)->last_readers[getSMidx(addr)];
 }
 
 TId ShadowMemory::getWriterTID(Addr addr) 
 {
-	return getSMFromAddr(addr).last_writers[getSMidx(addr)];
+	return getSMFromAddr(addr)->last_writers[getSMidx(addr)];
 }
 
 EId ShadowMemory::getWriterEID(Addr addr)
 {
-	return getSMFromAddr(addr).last_writers_event[getSMidx(addr)];
+	return getSMFromAddr(addr)->last_writers_event[getSMidx(addr)];
 }
 
 ShadowMemory::ShadowMemory(Addr addr_bits, Addr pm_bits)
@@ -51,34 +56,28 @@ ShadowMemory::ShadowMemory(Addr addr_bits, Addr pm_bits)
 	, sm_size( 1ULL << sm_bits )
 	, max_primary_addr( (1ULL << addr_bits) - 1 )
 {
-	DSM = new SecondaryMap;
+	DSM = unique_ptr<SecondaryMap>(new SecondaryMap());
 	DSM->last_readers.resize(sm_size, SO_UNDEF);
 	DSM->last_writers.resize(sm_size, SO_UNDEF);
 	DSM->last_writers_event.resize(sm_size, SO_UNDEF);
 
-	PM = new std::vector<SecondaryMap*>;
-	PM->resize(pm_size, nullptr);
-}
-
-ShadowMemory::~ShadowMemory()
-{
-	delete DSM;
-	delete PM;
+	PM = unique_ptr<vector<unique_ptr<SecondaryMap>>>(new vector<unique_ptr<SecondaryMap>>());
+	PM->resize(pm_size);
 }
 
 ///////////////////////////////////////
 // Utility Functions 
 ///////////////////////////////////////
-inline ShadowMemory::SecondaryMap& ShadowMemory::getSMFromAddr(Addr addr)
+inline const unique_ptr<ShadowMemory::SecondaryMap>& ShadowMemory::getSMFromAddr(Addr addr)
 {
 	assert( addr <= max_primary_addr );
 
-	SecondaryMap*& SM = (*PM)[getPMidx(addr)];
+	unique_ptr<SecondaryMap>& SM = (*PM)[getPMidx(addr)];
 	if (SM == nullptr)
 	{
-		SM = new SecondaryMap(*DSM);
+		SM = unique_ptr<SecondaryMap>(new SecondaryMap(*DSM));
 	}
-	return *SM;
+	return SM;
 }
 
 inline uint64_t ShadowMemory::getSMidx(Addr addr) const
