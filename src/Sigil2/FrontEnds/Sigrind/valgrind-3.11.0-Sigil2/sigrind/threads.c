@@ -62,6 +62,7 @@ static exec_stack current_states;
 
 /* current running thread */
 ThreadId CLG_(current_tid);
+ThreadId SGL_(active_tid);
 
 static thread_info** thread;
 Bool* SGL_(thread_in_synccall);
@@ -89,6 +90,7 @@ void CLG_(init_threads)()
         SGL_(thread_in_synccall)[i] = False;
     }   
     CLG_(current_tid) = VG_INVALID_THREADID;
+    SGL_(active_tid) = VG_INVALID_THREADID;
 }
 
 /* switches through all threads and calls func */
@@ -127,6 +129,16 @@ thread_info* new_thread(void)
     return t;
 }
 
+void SGL_(switch_thread)(ThreadId tid)
+{
+  if (tid == SGL_(active_tid))
+  {
+    return;
+  }
+
+  SGL_(active_tid) = tid;
+  SGL_(log_sync)(SGLPRIM_SYNC_SWAP, SGL_(active_tid));
+}
 
 void CLG_(switch_thread)(ThreadId tid)
 {
@@ -176,8 +188,6 @@ void CLG_(switch_thread)(ThreadId tid)
     CLG_(set_current_bbcc_hash) ( &(t->bbccs) );
     CLG_(set_current_jcc_hash)  ( &(t->jccs) );
   }
-
-  SGL_(log_sync)(SGLPRIM_SYNC_SWAP, CLG_(current_tid));
 }
 
 

@@ -51,9 +51,6 @@
 #define SGL_(str) VGAPPEND(vgSigrind_,str)
 
 
-//FOR TESTING, deleteme
-extern Bool is_in_main;
-
 /*------------------------------------------------------------*/
 /*--- Callgrind compile options                           --- */
 /*------------------------------------------------------------*/
@@ -773,6 +770,7 @@ thread_info* CLG_(get_current_thread)(void);
 void CLG_(switch_thread)(ThreadId tid);
 void CLG_(forall_threads)(void (*func)(thread_info*));
 void CLG_(run_thread)(ThreadId tid);
+void SGL_(switch_thread)(ThreadId tid);
 
 void CLG_(init_exec_state)(exec_state* es);
 void CLG_(init_exec_stack)(exec_stack*);
@@ -789,8 +787,10 @@ void CLG_(init_dumps)(void);
 /*--- Exported global variables                            ---*/
 /*------------------------------------------------------------*/
 
+extern Bool is_in_main;//TODO allow user to set starting function
 extern SglCommandLineOptions SGL_(clo);
 extern Bool* SGL_(thread_in_synccall);
+extern ThreadId SGL_(active_tid);
 
 extern CommandLineOptions CLG_(clo);
 extern Statistics CLG_(stat);
