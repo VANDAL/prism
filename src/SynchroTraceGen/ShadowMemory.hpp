@@ -30,6 +30,7 @@ public:
 	 * XXX: Setting addr/pm bits too large can cause 
 	 * bad_alloc errors */
 	ShadowMemory(Addr addr_bits = 38, Addr pm_bits = 16);
+	~ShadowMemory();
 
 	void updateWriter(Addr addr, UInt bytes, TId tid, EId event_id);
 	void updateReader(Addr addr, UInt bytes, TId tid);
@@ -54,11 +55,12 @@ private:
 		std::vector<TId>  last_readers; // Last thread to read to addr
 	};
 
-	std::unique_ptr<SecondaryMap> DSM;
-	std::unique_ptr<std::vector<std::unique_ptr<SecondaryMap>>> PM;
+	SecondaryMap* DSM;
+	std::vector<SecondaryMap*> *PM;
 
 	/* Utility Functions */
-	const std::unique_ptr<SecondaryMap>& getSMFromAddr(Addr addr);
+	SecondaryMap& getSMFromAddr(Addr addr);
+	void initSM(SecondaryMap*& SM);
 	uint64_t getSMidx(Addr addr) const;
 	uint64_t getPMidx(Addr addr) const;
 };
