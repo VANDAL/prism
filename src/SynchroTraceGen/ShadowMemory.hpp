@@ -1,8 +1,7 @@
-#ifndef SHADOWMEMORY_H
-#define SHADOWMEMORY_H
+#ifndef STGEN_SHADOWMEMORY_H
+#define STGEN_SHADOWMEMORY_H
 
 #include "Sigil2/Primitive.h"
-#include "STEvent.hpp"
 
 #include <cstdint>
 #include <vector>
@@ -20,6 +19,8 @@
 
 namespace STGen
 {
+using TId = int32_t;
+using EId = int32_t;
 constexpr TId SO_UNDEF = -1;
 class ShadowMemory
 {
@@ -30,6 +31,8 @@ public:
 	 * XXX: Setting addr/pm bits too large can cause 
 	 * bad_alloc errors */
 	ShadowMemory(Addr addr_bits = 38, Addr pm_bits = 16);
+	ShadowMemory(const ShadowMemory&) = delete;
+	ShadowMemory& operator=(const ShadowMemory&) = delete;
 	~ShadowMemory();
 
 	void updateWriter(Addr addr, UInt bytes, TId tid, EId event_id);

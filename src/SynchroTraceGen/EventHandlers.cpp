@@ -4,6 +4,7 @@
 
 namespace STGen
 {
+
 ////////////////////////////////////////////////////////////
 // Synchronization Event Handling
 ////////////////////////////////////////////////////////////
@@ -14,9 +15,14 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 	st_comp_ev.flush();
 
 	if/*switching threads*/( ev.type == SyncType::SGLPRIM_SYNC_SWAP 
-			&& STEvent::curr_thread_id != static_cast<TId>(ev.id) )
+			&& curr_thread_id != static_cast<TId>(ev.id) )
 	{
-		STEvent::setThread(ev.id);
+		if/*new thread*/(event_ids.find(ev.id) == event_ids.cend())
+		{
+			stdout_logger->info()
+				<< "creating thread: " << ev.id;
+		}
+		setThread(ev.id);
 	}
 	else
 	{
@@ -43,6 +49,7 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 		 *
 		 * NOTE: semaphores are not supported in SynchroTraceGen
 		 */
+
 		case SyncType::SGLPRIM_SYNC_LOCK:
 			STtype = 1;
 			break;
@@ -50,12 +57,18 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 			STtype = 2;
 			break;
 		case SyncType::SGLPRIM_SYNC_CREATE:
+		{
+			thread_spawns.emplace(curr_thread_id, ev.id);
+		}
 			STtype = 3;
 			break;
 		case SyncType::SGLPRIM_SYNC_JOIN:
 			STtype = 4;
 			break;
 		case SyncType::SGLPRIM_SYNC_BARRIER:
+		{
+			barrier_participants.emplace(ev.id, curr_thread_id);
+		}
 			STtype = 5;
 			break;
 		case SyncType::SGLPRIM_SYNC_CONDWAIT:
@@ -139,8 +152,8 @@ void EventHandlers::onLoad(const SglMemEv& ev)
 		TId reader_thread = shad_mem.getReaderTID(curr_addr);
 
 		
-		if/*comm edge*/( (writer_thread != STEvent::curr_thread_id) 
-				&& (reader_thread != STEvent::curr_thread_id)
+		if/*comm edge*/( (writer_thread != curr_thread_id) 
+				&& (reader_thread != curr_thread_id)
 				&& (writer_thread != SO_UNDEF )) /* FIXME treat a read/write to an address 
 												   with UNDEF thread as local compute event */
 		{
@@ -164,26 +177,135 @@ void EventHandlers::onStore(const SglMemEv& ev)
 	shad_mem.updateWriter(
 			ev.begin_addr, 
 			ev.size,
-			STEvent::curr_thread_id,
-			STEvent::curr_event_id);
+			curr_thread_id,
+			curr_event_id);
 }
 
 ////////////////////////////////////////////////////////////
 // Cleanup - Flush remaining events
 ////////////////////////////////////////////////////////////
-extern std::shared_ptr<spdlog::logger> curr_logger;
 void EventHandlers::cleanup()
 {
 	st_comm_ev.flush();
 	st_comp_ev.flush();
 	/* sync events already flush immediately */
 
-	if ( curr_logger != nullptr )
+	stdout_logger->info("Flushing thread metadata");
+
+	for (auto& pair : thread_spawns)
 	{
-		curr_logger->flush();
+		/* XXX ML: is this always going to be posix threads? */
+		stdout_logger->info()
+			<< "pthread create from thread_id:" << pair.first 
+			<< " -- pthread_t:" << pair.second;
 	}
+
+	for (auto& pair : barrier_participants)
+	{
+		stdout_logger->info()
+			<< "barrier:" << pair.first 
+			<< " -- thread:" << pair.second;
+	}
+
+	stdout_logger->flush();
+	if (curr_logger != nullptr) curr_logger->flush();
 }
 
+
+////////////////////////////////////////////////////////////
+// Miscellaneous
+////////////////////////////////////////////////////////////
+namespace
+{
+std::map<std::string,std::string> ANSIcolors_fg =
+{
+	{"black", "\033[30m"},
+	{"red", "\033[31m"},
+	{"green", "\033[32m"},
+	{"yellow", "\033[33m"},
+	{"blue", "\033[34m"},
+	{"magenta", "\033[35m"},
+	{"cyan", "\033[36m"},
+	{"white", "\033[37m"},
+	{"end", "\033[0m"}
+};
+}; //end namespace 
+
+constexpr const char EventHandlers::filename[];
+EventHandlers::EventHandlers()
+	: st_comp_ev(curr_thread_id, curr_event_id, curr_logger)
+	, st_comm_ev(curr_thread_id, curr_event_id, curr_logger)
+	, st_sync_ev(curr_thread_id, curr_event_id, curr_logger)
+{
+	loggers.resize(16, nullptr);
+	stdout_logger = spdlog::stdout_logger_st("stgen-console");
+
+	std::string header = "[SynchroTraceGen]";
+	if (isatty(fileno(stdout))) header = "[" + ANSIcolors_fg["blue"] + "SynchroTraceGen" + ANSIcolors_fg["end"] + "]";
+
+	stdout_logger->set_pattern(header+" %v");
+
+	curr_thread_id = -1;
+	curr_event_id = -1;
+}
+
+void EventHandlers::setThread(TId tid)
+{
+	assert( tid >= 0 );
+
+	if ( curr_thread_id == tid )
+	{
+		return;
+	}
+
+	event_ids[curr_thread_id] = curr_event_id;
+	if/*new thread*/( event_ids.find(tid) == event_ids.cend() )
+	{
+		event_ids[tid] = 0;
+		curr_event_id = 0;
+
+		/* start log file for this thread */
+		initThreadLog(tid);
+	}
+	else
+	{
+		curr_event_id = event_ids[tid];
+		switchThreadLog(tid);
+	}
+
+	curr_thread_id = tid;
+}
+
+void EventHandlers::initThreadLog(TId tid)
+{
+	assert( tid >= 0 );
+
+	std::string thread_filename = filename + std::to_string(tid);
+
+	spdlog::set_async_mode(8192);
+	spdlog::create_simple_file_logger(std::to_string(tid), thread_filename, true);
+	spdlog::get(std::to_string(tid))->set_pattern("%v");
+
+	if ( static_cast<int>(loggers.size()) <= tid )
+	{
+		loggers.resize(loggers.size()*2, nullptr);
+	}
+	loggers[tid] = spdlog::get(std::to_string(tid));
+
+	curr_logger = loggers[tid];
+}
+
+void EventHandlers::switchThreadLog(TId tid)
+{
+	assert( static_cast<int>(loggers.size()) > tid );
+	assert( loggers[tid] != nullptr );
+
+	curr_logger = loggers[tid];
+}
+
+////////////////////////////////////////////////////////////
+// Callbacks
+////////////////////////////////////////////////////////////
 namespace
 {
 EventHandlers handler;

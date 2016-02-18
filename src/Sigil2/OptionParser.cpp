@@ -5,7 +5,10 @@
 #include <getopt.h>
 #include <dlfcn.h>
 #include <cstring>
-#include <iostream>
+#include <unistd.h>
+
+// FIXME option parsing errors should not be 'runtime_errors'
+// Do something more useful with unexpected options
 
 extern char* optarg;
 
@@ -13,6 +16,19 @@ namespace sgl
 {
 namespace
 {
+std::map<std::string,std::string> ANSIcolors_fg =
+{
+	{"black", "\033[30m"},
+	{"red", "\033[31m"},
+	{"green", "\033[32m"},
+	{"yellow", "\033[33m"},
+	{"blue", "\033[34m"},
+	{"magenta", "\033[35m"},
+	{"cyan", "\033[36m"},
+	{"white", "\033[37m"},
+	{"end", "\033[0m"}
+};
+
 struct option long_options[] =
 {
 	{"help",          no_argument,       nullptr, 'h' },
@@ -24,6 +40,28 @@ struct option long_options[] =
 }; //end namespace
 
 OptionParser::OptionParser(int argc, char* argv[])
+{
+	stdout_logger = spdlog::stdout_logger_st("sigil2-console");
+
+	std::string header = "[Sigil2]";
+	if (isatty(fileno(stdout))) header = "[" + ANSIcolors_fg["red"] + "Sigil2" + ANSIcolors_fg["end"] + "]";
+	stdout_logger->set_pattern(header+" %v");
+
+	try
+	{
+		parse(argc,argv);
+	}
+	catch (std::runtime_error &e)
+	{
+		std::terminate();
+	}
+	catch (std::exception &e)
+	{
+		std::terminate();
+	}
+}
+	
+void OptionParser::parse(int argc, char* argv[])
 {
 	std::string exec;
 	std::string frontend;
@@ -54,14 +92,12 @@ OptionParser::OptionParser(int argc, char* argv[])
 
 	if ( registerFrontendArgument(frontend, exec) == false )
 	{
-		std::cerr << "Error initializing frontend" << std::endl;
-		exit( EXIT_FAILURE );
+		throw std::runtime_error("Error initializing frontend");
 	}
 
 	if ( register_backend == nullptr || start_frontend == nullptr )
 	{
-		std::cerr << "Error | missing options" << std::endl;
-		exit( EXIT_FAILURE );
+		throw std::runtime_error("Error | missing options");
 	}
 }
 
@@ -72,7 +108,7 @@ bool OptionParser::registerBackendArgument(const std::string& backend)
 	void *hndl = dlopen(NULL, RTLD_LAZY);
 	if ( hndl == nullptr )
 	{
-		std::cerr << "dlopen failed: " << dlerror()	<< std::endl;
+		stdout_logger->info("dlopen failed: ") << dlerror();
 		return false;
 	}
 
@@ -80,7 +116,7 @@ bool OptionParser::registerBackendArgument(const std::string& backend)
 	void* fptr = dlsym(hndl, func_name.c_str());
 	if ( fptr == nullptr )
 	{
-		std::cerr << "Could not find a matching backend registry" << std::endl;
+		stdout_logger->info("Could not find a matching backend registry");
 		return false;
 		//TODO output a list of available backends
 	}
@@ -98,7 +134,7 @@ bool OptionParser::registerFrontendArgument(const std::string& frontend, const s
 		char* tmp_path = std::getenv("TMPDIR");
 		if (tmp_path == nullptr)
 		{
-			std::cerr << "TMPDIR not detected, defaulting to /tmp\n";
+			stdout_logger->info("TMPDIR not detected, defaulting to /tmp");
 			tmp_path = strdup("/tmp");
 		}
 

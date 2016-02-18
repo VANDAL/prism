@@ -3,21 +3,41 @@
 
 #include "ShadowMemory.hpp"
 #include "STEvent.hpp"
+#include "spdlog.h"
+#include <unistd.h>
 
 namespace STGen
 {
+
+void onCompEv(SglCompEv ev);
+void onMemEv(SglMemEv ev);
+void onSyncEv(SglSyncEv ev);
+void cleanup();
+
 class EventHandlers
 {
-	typedef int32_t TId; 
+	/* Default address params */
+	ShadowMemory shad_mem;
+
+	/* Per-thread event count. Logged to SynchroTrace event trace.
+	 * Each derived SynchroTrace event tracks the same event id.  */
+	std::unordered_map<TId, EId> event_ids;
+	TId curr_thread_id;
+	EId curr_event_id;
+
+	/* spawner, address of spawnee thread_t */
+	std::multimap<TId, Addr> thread_spawns;
+
+	/* addr of barrier_t, participating thread */
+	std::multimap<Addr, TId> barrier_participants;
+
+	constexpr const static char filename[32] = "sigil.events-";
+	vector<shared_ptr<spdlog::logger>> loggers;
+	shared_ptr<spdlog::logger> curr_logger;
+	shared_ptr<spdlog::logger> stdout_logger;
+
 public:
-	EventHandlers()
-	{
-		/* spdlog's API isn't conducive to truncating files,
-		 * so clean up any left overs from previous runs */
-		std::string rm_logs = "rm -f ";
-		rm_logs += std::string(filename) + "*";
-		system(rm_logs.c_str());
-	}
+	EventHandlers();
 
 	void onSyncEv(SglSyncEv ev);
 	void onCompEv(SglCompEv ev);
@@ -34,21 +54,14 @@ public:
 	STCompEvent st_comp_ev;
 	STCommEvent st_comm_ev;
 	STSyncEvent st_sync_ev;
-
+	
 private:
 	void onLoad(const SglMemEv& ev_data);
 	void onStore(const SglMemEv& ev_data);
-
-	ShadowMemory shad_mem;
+	void setThread(TId tid);
+	void initThreadLog(TId tid);
+	void switchThreadLog(TId tid);
 };
-
-/* optimization: 
- * calling a normal function from std::function is much 
- * cheaper than calling a member function using std::bind */
-void onSyncEv(SglSyncEv ev);
-void onCompEv(SglCompEv ev);
-void onMemEv(SglMemEv ev);
-void cleanup();
 
 }; //end namespace STGen
 

@@ -7,164 +7,99 @@
 namespace STGen
 {
 
-////////////////////////////////////////////////////////////
-// SynchroTrace - Logging
-////////////////////////////////////////////////////////////
-static std::vector<std::shared_ptr<spdlog::logger>> loggers(16);
-std::shared_ptr<spdlog::logger> curr_logger = nullptr;
+using std::stringstream;
+using std::make_pair;
+using std::make_tuple;
+using std::get;
+using std::hex;
+using std::dec;
 
-namespace
-{
-void initThreadLog(TId tid)
-{
-	assert( tid >= 0 );
-
-	std::string thread_filename = filename + std::to_string(tid);
-
-	spdlog::set_async_mode(8192);
-	spdlog::create<spdlog::sinks::simple_file_sink_st>(thread_filename, thread_filename);
-	spdlog::get(thread_filename)->set_pattern("%v");
-
-	if ( static_cast<int>(loggers.size()) <= tid )
-	{
-		loggers.resize(loggers.size()*2, nullptr);
-	}
-	loggers[tid] = spdlog::get(thread_filename);
-
-	curr_logger = loggers[tid];
-}
-
-void switchThreadLog(TId tid)
-{
-	assert( static_cast<int>(loggers.size()) > tid );
-	assert( loggers[tid] != nullptr );
-
-	curr_logger = loggers[tid];
-}
-}; //end namespace
-
-////////////////////////////////////////////////////////////
-// SynchroTrace - Events
-////////////////////////////////////////////////////////////
-std::unordered_map<TId, EId> STEvent::event_ids;
-TId STEvent::curr_thread_id = -1;
-EId STEvent::curr_event_id = -1;
-
-void STEvent::flush()
-{
-	if ( is_active )
-	{
-		detailedFlush();
-		curr_event_id++;
-	}
-}
-
-void STEvent::setThread(TId tid)
-{
-	assert( tid >= 0 );
-
-	if ( curr_thread_id == tid )
-	{
-		return;
-	}
-
-	event_ids[curr_thread_id] = curr_event_id;
-	if/*new thread*/( event_ids.find(tid) == event_ids.cend() )
-	{
-		event_ids[tid] = 0;
-		curr_event_id = 0;
-
-		/* start log file for this thread */
-		initThreadLog(tid);
-	}
-	else
-	{
-		curr_event_id = event_ids[tid];
-		switchThreadLog(tid);
-	}
-
-	curr_thread_id = tid;
-}
-	
 ////////////////////////////////////////////////////////////
 // SynchroTrace - Compute Event
 ////////////////////////////////////////////////////////////
-STCompEvent::STCompEvent()
+STCompEvent::STCompEvent(TId &tid, EId &eid, const shared_ptr<spdlog::logger> &logger)
+	: thread_id(tid)
+	, event_id(eid)
+	, logger(logger)
 {
 	reset();
 }
 
-void STCompEvent::detailedFlush()
+void STCompEvent::flush()
 {
-	std::stringstream logmsg;
-	logmsg << curr_event_id
-		<< "," << curr_thread_id 
-		<< "," << iop_cnt
-		<< "," << flop_cnt
-		<< "," << load_cnt
-		<< "," << store_cnt
-		<< std::hex;
-
-	/* log write addresses */
-	for (auto& addr_pair : stores_unique.get())
+	if (is_empty == false)
 	{
-		logmsg << " $ " //unique write delimiter
-			<< addr_pair.first 
-			<< " "
-			<< addr_pair.second;
-	}
+		stringstream logmsg;
+		logmsg << event_id
+			<< "," << thread_id 
+			<< "," << iop_cnt
+			<< "," << flop_cnt
+			<< "," << load_cnt
+			<< "," << store_cnt
+			<< hex;
 
-	/* log read addresses */
-	for (auto& addr_pair : loads_unique.get())
-	{
-		logmsg << " * " //unique read delimiter
-			<< addr_pair.first 
-			<< " "
-			<< addr_pair.second;
-	}
+		/* log write addresses */
+		for (auto& addr_pair : stores_unique.get())
+		{
+			logmsg << " $ " //unique write delimiter
+				<< addr_pair.first 
+				<< " "
+				<< addr_pair.second;
+		}
 
-	curr_logger->info(logmsg.str());
-	reset();
+		/* log read addresses */
+		for (auto& addr_pair : loads_unique.get())
+		{
+			logmsg << " * " //unique read delimiter
+				<< addr_pair.first 
+				<< " "
+				<< addr_pair.second;
+		}
+
+		logger->info(logmsg.str());
+		event_id++;
+		reset();
+	}
 }
 
 void STCompEvent::updateWrites(Addr begin, Addr size)
 {
-	is_active = true;
+	is_empty = false;
 	total_events++;
-	stores_unique.insert(std::make_pair(begin, begin+size-1));
+	stores_unique.insert(make_pair(begin, begin+size-1));
 }
 
 void STCompEvent::updateWrites(SglMemEv ev)
 {
-	is_active = true;
+	is_empty = false;
 	total_events++;
-	stores_unique.insert(std::make_pair(ev.begin_addr, ev.begin_addr+ev.size-1));
+	stores_unique.insert(make_pair(ev.begin_addr, ev.begin_addr+ev.size-1));
 }
 
 void STCompEvent::updateReads(Addr begin, Addr size)
 {
-	is_active = true;
+	is_empty = false;
 	total_events++;
-	loads_unique.insert(std::make_pair(begin, begin+size-1));
+	loads_unique.insert(make_pair(begin, begin+size-1));
 }
 
 void STCompEvent::updateReads(SglMemEv ev)
 {
-	is_active = true;
+	is_empty = false;
 	total_events++;
-	loads_unique.insert(std::make_pair(ev.begin_addr, ev.begin_addr+ev.size-1));
+	loads_unique.insert(make_pair(ev.begin_addr, ev.begin_addr+ev.size-1));
 }
 
 void STCompEvent::incIOP()
 {
-	is_active = true;
+	is_empty = false;
 	iop_cnt++;
 	total_events++;
 }
 
 void STCompEvent::incFLOP()
 {
-	is_active = true;
+	is_empty = false;
 	flop_cnt++;
 	total_events++;
 }
@@ -179,57 +114,63 @@ void STCompEvent::reset()
 	stores_unique.clear();
 	loads_unique.clear();
 
-	is_active = false;
+	is_empty = true;
 }
 
 ////////////////////////////////////////////////////////////
 // SynchroTrace - Communication Event
 ////////////////////////////////////////////////////////////
-STCommEvent::STCommEvent()
+STCommEvent::STCommEvent(TId &tid, EId &eid, const shared_ptr<spdlog::logger> &logger)
+	: thread_id(tid)
+	, event_id(eid)
+	, logger(logger)
 {
 	reset();
 }
 
-void STCommEvent::detailedFlush()
+void STCommEvent::flush()
 {
-	std::stringstream logmsg;
-	logmsg << curr_event_id
-		<< "," << curr_thread_id;
-
-	/* log comm edges between current and other threads */
-	for (auto& edge : comms)
+	if (is_empty == false)
 	{
-		logmsg << " # " //unique write delimiter
-			<< std::get<0>(edge) 
-			<< " " << std::get<1>(edge)
-			<< std::hex
-			<< " " << std::get<2>(edge)
-			<< " " << std::get<3>(edge)
-			<< std::dec;
-	}
+		stringstream logmsg;
+		logmsg << event_id
+			<< "," << thread_id;
 
-	curr_logger->info(logmsg.str());
-	reset();
+		/* log comm edges between current and other threads */
+		for (auto& edge : comms)
+		{
+			logmsg << " # " //unique write delimiter
+				<< get<0>(edge) 
+				<< " " << get<1>(edge)
+				<< hex
+				<< " " << get<2>(edge)
+				<< " " << get<3>(edge)
+				<< dec;
+		}
+
+		logger->info(logmsg.str());
+		reset();
+	}
 }
 
 void STCommEvent::addEdge(TId writer, EId writer_event, Addr addr)
 {
-	is_active = true;
+	is_empty = false;
 	if (comms.empty())
 	{
-		comms.push_back(std::make_tuple(writer, writer_event, addr, addr)); //new edge
+		comms.push_back(make_tuple(writer, writer_event, addr, addr)); //new edge
 	}
 	else 
 	{
-		auto& last_writer = std::get<0>(comms.back());
+		auto& last_writer = get<0>(comms.back());
 		if/*read from same thread*/( writer == last_writer )
 		{
-			auto& last_addr = std::get<3>(comms.back());
+			auto& last_addr = get<3>(comms.back());
 			last_addr = addr;
 		}
 		else/*new thread*/
 		{
-			comms.push_back(std::make_tuple(writer, writer_event, addr, addr)); //new edge
+			comms.push_back(make_tuple(writer, writer_event, addr, addr)); //new edge
 		}
 	}
 }
@@ -237,32 +178,27 @@ void STCommEvent::addEdge(TId writer, EId writer_event, Addr addr)
 void STCommEvent::reset()
 {
 	comms.clear();
-	is_active = false;
+	is_empty = true;
 }
 	
 ////////////////////////////////////////////////////////////
 // SynchroTrace - Synchronization Event
 ////////////////////////////////////////////////////////////
+STSyncEvent::STSyncEvent(TId &tid, EId &eid, const shared_ptr<spdlog::logger> &logger)
+	: thread_id(tid)
+	, event_id(eid)
+	, logger(logger) { }
+
 void STSyncEvent::flush(UChar type, Addr sync_addr)
 {
-	std::stringstream logmsg;
-	logmsg << curr_event_id
-		<< "," << curr_thread_id
+	stringstream logmsg;
+	logmsg << event_id
+		<< "," << thread_id
 		<< "," << "pth_ty:"
 		<< (int)type
 		<< "^"
-		<< std::hex << sync_addr;
-	curr_logger->info(logmsg.str());
-}
-
-void STSyncEvent::detailedFlush()
-{
-	//nothing to flush
-}
-
-void STSyncEvent::reset()
-{
-	//nothing to reset
+		<< hex << sync_addr;
+	logger->info(logmsg.str());
 }
 	
 ////////////////////////////////////////////////////////////
@@ -311,14 +247,14 @@ void STCompEvent::AddrSet::insert(const AddrRange &range)
 	if (range.first == it->second+1)
 	{
 		/* extend 'it' by 'range' */
-		auto tmp = std::make_pair(it->first, range.second);
+		auto tmp = make_pair(it->first, range.second);
 		ms.erase(it);
 		insert(tmp);
 	}
 	else if (range.second+1 == it->first)
 	{
 		/* extend 'it' by 'range' */
-		auto tmp = std::make_pair(range.first, it->second);
+		auto tmp = make_pair(range.first, it->second);
 		ms.erase(it);
 		insert(tmp);
 	}
@@ -333,7 +269,7 @@ void STCompEvent::AddrSet::insert(const AddrRange &range)
 		/* extending 'it' to the end of 'range' */
 		{
 			/* merge, delete, and recheck; may overrun other addresses */
-			auto tmp = std::make_pair(it->first, range.second);
+			auto tmp = make_pair(it->first, range.second);
 			ms.erase(it);
 			insert(tmp);
 		}
@@ -345,7 +281,7 @@ void STCompEvent::AddrSet::insert(const AddrRange &range)
 		/* can append 'it' to 'range' */
 		{
 			/* merge, delete, and insert; no need to recheck */
-			auto tmp = std::make_pair(range.first, it->second);
+			auto tmp = make_pair(range.first, it->second);
 			ms.erase(it);
 			ms.insert(tmp);
 		}
@@ -359,7 +295,7 @@ void STCompEvent::AddrSet::insert(const AddrRange &range)
 		/* begin address is extended */
 		{
 			/* merge, delete, and insert; no need to recheck */
-			auto tmp = std::make_pair(range.first, it->second);
+			auto tmp = make_pair(range.first, it->second);
 			ms.erase(it);
 			ms.insert(tmp);
 		}

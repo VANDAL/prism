@@ -4,7 +4,10 @@
 #include <vector>
 #include <set>
 #include <unordered_map>
+#include <memory>
 #include "Sigil2/Primitive.h"
+#include "spdlog.h"
+#include "ShadowMemory.hpp"
 
 /*******************************************************************************
  * SynchroTrace Events
@@ -17,43 +20,11 @@
 
 namespace STGen
 {
-constexpr const char filename[32] = "sigil.events-";
-
-/* TODO add asserts that EIds and TIds 
- * aren't negative during flushing */
-using EId = long long;
-using TId = int;
-
-/**
- * Base SynchroTrace event. SynchroTrace events can be made of multiple
- * Sigil event primitives.
- *
- * All SynchroTrace Events have the thread id that generated the event,
- * and an event id within that thread.
- */
-struct STEvent
-{
-	/**
-	 * Per-thread event count. Logged to SynchroTrace event trace.
-	 * Each derived SynchroTrace event tracks the same event id.
-	 */
-	//TODO refactor without static variables
-	static std::unordered_map<TId, EId> event_ids;
-	static TId curr_thread_id;
-	static EId curr_event_id;
-	static void setThread(TId tid);
-
-public:
-	/// Flush an event to storage and increment event counter
-	virtual void flush() final; 
-
-private: 
-	virtual void detailedFlush() = 0;
-	virtual void reset() = 0;
-
-public:
-	bool is_active = false;
-};
+using std::shared_ptr;
+using std::pair;
+using std::tuple;
+using std::vector;
+using std::multiset;
 
 /**
  * A SynchroTrace Compute Event.
@@ -68,21 +39,21 @@ public:
  * a communication edge between threads, or at an arbitrary number 
  * of iops/flops/reads/writes.
  */
-struct STCompEvent : public STEvent
+struct STCompEvent 
 {
 	/* Helper class to track unique ranges of addresses */
 	struct AddrSet
 	{
-		using AddrRange = std::pair<Addr,Addr>;
+		using AddrRange = pair<Addr,Addr>;
 		/* A range of addresses is specified by the pair.
 		 * This call inserts that range and merges existing ranges
 		 * in order to keep the set of addresses unique */
 		void insert(const AddrRange &range);
 		void clear();
-		const std::multiset<AddrRange>& get(){ return ms; }
+		const multiset<AddrRange>& get(){ return ms; }
 	
 	private:
-		std::multiset<AddrRange> ms;
+		multiset<AddrRange> ms;
 	};
 
 	UInt iop_cnt;
@@ -99,9 +70,15 @@ struct STCompEvent : public STEvent
 	AddrSet loads_unique;
 
 	UInt total_events;
+	bool is_empty;
+
+	TId &thread_id;
+	EId &event_id;
+	const shared_ptr<spdlog::logger> &logger;
 
 public:
-	STCompEvent();
+	STCompEvent(TId &tid, EId &eid, const shared_ptr<spdlog::logger> &logger);
+	void flush();
 	void updateWrites(SglMemEv ev);
 	void updateWrites(Addr begin, Addr size);
 	void updateReads(SglMemEv ev);
@@ -110,8 +87,7 @@ public:
 	void incFLOP();
 	
 private:
-	virtual void detailedFlush() override;
-	virtual void reset() override;
+	void reset();
 };
 
 /**
@@ -123,9 +99,9 @@ private:
  * to that data by the same thread is not considered a communication 
  * edge. Another thread that writes to the same address resets this process.
  */
-struct STCommEvent : public STEvent
+struct STCommEvent
 {
-	typedef std::vector<std::tuple<TId, EId, Addr, Addr>> LoadEdges;
+	typedef vector<tuple<TId, EId, Addr, Addr>> LoadEdges;
 	/**< vector of: 
 	 *     producer thread id, 
 	 *     producer event id, 
@@ -134,9 +110,15 @@ struct STCommEvent : public STEvent
 	 */
 
 	LoadEdges comms;	
+	bool is_empty;
+
+	TId &thread_id;
+	EId &event_id;
+	const shared_ptr<spdlog::logger> &logger;
 
 public:
-	STCommEvent();
+	STCommEvent(TId &tid, EId &eid, const shared_ptr<spdlog::logger> &logger);
+	void flush();
 
 	/** 
 	 * Adds communication edges originated from a single load/read primitive.
@@ -153,8 +135,7 @@ public:
 	void addEdge(TId writer, EId writer_event, Addr addr);
 
 private:
-	virtual void detailedFlush() override;
-	virtual void reset() override;
+	void reset();
 };
 
 /**
@@ -166,22 +147,22 @@ private:
  *
  * Synchronizatin events are expected to be immediately logged.
  */
-class STSyncEvent : public STEvent
+class STSyncEvent
 {
 	UChar type = 0;
 	Addr sync_addr = 0;
 
+	TId &thread_id;
+	EId &event_id;
+	const shared_ptr<spdlog::logger> &logger;
+
 public:
-	using STEvent::flush;
+	STSyncEvent(TId &tid, EId &eid, const shared_ptr<spdlog::logger> &logger);
 
-	/* extend flush from base; 
-	 * only behavior is immediate flush */
+	/* only behavior is immediate flush */
 	void flush(UChar type, Addr sync_addr);
-
-private:
-	virtual void detailedFlush() override;
-	virtual void reset() override;
 };
+
 }; //end namespace STGen
 
 #endif
