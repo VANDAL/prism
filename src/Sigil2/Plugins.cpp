@@ -34,3 +34,12 @@ SIGIL_REGISTER(STGen)
 	sigil().addObserver(STGen::onMemEv);
 	sigil().addCleanup(STGen::cleanup);
 }
+
+#include "Dummy/Dummy.hpp"
+SIGIL_REGISTER(dummy)
+{
+	sigil().addObserver(countMems);
+	sigil().addObserver(countComps);
+	sigil().addObserver(countSyncs);
+	sigil().addCleanup(cleanup);
+}
