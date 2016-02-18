@@ -5,14 +5,8 @@
 
 #include "Sigil2/Primitive.h"
 
-/* XXX From write(2) man pages:
- *
- * On Linux, write() (and similar system calls) will transfer at most
- * 0x7ffff000 (2,147,479,552) bytes, returning the number of bytes
- * actually transferred.  (This is true on both 32-bit and 64-bit
- * systems.) */
 #define SIGRIND_BUFSIZE (1 << 24)
-#define SIGRIND_BUFNUM (3)
+#define SIGRIND_BUFNUM (4)
 
 #define SIGRIND_SHMEM_NAME ("sgl2-vg-shmem")
 #define SIGRIND_EMPTYFIFO_NAME ("sgl2-vg-empty")

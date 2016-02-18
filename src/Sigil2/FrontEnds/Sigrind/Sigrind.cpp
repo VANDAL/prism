@@ -1,4 +1,3 @@
-#include <iostream>
 #include <iterator>
 #include <sstream>
 #include <string>
@@ -56,32 +55,38 @@ void Sigrind::initShMem()
 {
 	std::unique_ptr<SigrindSharedData> init(new SigrindSharedData());
 
-	int fd = open(shmem_file.c_str(), O_CREAT|O_RDWR|O_TRUNC, 0600);
-	if ( fd == -1 )
+	FILE *fd = fopen(shmem_file.c_str(), "wb+");
+	if ( fd == nullptr )
 	{
 		std::perror("shared memory initialization");
 		throw std::runtime_error("Sigrind shared memory file open failed");
 	}
 
-	unsigned long long bytes = write(fd,init.get(),sizeof(SigrindSharedData));
-	if ( bytes != sizeof(SigrindSharedData) )
+	/* XXX From write(2) man pages:
+	 *
+	 * On Linux, write() (and similar system calls) will transfer at most
+	 * 0x7ffff000 (2,147,479,552) bytes, returning the number of bytes
+	 * actually transferred.  (This is true on both 32-bit and 64-bit
+	 * systems.) 
+	 *
+	 * fwrite doesn't have this limitation */
+	int count = fwrite(init.get(),sizeof(SigrindSharedData), 1, fd);
+	if ( count != 1 )
 	{
-		std::cerr << bytes << " bytes written\n";
-		std::cerr << sizeof(SigrindSharedData) << " bytes written\n";
 		std::perror("shared memory initialization");
-		close(fd);
+		fclose(fd);
 		throw std::runtime_error("Sigrind shared memory file write failed");
 	}	
 
 	shared_mem = reinterpret_cast<SigrindSharedData*>
-		(mmap(nullptr, sizeof(SigrindSharedData), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0));
+		(mmap(nullptr, sizeof(SigrindSharedData), PROT_READ|PROT_WRITE, MAP_SHARED, fileno(fd), 0));
 	if (shared_mem == (void*) -1)
 	{
 		std::perror("shared memory initialization");
-		close(fd);
+		fclose(fd);
 		throw std::runtime_error("Sigrind mmap shared memory failed");
 	}
-	close(fd);
+	fclose(fd);
 }
 
 void Sigrind::makeNewFifo(const char* path) const
@@ -156,30 +161,16 @@ void Sigrind::produceSigrindEvents()
 
 int Sigrind::readFullFifo()
 {
-	/* try twice w/ delay, in case Valgrind hasn't started up yet */
-	int i = 0;
-	for (i = 0; i < 2; ++i)
-	{
-		int res = read(fullfd, &full_data, sizeof(full_data));
+	int res = read(fullfd, &full_data, sizeof(full_data));
 
-		if (res > 0)
-		{
-			break;
-		}
-		else if (res == 0)
-		{
-			/* give valgrind time to connect to pipe */
-			std::this_thread::sleep_for(std::chrono::seconds(2));
-		}
-		else 
-		{
-			perror("Reading from full fifo");
-			throw std::runtime_error("Could not read from Valgrind full fifo");
-		}
-	}
-	if (i > 1)
+	if (res == 0)
 	{
-		throw std::runtime_error("No Valgrind writer detected on full fifo");
+		throw std::runtime_error("Unexpected end of fifo");
+	}
+	else if (res < 0)
+	{
+		perror("Reading from full fifo");
+		throw std::runtime_error("Could not read from Valgrind full fifo");
 	}
 
 	return full_data;
@@ -305,7 +296,7 @@ void frontendSigrind (
 	}
 	catch(std::exception &e)
 	{
-		throw e;
+		std::terminate();
 	}
 }
 }; //end namespace sgl
