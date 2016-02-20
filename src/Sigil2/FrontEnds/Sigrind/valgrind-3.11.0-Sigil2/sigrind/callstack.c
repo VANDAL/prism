@@ -28,6 +28,7 @@
 
 #include "global.h"
 #include "log_events.h"
+#include "Sigil2/PrimitiveEnums.h"
 
 /*------------------------------------------------------------*/
 /*--- Call stack, operations                               ---*/
@@ -109,12 +110,15 @@ static void function_entered(fn_node* fn)
 {
   CLG_ASSERT(fn != 0);
 
-  if ( VG_(strcmp)(fn->name, "main") == 0 )
+  if ( (SGL_(clo).collect_func != NULL) && (VG_(strcmp)(fn->name, SGL_(clo).collect_func) == 0) )
   {
-	  VG_(umsg)("******************************************\n");
-	  VG_(umsg)("Entering main: turning on event collection\n");
-	  VG_(umsg)("******************************************\n");
-	  is_in_main = 1;
+    VG_(umsg)("*********************************************\n");
+    VG_(umsg)("Entering %s: turning on event collection\n", fn->name);
+    VG_(umsg)("*********************************************\n");
+    SGL_(is_in_event_collect_func) = True;
+
+    // let Sigil2 know which thread this function starts in
+    SGL_(log_sync)(SGLPRIM_SYNC_SWAP, SGL_(active_tid));
   }
   /* send to sigil */
   SGL_(log_fn_entry)(fn);
@@ -125,23 +129,23 @@ static void function_entered(fn_node* fn)
     CLG_(clo).verbose = fn->verbosity;
     fn->verbosity = old;
     VG_(message)(Vg_DebugMsg, 
-		 "Entering %s: Verbosity set to %d\n",
-		 fn->name, CLG_(clo).verbose);
+    "Entering %s: Verbosity set to %d\n",
+    fn->name, CLG_(clo).verbose);
   }
-#endif		
-}	
+#endif
+}
 
 /* Called when function left (no recursive level active) */
 static void function_left(fn_node* fn)
 {
   CLG_ASSERT(fn != 0);
 
-  if ( VG_(strcmp)(fn->name, "main") == 0 )
+  if ( (SGL_(clo).collect_func != NULL) && (VG_(strcmp)(fn->name, SGL_(clo).collect_func) == 0) )
   {
-	  VG_(umsg)("******************************************\n");
-	  VG_(umsg)("Leaving main: turning off event collection\n");
-	  VG_(umsg)("******************************************\n");
-	  is_in_main = 0;
+    VG_(umsg)("*********************************************\n");
+    VG_(umsg)("Leaving %s: turning off event collection\n", fn->name);
+    VG_(umsg)("*********************************************\n");
+    SGL_(is_in_event_collect_func) = False;
   }
   /*send to sigil*/
   SGL_(log_fn_leave)(fn);
@@ -152,10 +156,10 @@ static void function_left(fn_node* fn)
     CLG_(clo).verbose = fn->verbosity;
     fn->verbosity = old;
     VG_(message)(Vg_DebugMsg, 
-		 "Leaving %s: Verbosity set back to %d\n",
-		 fn->name, CLG_(clo).verbose);
+    "Leaving %s: Verbosity set back to %d\n",
+    fn->name, CLG_(clo).verbose);
   }
-#endif		
+#endif
 }
 
 

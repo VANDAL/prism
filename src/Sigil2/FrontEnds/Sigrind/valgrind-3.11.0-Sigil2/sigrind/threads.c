@@ -132,12 +132,12 @@ thread_info* new_thread(void)
 void SGL_(switch_thread)(ThreadId tid)
 {
   if (tid == SGL_(active_tid))
-  {
     return;
-  }
 
   SGL_(active_tid) = tid;
-  SGL_(log_sync)(SGLPRIM_SYNC_SWAP, SGL_(active_tid));
+
+  if ( EVENT_GENERATION_ENABLED )
+    SGL_(log_sync)(SGLPRIM_SYNC_SWAP, SGL_(active_tid));
 }
 
 void CLG_(switch_thread)(ThreadId tid)

@@ -165,6 +165,7 @@ typedef struct {
 /*--- Global variables                                     ---*/
 /*------------------------------------------------------------*/
 
+Bool SGL_(is_in_event_collect_func);
 SglCommandLineOptions SGL_(clo);
 
 /* for all threads */
@@ -179,6 +180,7 @@ exec_state CLG_(current_state);
 /*------------------------------------------------------------*/
 /*--- Local declarations                                   ---*/
 /*------------------------------------------------------------*/
+
 static void flushEvents ( ClgState* clgs );
 static void addEvent_Comp( ClgState* clgs, InstrInfo* inode, IRExprTag arity, IRType op_type );
 static void addEvent_G ( ClgState* clgs, InstrInfo* inode );
@@ -235,12 +237,6 @@ static void addBBSetupCall(ClgState* clgs)
 			      argv);
    addStmtToIRSB( clgs->sbOut, IRStmt_Dirty(di) );
 }
-
-
-//FIXME this is hardcoded in for testing, to ignore all events
-//befor 'main'. This functionality should be given as an option
-//to the user, along with the exact name of the function.
-Bool is_in_main = 0; 
 
 static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
                         IRSB* sbIn,
@@ -329,7 +325,7 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
       }
 
       /* Ignore all Sigil event processing when inside a synchronization syscall */
-      if ( (SGL_(thread_in_synccall)[CLG_(current_tid)] == False) && is_in_main)
+      if ( EVENT_GENERATION_ENABLED )
       {
          switch (st->tag) 
          {
@@ -449,46 +445,43 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
                addEvent_G(  &clgs, curr_inode );
                break;
             }
-
-            case Ist_LLSC: 
-            {
-               IRType dataTy;
-               if (st->Ist.LLSC.storedata == NULL) {
-                  /* LL */
-                  dataTy = typeOfIRTemp(sbIn->tyenv, st->Ist.LLSC.result);
-                  addEvent_Dr( &clgs, curr_inode,
-                               sizeofIRType(dataTy), st->Ist.LLSC.addr );
-                  /* flush events before LL, should help SC to succeed */
-                  flushEvents( &clgs );
-               } else {
-                  /* SC */
-                  dataTy = typeOfIRExpr(sbIn->tyenv, st->Ist.LLSC.storedata);
-                  addEvent_Dw( &clgs, curr_inode,
-                               sizeofIRType(dataTy), st->Ist.LLSC.addr );
-                  /* I don't know whether the global-bus-lock cost should
-                     be attributed to the LL or the SC, but it doesn't
-                     really matter since they always have to be used in
-                     pairs anyway.  Hence put it (quite arbitrarily) on
-                     the SC. */
-                  addEvent_G(  &clgs, curr_inode );
-               }
-               break;
-            }
             default:
                tl_assert(0);
                break;
          } //end switch
-      } //end !is_in_syscall
+      }
 
 
       /* 
-       * Still do jump/branch tracking regardless
-       * of whether or not we're in a sync syscall.
+       * Still do regardless of whether or not we're in a sync syscall.
        *
        * ML: not sure what side effects what be introduced
-       * by ignoring Exit statements, even in a syscall 
+       * by ignoring Exit statements, even in a syscall...let's avoid that
        */
-      if ( st->tag == Ist_Exit )
+      if ( st->tag == Ist_LLSC )
+      {
+         if (st->Ist.LLSC.storedata == NULL) {
+            /* LL */
+            if ( EVENT_GENERATION_ENABLED )
+            {
+               IRType dataTy = typeOfIRTemp(sbIn->tyenv, st->Ist.LLSC.result);
+               addEvent_Dr( &clgs, curr_inode, sizeofIRType(dataTy), st->Ist.LLSC.addr );
+            }
+            /* flush events before LL, should help SC to succeed */
+            flushEvents( &clgs );
+         } else if ( EVENT_GENERATION_ENABLED ) {
+            /* SC */
+            IRType dataTy = typeOfIRExpr(sbIn->tyenv, st->Ist.LLSC.storedata);
+            addEvent_Dw( &clgs, curr_inode, sizeofIRType(dataTy), st->Ist.LLSC.addr );
+            /* I don't know whether the global-bus-lock cost should
+               be attributed to the LL or the SC, but it doesn't
+               really matter since they always have to be used in
+               pairs anyway.  Hence put it (quite arbitrarily) on
+               the SC. */
+            addEvent_G(  &clgs, curr_inode );
+         }
+      }
+      else if ( st->tag == Ist_Exit )
       {
          Bool guest_exit, inverted;
 
@@ -545,7 +538,7 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
                                  : IRExpr_RdTmp(guardW)
                                  ));
              /* And post the event. */
-             if ( (SGL_(thread_in_synccall)[CLG_(current_tid)] == False) && is_in_main )
+             if ( EVENT_GENERATION_ENABLED )
                addEvent_Bc( &clgs, curr_inode, IRExpr_RdTmp(guard) );
          }
 
@@ -607,7 +600,7 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
          case Iex_Const:
             break; /* boring - branch to known address */
          case Iex_RdTmp:
-            if ( (SGL_(thread_in_synccall)[CLG_(current_tid)] == False) && is_in_main )
+            if ( EVENT_GENERATION_ENABLED )
                /* looks like an indirect branch (branch to unknown) */
                addEvent_Bi( &clgs, curr_inode, sbIn->next );
             break;
@@ -1383,27 +1376,27 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
 	* is appropriate */
 										 
    case VG_USERREQ__SIGIL_PTHREAD_CREATE_ENTER:
-      SGL_(thread_in_synccall)[CLG_(current_tid)] = True;
+      SGL_(thread_in_synccall)[SGL_(active_tid)] = True;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_CREATE_LEAVE:
-      /* log once the thread has been CREATED and waiting */
-      if ( is_in_main == 1 )
+      /* enable and log once the thread has been CREATED and waiting */
+      SGL_(thread_in_synccall)[SGL_(active_tid)] = False;
+      if ( EVENT_GENERATION_ENABLED )
       {
          SGL_(log_sync)((UChar)SGLPRIM_SYNC_CREATE, args[1]);
       }
-      SGL_(thread_in_synccall)[CLG_(current_tid)] = False;
       break;
 
    case VG_USERREQ__SIGIL_PTHREAD_JOIN_ENTER:
-      /* log when the thread join is ENTERED */
-      if ( is_in_main == 1 )
+      /* log when the thread join is ENTERED and disable */
+      if ( EVENT_GENERATION_ENABLED )
       {
          SGL_(log_sync)((UChar)SGLPRIM_SYNC_JOIN, args[1]);
       }
-      SGL_(thread_in_synccall)[CLG_(current_tid)] = True;
+      SGL_(thread_in_synccall)[SGL_(active_tid)] = True;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_JOIN_LEAVE:
-      SGL_(thread_in_synccall)[CLG_(current_tid)] = False;
+      SGL_(thread_in_synccall)[SGL_(active_tid)] = False;
       break;
 
    case VG_USERREQ__SIGIL_GOMP_LOCK_ENTER:
@@ -1412,7 +1405,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
    case VG_USERREQ__SIGIL_GOMP_CRITNAMESTART_ENTER:
    case VG_USERREQ__SIGIL_GOMP_ATOMICSTART_ENTER:
    case VG_USERREQ__SIGIL_PTHREAD_LOCK_ENTER:
-      SGL_(thread_in_synccall)[CLG_(current_tid)] = True;
+      SGL_(thread_in_synccall)[SGL_(active_tid)] = True;
       break;
    case VG_USERREQ__SIGIL_GOMP_SETLOCK_LEAVE:
    case VG_USERREQ__SIGIL_GOMP_LOCK_LEAVE:
@@ -1420,12 +1413,12 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
    case VG_USERREQ__SIGIL_GOMP_CRITNAMESTART_LEAVE:
    case VG_USERREQ__SIGIL_GOMP_ATOMICSTART_LEAVE:
    case VG_USERREQ__SIGIL_PTHREAD_LOCK_LEAVE:
-      /* log once the lock has been acquired */
-      if ( is_in_main == 1 )
+      /* enable and log once the lock has been acquired */
+      SGL_(thread_in_synccall)[SGL_(active_tid)] = False;
+      if ( EVENT_GENERATION_ENABLED )
       {
          SGL_(log_sync)((UChar)SGLPRIM_SYNC_LOCK, args[1]);
       }
-      SGL_(thread_in_synccall)[CLG_(current_tid)] = False;
       break;
 
    case VG_USERREQ__SIGIL_GOMP_UNLOCK_ENTER:
@@ -1434,7 +1427,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
    case VG_USERREQ__SIGIL_GOMP_CRITNAMEEND_ENTER:
    case VG_USERREQ__SIGIL_GOMP_ATOMICEND_ENTER:
    case VG_USERREQ__SIGIL_PTHREAD_UNLOCK_ENTER:
-      SGL_(thread_in_synccall)[CLG_(current_tid)] = True;
+      SGL_(thread_in_synccall)[SGL_(active_tid)] = True;
       break;
    case VG_USERREQ__SIGIL_GOMP_UNLOCK_LEAVE:
    case VG_USERREQ__SIGIL_GOMP_UNSETLOCK_LEAVE:
@@ -1442,78 +1435,79 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
    case VG_USERREQ__SIGIL_GOMP_CRITNAMEEND_LEAVE:
    case VG_USERREQ__SIGIL_GOMP_ATOMICEND_LEAVE:
    case VG_USERREQ__SIGIL_PTHREAD_UNLOCK_LEAVE:
-      if ( is_in_main == 1 )
+      SGL_(thread_in_synccall)[SGL_(active_tid)] = False;
+      if ( EVENT_GENERATION_ENABLED )
       {
          SGL_(log_sync)((UChar)SGLPRIM_SYNC_UNLOCK, args[1]);
       }
-      SGL_(thread_in_synccall)[CLG_(current_tid)] = False;
       break;
 
    case VG_USERREQ__SIGIL_GOMP_BARRIER_ENTER:
    case VG_USERREQ__SIGIL_GOMP_TEAMBARRIERWAIT_ENTER:
    case VG_USERREQ__SIGIL_GOMP_TEAMBARRIERWAITFINAL_ENTER:
    case VG_USERREQ__SIGIL_PTHREAD_BARRIER_ENTER:
-      /* log once the barrier is ENTERED and waiting */
-      if ( is_in_main == 1 )
+      /* log once the barrier is ENTERED and waiting and disable */
+      if ( EVENT_GENERATION_ENABLED )
       {
          SGL_(log_sync)((UChar)SGLPRIM_SYNC_BARRIER, args[1]);
       }
-      SGL_(thread_in_synccall)[CLG_(current_tid)] = True;
+      SGL_(thread_in_synccall)[SGL_(active_tid)] = True;
       break;
    case VG_USERREQ__SIGIL_GOMP_BARRIER_LEAVE:
    case VG_USERREQ__SIGIL_GOMP_TEAMBARRIERWAIT_LEAVE:
    case VG_USERREQ__SIGIL_GOMP_TEAMBARRIERWAITFINAL_LEAVE:
    case VG_USERREQ__SIGIL_PTHREAD_BARRIER_LEAVE:
-      SGL_(thread_in_synccall)[CLG_(current_tid)] = False;
+      SGL_(thread_in_synccall)[SGL_(active_tid)] = False;
       break;
 
    case VG_USERREQ__SIGIL_PTHREAD_CONDWAIT_ENTER:
-      SGL_(thread_in_synccall)[CLG_(current_tid)] = True;
+      SGL_(thread_in_synccall)[SGL_(active_tid)] = True;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_CONDWAIT_LEAVE:
-      if ( is_in_main == 1 )
+      SGL_(thread_in_synccall)[SGL_(active_tid)] = False;
+      if ( EVENT_GENERATION_ENABLED )
       {
          SGL_(log_sync)((UChar)SGLPRIM_SYNC_CONDWAIT, args[1]);
       }
-      SGL_(thread_in_synccall)[CLG_(current_tid)] = False;
       break;
 
    case VG_USERREQ__SIGIL_PTHREAD_CONDSIG_ENTER:
-      SGL_(thread_in_synccall)[CLG_(current_tid)] = True;
+      SGL_(thread_in_synccall)[SGL_(active_tid)] = True;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_CONDSIG_LEAVE:
-      if ( is_in_main == 1 )
+      SGL_(thread_in_synccall)[SGL_(active_tid)] = False;
+      if ( EVENT_GENERATION_ENABLED )
       {
          SGL_(log_sync)((UChar)SGLPRIM_SYNC_CONDSIG, args[1]);
       }
-      SGL_(thread_in_synccall)[CLG_(current_tid)] = False;
       break;
 
    case VG_USERREQ__SIGIL_PTHREAD_SPINLOCK_ENTER:
-      SGL_(thread_in_synccall)[CLG_(current_tid)] = True;
+      SGL_(thread_in_synccall)[SGL_(active_tid)] = True;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_SPINLOCK_LEAVE:
-      if ( is_in_main == 1 )
+      SGL_(thread_in_synccall)[SGL_(active_tid)] = False;
+      if ( EVENT_GENERATION_ENABLED )
       {
          SGL_(log_sync)((UChar)SGLPRIM_SYNC_SPINLOCK, args[1]);
       }
-      SGL_(thread_in_synccall)[CLG_(current_tid)] = False;
       break;
 
    case VG_USERREQ__SIGIL_PTHREAD_SPINUNLOCK_ENTER:
-      SGL_(thread_in_synccall)[CLG_(current_tid)] = True;
+      SGL_(thread_in_synccall)[SGL_(active_tid)] = True;
       break;
    case VG_USERREQ__SIGIL_PTHREAD_SPINUNLOCK_LEAVE:
-      if ( is_in_main == 1 )
+      SGL_(thread_in_synccall)[SGL_(active_tid)] = False;
+      if ( EVENT_GENERATION_ENABLED )
       {
          SGL_(log_sync)((UChar)SGLPRIM_SYNC_SPINUNLOCK, args[1]);
       }
-      SGL_(thread_in_synccall)[CLG_(current_tid)] = False;
       break;
 
    default:
       return False;
    }
+
 
    return True;
 }
@@ -1574,8 +1568,16 @@ static void clg_start_client_code_callback ( ThreadId tid, ULong blocks_done )
 static
 void CLG_(post_clo_init)(void)
 {
-   // initialize interface to Sigil
-   SGL_(init_IPC)(SGL_(clo).tmp_dir, SGL_(clo).tmp_dir_len);
+   SGL_(init_IPC)(); // initialize interface to Sigil
+   SGL_(is_in_event_collect_func) = False;
+
+   if (SGL_(clo).collect_func == NULL)
+   {
+      VG_(umsg)("*********************************************\n");
+      VG_(umsg)("Beginning event generation from program start\n");
+      VG_(umsg)("*********************************************\n");
+      SGL_(is_in_event_collect_func) = True;
+   }
 
    if (VG_(clo_vex_control).iropt_register_updates_default
        != VexRegUpdSpAtMemAccess) {

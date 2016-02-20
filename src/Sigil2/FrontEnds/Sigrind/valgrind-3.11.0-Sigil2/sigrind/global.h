@@ -75,9 +75,8 @@
 
 typedef struct _SglCommandLineOptions SglCommandLineOptions;
 struct _SglCommandLineOptions {
-   /* directory that will hold mmap'd file */
-   Int tmp_dir_len;
-   HChar* tmp_dir;
+  const HChar* tmpdir;
+  const HChar* collect_func;
 };
 
 typedef struct _CommandLineOptions CommandLineOptions;
@@ -787,10 +786,13 @@ void CLG_(init_dumps)(void);
 /*--- Exported global variables                            ---*/
 /*------------------------------------------------------------*/
 
-extern Bool is_in_main;//TODO allow user to set starting function
+extern Bool SGL_(is_in_event_collect_func); //ML: long name? feel free to change
 extern SglCommandLineOptions SGL_(clo);
 extern Bool* SGL_(thread_in_synccall);
 extern ThreadId SGL_(active_tid);
+
+#define EVENT_GENERATION_ENABLED  \
+   !SGL_(thread_in_synccall)[SGL_(active_tid)] && ( (SGL_(clo).collect_func == NULL) || SGL_(is_in_event_collect_func) )
 
 extern CommandLineOptions CLG_(clo);
 extern Statistics CLG_(stat);

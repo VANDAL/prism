@@ -57,27 +57,29 @@ static UInt curr_used;
 static inline void incr_used(void);
 static inline void update_curr_buf(void);
 
-void SGL_(init_IPC)(const HChar *tmp_dir, Int len)
+void SGL_(init_IPC)()
 {
-	if (len < 2)
+	if (SGL_(clo).tmpdir == NULL)
 	{
 	   VG_(fmsg)("No --tmp-dir argument found, shutting down...\n");
 	   VG_(exit)(1);
 	}
 
+	Int tmpdir_len = VG_(strlen)(SGL_(clo).tmpdir);
 	Int filename_len;
+
 	//+1 for '/'; len should be strlen + null
-	filename_len = len + VG_(strlen)(SIGRIND_SHMEM_NAME) + 1; 
-	HChar *shmem_path = VG_(malloc)("sgl.open_shmem",filename_len*sizeof(*shmem_path));
-	VG_(snprintf)(shmem_path, filename_len, "%s/%s", tmp_dir, SIGRIND_SHMEM_NAME); 
+	filename_len = tmpdir_len + VG_(strlen)(SIGRIND_SHMEM_NAME) + 2; 
+	HChar shmem_path[filename_len];
+	VG_(snprintf)(shmem_path, filename_len, "%s/%s", SGL_(clo).tmpdir, SIGRIND_SHMEM_NAME); 
 
-	filename_len = len + VG_(strlen)(SIGRIND_EMPTYFIFO_NAME) + 1; 
-	HChar *emptyfifo_path = VG_(malloc)("sgl.open_shmem",filename_len*sizeof(*emptyfifo_path));
-	VG_(snprintf)(emptyfifo_path, filename_len, "%s/%s", tmp_dir, SIGRIND_EMPTYFIFO_NAME); 
+	filename_len = tmpdir_len + VG_(strlen)(SIGRIND_EMPTYFIFO_NAME) + 2; 
+	HChar emptyfifo_path[filename_len];
+	VG_(snprintf)(emptyfifo_path, filename_len, "%s/%s", SGL_(clo).tmpdir, SIGRIND_EMPTYFIFO_NAME); 
 
-	filename_len = len + VG_(strlen)(SIGRIND_FULLFIFO_NAME) + 1; 
-	HChar *fullfifo_path = VG_(malloc)("sgl.open_shmem",filename_len*sizeof(*fullfifo_path));
-	VG_(snprintf)(fullfifo_path, filename_len, "%s/%s", tmp_dir, SIGRIND_FULLFIFO_NAME); 
+	filename_len = tmpdir_len + VG_(strlen)(SIGRIND_FULLFIFO_NAME) + 2; 
+	HChar fullfifo_path[filename_len];
+	VG_(snprintf)(fullfifo_path, filename_len, "%s/%s", SGL_(clo).tmpdir, SIGRIND_FULLFIFO_NAME); 
 
 	///////////////////
 	// init values 

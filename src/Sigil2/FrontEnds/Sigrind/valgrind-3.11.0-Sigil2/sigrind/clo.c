@@ -410,13 +410,14 @@ Bool CLG_(process_cmd_line_option)(const HChar* arg)
 {
    const HChar* tmp_str;
 
-   if      VG_STR_CLO(arg, "--tmp-dir", tmp_str) {
-      Int len = VG_(strlen)(tmp_str)+1;
-      SGL_(clo).tmp_dir = VG_(malloc)("sgl.clo.defaults", len*sizeof(*(SGL_(clo).tmp_dir)));
-      VG_(strncpy)(SGL_(clo).tmp_dir, tmp_str, len);
-      SGL_(clo).tmp_dir_len = len;
-   }
+   /* XXX tmpdir should not be set by the end-user, only for Sigil2 use */
+   if      VG_STR_CLO(arg, "--tmp-dir", SGL_(clo).tmpdir) {}
+   else if VG_STR_CLO(arg, "--at-func", SGL_(clo).collect_func) {}
 
+   /* XXX
+    * ML: leftover from Callgrind. Most of these should be left at defaults
+    * for Sigrind, except perhaps --separate callers depending on the application
+    */
    else if VG_BOOL_CLO(arg, "--skip-plt", CLG_(clo).skip_plt) {}
 
    else if VG_BOOL_CLO(arg, "--collect-jumps", CLG_(clo).collect_jumps) {}
@@ -617,7 +618,8 @@ void CLG_(print_debug_usage)(void)
 
 void SGL_(set_clo_defaults)(void)
 {
-  SGL_(clo).tmp_dir_len = 0;
+  SGL_(clo).tmpdir       = NULL;
+  SGL_(clo).collect_func = NULL;
 }
 
 void CLG_(set_clo_defaults)(void)
