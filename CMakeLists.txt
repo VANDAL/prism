@@ -13,13 +13,15 @@ endif ()
 enable_testing( true )
 include( CTest )
 
+include_directories(include/optionparser-1.4/src)
 include_directories(include/spdlog/include/spdlog)
 
 include_directories(src)
 set(SIGIL2_DIR src/Sigil2)
 set(SOURCES
+	${SIGIL2_DIR}/Sigil.cpp
+	${SIGIL2_DIR}/Plugins.cpp
 	${SIGIL2_DIR}/InstrumentationIface.cpp
-	${SIGIL2_DIR}/OptionParser.cpp
 	${SIGIL2_DIR}/EventManager.cpp
 	${SIGIL2_DIR}/main.cpp)
 add_executable(sigil2 ${SOURCES})

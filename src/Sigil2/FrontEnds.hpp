@@ -7,11 +7,9 @@
 
 namespace sgl
 {
-void frontendSigrind (
-		const std::string& user_exec, 
-		const std::string& sigrind_dir, 
-		const std::string& tmp_dir
-		);
+void frontendSigrind(const std::string& user_exec, const std::string& args); 
+
+//const std::string& tmp_dir);
 };
 
 #endif

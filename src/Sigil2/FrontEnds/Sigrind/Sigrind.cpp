@@ -16,7 +16,9 @@
 
 #include "Sigil2/FrontEnds.hpp"
 #include "Sigil2/EventManager.hpp" 
+#include "Sigil2/InstrumentationIface.h" 
 #include "Sigrind.hpp"
+#include "spdlog.h"
 
 /* Sigil2's Valgrind frontend forks Valgrind off as a separate process;
  * Valgrind sends the frontend dynamic events from the application via shared memory */
@@ -196,15 +198,16 @@ void Sigrind::produceFromBuffer(unsigned int idx, unsigned int used)
 		switch(buf[i].tag)
 		{
 		case SGL_MEM_TAG:
-			EventManager::instance().addEvent(buf[i].mem);
+			SGLnotifyMem(buf[i].mem);
 			break;
 		case SGL_COMP_TAG:
-			EventManager::instance().addEvent(buf[i].comp);
+			SGLnotifyComp(buf[i].comp);
 			break;
 		case SGL_SYNC_TAG:
-			EventManager::instance().addEvent(buf[i].sync);
+			SGLnotifySync(buf[i].sync);
 			break;
 		default:
+			throw std::runtime_error("Received unhandled event in Sigrind");
 			break;
 		}
 	}
@@ -240,16 +243,15 @@ char* const* tokenizeOpts (const std::string &tmp_dir, const std::string &user_e
 	return vg_opts;
 }
 
-void startValgrind (
-		const std::string &user_exec, 
-		const std::string &sigrind_dir, 
-		const std::string &tmp_dir
-		) 
+void startValgrind (const std::string &user_exec, const std::string &args, const std::string &tmp_path) 
 {
-	std::string vg_exec = sigrind_dir + "/valgrind";
+	/* check for valgrind directory 
+	 * TODO hardcoded, check args instead */
+	std::string valgrind_dir("./vg-bin/bin");
+	std::string vg_exec = valgrind_dir + "/valgrind";
 
 	/* execvp() expects a const char* const* */
-	auto vg_opts = tokenizeOpts(tmp_dir, user_exec);
+	auto vg_opts = tokenizeOpts(tmp_path, user_exec);
 
 	/* kickoff Valgrind */
 	if ( execvp(vg_exec.c_str(), vg_opts) == -1 )
@@ -260,24 +262,28 @@ void startValgrind (
 }
 }; //end namespace
 
-void frontendSigrind (
-		const std::string &user_exec, 
-		const std::string &sigrind_dir, 
-		const std::string &tmp_dir
-		) 
+void frontendSigrind (const std::string &user_exec, const std::string &args)
 {
-	assert ( !(user_exec.empty() || sigrind_dir.empty() || tmp_dir.empty()) );
+	assert ( !(user_exec.empty() || args.empty()) );
+
+	/* check IPC path */
+	char* tmp_path = std::getenv("TMPDIR");
+	if (tmp_path == nullptr)
+	{
+		spdlog::get("sigil2-console")->info() << "TMPDIR not detected, defaulting to /tmp";
+		tmp_path = strdup("/tmp");
+	}
 
 	try
 	{
-		Sigrind sigrind_iface(tmp_dir);
+		Sigrind sigrind_iface(tmp_path);
 
 		pid_t pid = fork();
 		if ( pid >= 0 )
 		{
 			if ( pid == 0 )
 			{
-				startValgrind(user_exec, sigrind_dir, tmp_dir);
+				startValgrind(user_exec, args, tmp_path);
 			}
 			else
 			{

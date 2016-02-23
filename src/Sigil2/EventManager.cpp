@@ -76,8 +76,15 @@ void EventManager::flushNotifications(EventBuffer& buf)
 				notify(ev.sync);
 			}
 			break;
+		case EvTag::SGL_CXT_TAG:
+			for (auto notify : cxt_observers)
+			{
+				notify(ev.cxt);
+			}
+			break;
 		default:
-			/* Context and Control Flow events not implemented yet */
+			/* control flow unimplemented */
+			throw std::runtime_error("Received unhandled event in EventManager");
 			break;
 		}
 	}

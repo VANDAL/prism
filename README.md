@@ -63,11 +63,11 @@ Example using Valgrind frontend and [SynchroTraceGen](http://ece.drexel.edu/facu
 **Make sure an environment variable `TMPDIR` is set to a directory mounted as a tmpfs**. Sigil2 uses this for IPC.  
 For example, on CentOS 7, the user should set `TMPDIR` to `/dev/shm`. By default, Sigil2 will set this to `/tmp`.
 
-`$ TMPDIR="/dev/shm" ./sigil2 --frontend=vg --backend=STGen --exec="myprogram --with --args"`
+`$ TMPDIR="/dev/shm" ./sigil2 --frontend=valgrind --backend=stgen --exec="myprogram --with --args"`
 
 **For multi-threaded capture**, make sure you've [compiled the wrapper library as above](#multi-threaded-workload-capture):
 
-`$ TMPDIR="/run" LD_PRELOAD="./sglwrapper.so" ./sigil2 --frontend=vg --backend=STGen --exec="myprogram --with --args"`
+`$ TMPDIR="/dev/shm" LD_PRELOAD="./sglwrapper.so" ./sigil2 --frontend=vg --backend=STGen --exec="myprogram --with --args"`
 
 ## Developing for Sigil2
 See the [wiki](https://github.com/mdlui/Sigil2/wiki)

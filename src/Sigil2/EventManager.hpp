@@ -17,8 +17,6 @@
  *
  * Multiple buffers exist to ensure that the backend is never
  * waiting for data to consume.
- *
- * TODO does a lock-free queue make more sense here?
  */
 namespace sgl
 {
@@ -33,11 +31,17 @@ using CleanupObservers = std::vector<std::function<void()>>;
 class EventManager
 {
 public:
-	static EventManager& instance()
-	{
-		static EventManager mgr;
-		return mgr;
+	EventManager() : 
+		full(0),empty(MAX_BUFFERS),
+		prod_idx(MAX_BUFFERS), cons_idx(MAX_BUFFERS)
+	{ 
+		empty.P();
+		prod_buf = &bufbuf[prod_idx.increment()];
+		finish_consumer = false;
+		startConsumer();
 	}
+	EventManager(const EventManager&) = delete;
+	EventManager& operator=(const EventManager&) = delete;
 
 	/* Plugins add observers in the form of function callbacks */
 	void addObserver(std::function<void(SglMemEv)> obs);
@@ -73,20 +77,6 @@ public:
 	}
 
 private:
-	EventManager() : 
-		full(0),empty(MAX_BUFFERS),
-		prod_idx(MAX_BUFFERS), cons_idx(MAX_BUFFERS)
-	{ 
-		empty.P();
-		prod_buf = &bufbuf[prod_idx.increment()];
-		finish_consumer = false;
-		startConsumer();
-	}
-	EventManager(const EventManager&) = delete;
-	EventManager(EventManager&&) = delete;
-	EventManager& operator=(const EventManager&) = delete;
-	EventManager& operator=(EventManager&&) = delete;
-
 	Observers<SglMemEv> mem_observers;
 	Observers<SglCompEv> comp_observers;
 	Observers<SglSyncEv> sync_observers;

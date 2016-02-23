@@ -29,9 +29,6 @@ void SGLnotifySync(SglSyncEv ev);
  */
 //void SGLnotifyCF(SglCFEv ev);
 
-/* Application complete */
-void SGLnotifyFinish();
-
 #ifdef __cplusplus
 }
 #endif
