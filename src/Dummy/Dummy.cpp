@@ -8,6 +8,8 @@ unsigned long comp_cnt;
 unsigned long sync_cnt;
 };
 
+namespace dummy
+{
 void countMems(SglMemEv ev)
 {
 	++mem_cnt;
@@ -32,3 +34,4 @@ void cleanup()
 	logger->info("Total Compute Events: {}", comp_cnt);
 	logger->info("Total Synchronization Events: {}", sync_cnt); 
 }
+}; //end namespace dummy

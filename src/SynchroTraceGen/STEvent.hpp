@@ -5,6 +5,7 @@
 #include <set>
 #include <unordered_map>
 #include <memory>
+#include "BlockPoolAllocator.hpp"
 #include "Sigil2/Primitive.h"
 #include "spdlog.h"
 #include "ShadowMemory.hpp"
@@ -45,15 +46,15 @@ struct STCompEvent
 	struct AddrSet
 	{
 		using AddrRange = pair<Addr,Addr>;
+	private:
+		multiset<AddrRange, std::less<AddrRange>, BlockPoolAllocator<AddrRange>> ms;
+	public:
 		/* A range of addresses is specified by the pair.
 		 * This call inserts that range and merges existing ranges
 		 * in order to keep the set of addresses unique */
 		void insert(const AddrRange &range);
 		void clear();
-		const multiset<AddrRange>& get(){ return ms; }
-	
-	private:
-		multiset<AddrRange> ms;
+		const decltype(ms)& get(){ return ms; }
 	};
 
 	UInt iop_cnt;

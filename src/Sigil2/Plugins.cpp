@@ -25,8 +25,8 @@ SIGIL_REGISTER(STGen)
 #include "Dummy/Dummy.hpp"
 SIGIL_REGISTER(dummy)
 {
-	EVENT_HANDLER(countMems);
-	EVENT_HANDLER(countComps);
-	EVENT_HANDLER(countSyncs);
-	FINISH(cleanup);
+	EVENT_HANDLER(dummy::countMems);
+	EVENT_HANDLER(dummy::countComps);
+	EVENT_HANDLER(dummy::countSyncs);
+	FINISH(dummy::cleanup);
 }

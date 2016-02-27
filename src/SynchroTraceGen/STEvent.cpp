@@ -11,8 +11,6 @@ using std::stringstream;
 using std::make_pair;
 using std::make_tuple;
 using std::get;
-using std::hex;
-using std::dec;
 
 ////////////////////////////////////////////////////////////
 // SynchroTrace - Compute Event
@@ -36,7 +34,7 @@ void STCompEvent::flush()
 			<< "," << flop_cnt
 			<< "," << load_cnt
 			<< "," << store_cnt
-			<< hex;
+			<< std::hex;
 
 		/* log write addresses */
 		for (auto& addr_pair : stores_unique.get())
@@ -142,10 +140,10 @@ void STCommEvent::flush()
 			logmsg << " # " //unique write delimiter
 				<< get<0>(edge) 
 				<< " " << get<1>(edge)
-				<< hex
+				<< std::hex
 				<< " " << get<2>(edge)
 				<< " " << get<3>(edge)
-				<< dec;
+				<< std::dec;
 		}
 
 		logger->info(logmsg.str());
@@ -197,7 +195,7 @@ void STSyncEvent::flush(UChar type, Addr sync_addr)
 		<< "," << "pth_ty:"
 		<< (int)type
 		<< "^"
-		<< hex << sync_addr;
+		<< std::hex << sync_addr;
 	logger->info(logmsg.str());
 }
 	
@@ -206,10 +204,6 @@ void STSyncEvent::flush(UChar type, Addr sync_addr)
 ////////////////////////////////////////////////////////////
 void STCompEvent::AddrSet::insert(const AddrRange &range)
 {
-/* XXX ML: profiled SynchroTraceGen and this function is
- * costing the majority of performance in the backend;
- * consider implementing a custom data structure */
-
 /* TODO clean up flow control */
 
 	assert (range.first <= range.second);
@@ -246,14 +240,14 @@ void STCompEvent::AddrSet::insert(const AddrRange &range)
 
 	if (range.first == it->second+1)
 	{
-		/* extend 'it' by 'range' */
+		/* extend 'it' by 'range'; recheck, may overrun other addresses */
 		auto tmp = make_pair(it->first, range.second);
 		ms.erase(it);
 		insert(tmp);
 	}
 	else if (range.second+1 == it->first)
 	{
-		/* extend 'it' by 'range' */
+		/* extend 'it' by 'range'; recheck, may overrun other addresses */
 		auto tmp = make_pair(range.first, it->second);
 		ms.erase(it);
 		insert(tmp);
@@ -268,7 +262,7 @@ void STCompEvent::AddrSet::insert(const AddrRange &range)
 		if (range.second > it->second)
 		/* extending 'it' to the end of 'range' */
 		{
-			/* merge, delete, and recheck; may overrun other addresses */
+			/* merge, delete, and recheck, may overrun other addresses */
 			auto tmp = make_pair(it->first, range.second);
 			ms.erase(it);
 			insert(tmp);
@@ -277,15 +271,7 @@ void STCompEvent::AddrSet::insert(const AddrRange &range)
 	}
 	else /* if (range.first < it->first) */
 	{
-		if (range.second+1 == it->first)
-		/* can append 'it' to 'range' */
-		{
-			/* merge, delete, and insert; no need to recheck */
-			auto tmp = make_pair(range.first, it->second);
-			ms.erase(it);
-			ms.insert(tmp);
-		}
-		else if (range.second < it->first)
+		if (range.second < it->first)
 		/* no overlap */
 		{
 			/* nothing to merge */
@@ -295,14 +281,14 @@ void STCompEvent::AddrSet::insert(const AddrRange &range)
 		/* begin address is extended */
 		{
 			/* merge, delete, and insert; no need to recheck */
-			auto tmp = make_pair(range.first, it->second);
+			Addr second = it->second;
 			ms.erase(it);
-			ms.insert(tmp);
+			ms.emplace(range.first, second);
 		}
 		else /* if(range.second > it->second) */
 		/* 'range' encompasses 'it' */
 		{
-			/* delete old range and insert bigger range */
+			/* delete old range and insert bigger range; recheck */
 			ms.erase(it);
 			insert(range);
 		}
