@@ -217,7 +217,7 @@ namespace
 {
 char* const* tokenizeOpts (const std::string &tmp_dir, const std::string &user_exec)
 {
-	assert( !user_exec.empty() );
+	assert( !tmp_dir.empty() );
 
 	/* FIXME this does not account for quoted arguments with spaces
 	 * Both whitespace and quote pairs should be delimiters */
@@ -264,7 +264,7 @@ void startValgrind (const std::string &user_exec, const std::string &args, const
 
 void frontendSigrind (const std::string &user_exec, const std::string &args)
 {
-	assert ( !(user_exec.empty() || args.empty()) );
+	assert ( !user_exec.empty() );
 
 	/* check IPC path */
 	char* tmp_path = std::getenv("TMPDIR");

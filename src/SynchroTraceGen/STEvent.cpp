@@ -6,7 +6,6 @@
 
 namespace STGen
 {
-
 using std::stringstream;
 using std::make_pair;
 using std::make_tuple;
@@ -32,82 +31,88 @@ void STCompEvent::flush()
 			<< "," << thread_id 
 			<< "," << iop_cnt
 			<< "," << flop_cnt
-			<< "," << load_cnt
-			<< "," << store_cnt
-			<< std::hex;
+			<< "," << thread_local_load_cnt
+			<< "," << thread_local_store_cnt
+			<< std::hex << std::showbase;
 
 		/* log write addresses */
 		for (auto& addr_pair : stores_unique.get())
 		{
+			assert (addr_pair.first <= addr_pair.second);
 			logmsg << " $ " //unique write delimiter
-				<< addr_pair.first 
-				<< " "
+				<< addr_pair.first << " "
 				<< addr_pair.second;
 		}
 
 		/* log read addresses */
 		for (auto& addr_pair : loads_unique.get())
 		{
+			assert (addr_pair.first <= addr_pair.second);
 			logmsg << " * " //unique read delimiter
-				<< addr_pair.first 
-				<< " "
+				<< addr_pair.first << " "
 				<< addr_pair.second;
 		}
 
 		logger->info(logmsg.str());
-		event_id++;
+		++event_id;
 		reset();
 	}
 }
 
 void STCompEvent::updateWrites(Addr begin, Addr size)
 {
-	is_empty = false;
-	total_events++;
 	stores_unique.insert(make_pair(begin, begin+size-1));
 }
 
 void STCompEvent::updateWrites(SglMemEv ev)
 {
-	is_empty = false;
-	total_events++;
 	stores_unique.insert(make_pair(ev.begin_addr, ev.begin_addr+ev.size-1));
 }
 
 void STCompEvent::updateReads(Addr begin, Addr size)
 {
-	is_empty = false;
-	total_events++;
 	loads_unique.insert(make_pair(begin, begin+size-1));
 }
 
 void STCompEvent::updateReads(SglMemEv ev)
 {
-	is_empty = false;
-	total_events++;
 	loads_unique.insert(make_pair(ev.begin_addr, ev.begin_addr+ev.size-1));
+}
+
+void STCompEvent::incWrites()
+{
+	is_empty = false;
+	++thread_local_store_cnt;
+	++total_events;
+}
+
+void STCompEvent::incReads()
+{
+	is_empty = false;
+	++thread_local_load_cnt;
+	++total_events;
 }
 
 void STCompEvent::incIOP()
 {
 	is_empty = false;
-	iop_cnt++;
-	total_events++;
+	++iop_cnt;
+	++total_events;
 }
 
 void STCompEvent::incFLOP()
 {
 	is_empty = false;
-	flop_cnt++;
-	total_events++;
+	++flop_cnt;
+	++total_events;
 }
 
 void STCompEvent::reset()
 {
 	iop_cnt = 0;
 	flop_cnt = 0;
-	store_cnt = 0;
-	load_cnt = 0;
+	thread_local_store_cnt = 0;
+	thread_local_load_cnt = 0;
 	total_events = 0;
 	stores_unique.clear();
 	loads_unique.clear();
@@ -134,19 +139,26 @@ void STCommEvent::flush()
 		logmsg << event_id
 			<< "," << thread_id;
 
+		assert (comms.empty() == false);
+
 		/* log comm edges between current and other threads */
 		for (auto& edge : comms)
 		{
-			logmsg << " # " //unique write delimiter
-				<< get<0>(edge) 
-				<< " " << get<1>(edge)
-				<< std::hex
-				<< " " << get<2>(edge)
-				<< " " << get<3>(edge)
-				<< std::dec;
+			for (auto& addr_pair : get<2>(edge).get())
+			{
+				assert (addr_pair.first <= addr_pair.second);
+				logmsg << " # "/*unique write delimiter*/
+					<< get<0>(edge) << " "
+					<< get<1>(edge) << " "
+					<< std::hex << std::showbase
+					<< addr_pair.first << " "
+					<< addr_pair.second
+					<< std::dec;
+			}
 		}
 
 		logger->info(logmsg.str());
+		++event_id;
 		reset();
 	}
 }
@@ -154,22 +166,23 @@ void STCommEvent::flush()
 void STCommEvent::addEdge(TId writer, EId writer_event, Addr addr)
 {
 	is_empty = false;
+
 	if (comms.empty())
 	{
-		comms.push_back(make_tuple(writer, writer_event, addr, addr)); //new edge
+		comms.push_back(make_tuple(writer, writer_event, AddrSet(make_pair(addr, addr))));
 	}
-	else 
+	else
 	{
-		auto& last_writer = get<0>(comms.back());
-		if/*read from same thread*/( writer == last_writer )
+		for (auto& edge : comms)
 		{
-			auto& last_addr = get<3>(comms.back());
-			last_addr = addr;
+			if (get<0>(edge) == writer && get<1>(edge) == writer_event)
+			{
+				get<2>(edge).insert(make_pair(addr,addr));
+				return;
+			}
 		}
-		else/*new thread*/
-		{
-			comms.push_back(make_tuple(writer, writer_event, addr, addr)); //new edge
-		}
+
+		comms.push_back(make_tuple(writer, writer_event, AddrSet(make_pair(addr, addr))));
 	}
 }
 
@@ -193,16 +206,18 @@ void STSyncEvent::flush(UChar type, Addr sync_addr)
 	logmsg << event_id
 		<< "," << thread_id
 		<< "," << "pth_ty:"
-		<< (int)type
+		<< static_cast<int>(type)
 		<< "^"
-		<< std::hex << sync_addr;
+		<< std::hex << std::showbase
+		<< sync_addr;
 	logger->info(logmsg.str());
+	++event_id;
 }
 	
 ////////////////////////////////////////////////////////////
 // Unique Address Set
 ////////////////////////////////////////////////////////////
-void STCompEvent::AddrSet::insert(const AddrRange &range)
+void AddrSet::insert(const AddrRange &range)
 {
 /* TODO clean up flow control */
 
@@ -295,7 +310,7 @@ void STCompEvent::AddrSet::insert(const AddrRange &range)
 	}
 }
 
-void STCompEvent::AddrSet::clear()
+void AddrSet::clear()
 {
 	ms.clear();
 }

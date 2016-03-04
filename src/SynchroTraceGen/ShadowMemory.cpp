@@ -1,5 +1,6 @@
 #include "ShadowMemory.hpp"
 #include <cassert>
+#include <iostream>
 
 namespace STGen
 {
@@ -78,7 +79,12 @@ ShadowMemory::~ShadowMemory()
 ///////////////////////////////////////
 inline ShadowMemory::SecondaryMap& ShadowMemory::getSMFromAddr(Addr addr)
 {
-	assert( addr <= max_primary_addr );
+	if (addr > max_primary_addr)
+	{
+		//TODO clean up, common fatal macro
+		std::cerr << "ERROR: shadow memory max address limit" << std::endl;
+		exit(1);
+	}
 
 	SecondaryMap*& SM = (*PM)[getPMidx(addr)];
 	if (SM == nullptr)

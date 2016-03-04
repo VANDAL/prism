@@ -5,7 +5,7 @@
 #include <set>
 #include <unordered_map>
 #include <memory>
-#include "BlockPoolAllocator.hpp"
+#include "MemoryPool.h"
 #include "Sigil2/Primitive.h"
 #include "spdlog.h"
 #include "ShadowMemory.hpp"
@@ -27,6 +27,25 @@ using std::tuple;
 using std::vector;
 using std::multiset;
 
+/* Helper class to track unique ranges of addresses */
+struct AddrSet
+{
+	using AddrRange = pair<Addr,Addr>;
+	AddrSet(){ }
+	AddrSet(const AddrRange &range) { ms.insert(range); }
+	AddrSet(const AddrSet &other) { ms = other.ms; }
+	AddrSet& operator=(const AddrSet&) = delete;
+private:
+	multiset<AddrRange, std::less<AddrRange>, MemoryPool<AddrRange>> ms;
+public:
+	/* A range of addresses is specified by the pair.
+	 * This call inserts that range and merges existing ranges
+	 * in order to keep the set of addresses unique */
+	void insert(const AddrRange &range);
+	void clear();
+	const decltype(ms)& get(){ return ms; }
+};
+
 /**
  * A SynchroTrace Compute Event.
  *
@@ -42,20 +61,6 @@ using std::multiset;
  */
 struct STCompEvent 
 {
-	/* Helper class to track unique ranges of addresses */
-	struct AddrSet
-	{
-		using AddrRange = pair<Addr,Addr>;
-	private:
-		multiset<AddrRange, std::less<AddrRange>, BlockPoolAllocator<AddrRange>> ms;
-	public:
-		/* A range of addresses is specified by the pair.
-		 * This call inserts that range and merges existing ranges
-		 * in order to keep the set of addresses unique */
-		void insert(const AddrRange &range);
-		void clear();
-		const decltype(ms)& get(){ return ms; }
-	};
 
 	UInt iop_cnt;
 	UInt flop_cnt;	
@@ -63,8 +68,8 @@ struct STCompEvent
 	/* Stores and Loads originating from the current thread
 	 * I.e. non-edge mem events. These are the count for 'events',
 	 * not a count for bytes stored/loaded */
-	UInt store_cnt;
-	UInt load_cnt;
+	UInt thread_local_store_cnt;
+	UInt thread_local_load_cnt;
 
 	/* Holds a range for the addresses touched by local stores/loads */
 	AddrSet stores_unique; 
@@ -84,6 +89,10 @@ public:
 	void updateWrites(Addr begin, Addr size);
 	void updateReads(SglMemEv ev);
 	void updateReads(Addr begin, Addr size);
+
+	/* Compute Event metadata */
+	void incWrites();
+	void incReads();
 	void incIOP();
 	void incFLOP();
 	
@@ -102,7 +111,7 @@ private:
  */
 struct STCommEvent
 {
-	typedef vector<tuple<TId, EId, Addr, Addr>> LoadEdges;
+	typedef vector<tuple<TId, EId, AddrSet>> LoadEdges;
 	/**< vector of: 
 	 *     producer thread id, 
 	 *     producer event id, 

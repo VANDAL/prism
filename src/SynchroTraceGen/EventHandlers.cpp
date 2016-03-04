@@ -133,7 +133,8 @@ void EventHandlers::onMemEv(SglMemEv ev)
 		break;
 	}
 
-	if ( st_comp_ev.store_cnt > 99 || st_comp_ev.load_cnt > 99 )
+	/* hardcoding STGen to split STEvents at 100 memory events */
+	if ( st_comp_ev.thread_local_store_cnt > 99 || st_comp_ev.thread_local_load_cnt > 99 )
 	{
 		st_comp_ev.flush();
 	}
@@ -141,8 +142,7 @@ void EventHandlers::onMemEv(SglMemEv ev)
 
 void EventHandlers::onLoad(const SglMemEv& ev)
 {
-	/* incremented per event */
-	st_comp_ev.load_cnt++;
+	bool is_comm_edge = false;
 
 	/* each byte of the read may have been touched by a different thread */
 	for/*each byte*/( UInt i=0; i<ev.size; ++i )
@@ -157,6 +157,7 @@ void EventHandlers::onLoad(const SglMemEv& ev)
 				&& (writer_thread != SO_UNDEF )) /* FIXME treat a read/write to an address 
 												   with UNDEF thread as local compute event */
 		{
+			is_comm_edge = true;
 			st_comp_ev.flush();
 			st_comm_ev.addEdge(writer_thread, shad_mem.getWriterEID(curr_addr), curr_addr);
 		}
@@ -165,20 +166,28 @@ void EventHandlers::onLoad(const SglMemEv& ev)
 			st_comm_ev.flush();
 			st_comp_ev.updateReads(curr_addr, 1);
 		}
+
+		shad_mem.updateReader(curr_addr, 1, curr_thread_id);
+	}
+
+	/* A situation when a singular memory event is both 
+	 * a communication edge and a local thread read is
+	 * rare and not robustly accounted for. A single address
+	 * that is a communication edge counts the whole event as
+	 * a communication event, and not as part of a
+	 * computation event */
+	if (is_comm_edge == false)
+	{
+		st_comp_ev.incReads();
 	}
 }
 
 void EventHandlers::onStore(const SglMemEv& ev)
 {
-	/* incremented per event */
-	st_comp_ev.store_cnt++;
-
+	st_comp_ev.incWrites();
 	st_comp_ev.updateWrites(ev);
-	shad_mem.updateWriter(
-			ev.begin_addr, 
-			ev.size,
-			curr_thread_id,
-			curr_event_id);
+
+	shad_mem.updateWriter( ev.begin_addr, ev.size, curr_thread_id, curr_event_id);
 }
 
 ////////////////////////////////////////////////////////////
@@ -188,7 +197,7 @@ void EventHandlers::cleanup()
 {
 	st_comm_ev.flush();
 	st_comp_ev.flush();
-	/* sync events already flush immediately */
+	// sync events already flush immediately
 
 	stdout_logger->info("Flushing thread metadata");
 
