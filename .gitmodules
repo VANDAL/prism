@@ -4,3 +4,6 @@
 [submodule "include/spdlog"]
 	path = include/spdlog
 	url = https://github.com/mdlui/spdlog
+[submodule "include/whereami"]
+	path = include/whereami
+	url = https://github.com/gpakosz/whereami

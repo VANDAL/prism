@@ -1,5 +1,6 @@
 #include <iterator>
 #include <sstream>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <cassert>
@@ -19,6 +20,7 @@
 #include "Sigil2/InstrumentationIface.h" 
 #include "Sigrind.hpp"
 #include "spdlog.h"
+#include "whereami.h"
 
 /* Sigil2's Valgrind frontend forks Valgrind off as a separate process;
  * Valgrind sends the frontend dynamic events from the application via shared memory */
@@ -118,6 +120,9 @@ void Sigrind::makeNewFifo(const char* path) const
 
 void Sigrind::connectValgrind()
 {
+	/* XXX Sigil might get stuck waiting for Valgrind
+	 * if Valgrind unexpectedly exits before trying
+	 * to connect */
 	emptyfd = open(empty_file.c_str(), O_WRONLY);
 	fullfd = open(full_file.c_str(), O_RDONLY);
 	if ( emptyfd < 1 || fullfd < 1 )
@@ -247,8 +252,47 @@ void startValgrind (const std::string &user_exec, const std::string &args, const
 {
 	/* check for valgrind directory 
 	 * TODO hardcoded, check args instead */
-	std::string valgrind_dir("./vg-bin/bin");
-	std::string vg_exec = valgrind_dir + "/valgrind";
+
+	int len, dirname_len;
+	len = wai_getExecutablePath(NULL, 0, &dirname_len);
+	char path[len+1];
+
+	if (len > 0)
+	{
+		wai_getExecutablePath(path, len, &dirname_len);
+		path[dirname_len] = '\0';
+	}
+	else
+	{
+		throw std::runtime_error("Couldn't find executable path");
+	}
+
+	/* check if function capture is available 
+	 * (for multithreaded lib intercepts) */
+	std::string sglwrapper(std::string(path) + std::string("/sglwrapper.so"));
+	std::ifstream sofile(sglwrapper);
+	if (sofile.good() == true)
+	{
+		const char *get_preload = getenv("LD_PRELOAD");
+		std::string set_preload;
+		if (get_preload == nullptr) set_preload = sglwrapper;
+		else set_preload = std::string(get_preload) + std::string(":") + sglwrapper;
+		setenv("LD_PRELOAD", set_preload.c_str(), true);
+	}
+	else
+	{
+		spdlog::get("sigil2-console")->info() << "'sglwrapper.so' not found";
+		spdlog::get("sigil2-console")->info() << "Synchronization Events will not be detected";
+	}
+	sofile.close();
+
+	/* HACK if the user decides to move the install folder, valgrind will
+	 * get confused and require that VALGRIND_LIB be set.
+	 * Set this variable for the user to avoid confusion */
+	std::string vg_lib = std::string(path) + std::string("/vg/lib/valgrind");
+	setenv("VALGRIND_LIB", vg_lib.c_str(), true);
+
+	std::string vg_exec = std::string(path) + std::string("/vg/bin/valgrind");
 
 	/* execvp() expects a const char* const* */
 	auto vg_opts = tokenizeOpts(tmp_path, user_exec);
@@ -264,13 +308,13 @@ void startValgrind (const std::string &user_exec, const std::string &args, const
 
 void frontendSigrind (const std::string &user_exec, const std::string &args)
 {
-	assert ( !user_exec.empty() );
+	assert (user_exec.empty() == false);
 
 	/* check IPC path */
 	char* tmp_path = std::getenv("TMPDIR");
 	if (tmp_path == nullptr)
 	{
-		spdlog::get("sigil2-console")->info() << "TMPDIR not detected, defaulting to /tmp";
+		spdlog::get("sigil2-console")->info() << "'TMPDIR' not detected, defaulting to '/tmp'";
 		tmp_path = strdup("/tmp");
 	}
 

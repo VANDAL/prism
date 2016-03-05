@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
 		{"white", "\033[37m"},
 		{"end", "\033[0m"}
 	};
-	spdlog::stdout_logger_st("sigil2-console");
+	spdlog::stderr_logger_st("sigil2-console");
 	std::string header = "[Sigil2]";
 	if (isatty(fileno(stdout))) header = "[" + ANSIcolors_fg["red"] + "Sigil2" + ANSIcolors_fg["end"] + "]";
 	spdlog::get("sigil2-console")->set_pattern(header+" %v");

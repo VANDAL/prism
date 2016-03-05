@@ -70,6 +70,7 @@ flags = [
 '-I','../include',
 '-I','../include/spdlog/include/spdlog',
 '-I','../include/Catch/include',
+'-I','../include/whereami/src',
 '-I',
 './ClangCompleter',
 '-isystem',

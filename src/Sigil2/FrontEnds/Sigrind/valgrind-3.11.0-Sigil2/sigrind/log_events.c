@@ -85,6 +85,10 @@ void SGL_(init_IPC)()
 	// init values 
 	///////////////////
 	shmem = open_shmem(shmem_path, VKI_O_RDWR);
+
+	/* XXX Valgrind might get stuck waiting for Sigil
+	 * if Sigil unexpectedly exits before trying
+	 * to connect */
 	emptyfd = open_fifo(emptyfifo_path, VKI_O_RDONLY);
 	fullfd =  open_fifo(fullfifo_path, VKI_O_WRONLY);
 
@@ -238,10 +242,12 @@ void SGL_(log_sync)(UChar type, UWord data)
 
 void SGL_(log_fn_entry)(fn_node* fn)
 {
+	//TODO
 }
 
 void SGL_(log_fn_leave)(fn_node* fn)
 {
+	//TODO
 }
 
 
@@ -272,7 +278,7 @@ static int open_fifo(const HChar *fifo_path, int flags)
 	fd = VG_(safe_fd)(fd);
 	if (fd == -1)
 	{
-		VG_(umsg)("empty buffers FIFO for Sigrind failed\n");
+		VG_(umsg)("FIFO for Sigrind failed\n");
 		VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
 		VG_(exit) (1);
 	}
