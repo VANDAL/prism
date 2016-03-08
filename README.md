@@ -32,29 +32,19 @@ $ cmake -DCMAKE_BUILD_TYPE=release ..
 $ make -j
 ```
 
+The executable will be put in `build/bin`. It can be run in place, or the folder can be moved to an install location.  
+
 ## Running Sigil2
 ### Sigil2 with Valgrind
-####Multi-threaded Workload capture
-Pthread and OpenMP support is available for the **applications** compiled with the following gcc versions:
+####Multithreaded Support
+Pthread and OpenMP support is supported for **applications** compiled with the following GCC versions:
 * 4.9.2
-* 5.1.0
-* 5.3.0
 
-This can be different than the gcc version used to compile Sigil2.   
-Support for other gcc versions is contingent on whether or not symbols in the relevant libraries change.  
-Required gcc headers are provided for convenience.   
-
-Compile the function wrapper library and copy it to the `build` directory:  
-```
-$ pushd ../src/Sigil2/FrontEnds/Sigrind
-$ my_gcc_ver="gcc-<your gcc version>"
-$ gcc -Wall -I -g -DVGO_linux=1 -fPIC sglwrapper.c -I$my_gcc_ver -Ivalgrind-3.11.0-Sigil2/ -Ivalgrind-3.11.0-Sigil2/include -shared -o sglwrapper.so
-$ cp sglwrapper.so ../../../../build/bin
-$ popd
-```
+This can be different than the GCC version used to compile Sigil2.   
+Support for other GCC versions is contingent on whether or not symbols in the relevant libraries change.  
+Most pthread synchronization events *should* be captured with recent GCC versions, however OpenMP synchronization events may not be captured. 
 
 ####Workload capture
-The executable will be put in `build/bin`. It can be run in place, or the entire folder can be moved to a new location.  
 
 Users supply at least 3 arguments to Sigil2:
 * which frontend instrumentation tool is used to generate events
@@ -66,8 +56,6 @@ Example using Valgrind frontend and [SynchroTraceGen](http://ece.drexel.edu/facu
 For example, on CentOS 7, the user should set `TMPDIR` to `/dev/shm`. By default, Sigil2 will set this to `/tmp`.
 
 `$ TMPDIR="/dev/shm" bin/sigil2 --frontend=valgrind --backend=stgen --exec="myprogram --with --args"`
-
-**For multi-threaded capture**, make sure you've [compiled the wrapper library as above](#multi-threaded-workload-capture):
 
 ## Developing for Sigil2
 See the [wiki](https://github.com/mdlui/Sigil2/wiki)

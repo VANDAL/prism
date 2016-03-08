@@ -21,6 +21,7 @@
 #include "Sigrind.hpp"
 #include "spdlog.h"
 #include "whereami.h"
+#include "elfio/elfio.hpp"
 
 /* Sigil2's Valgrind frontend forks Valgrind off as a separate process;
  * Valgrind sends the frontend dynamic events from the application via shared memory */
@@ -231,6 +232,52 @@ char* const* tokenizeOpts (const std::string &tmp_dir, const std::string &user_e
 		std::istream_iterator<std::string>(iss),
 		std::istream_iterator<std::string>()};
 
+	/* Check that the binary was compiled with GCC 4.9.2. */
+	/* Naively assume the first option is the user binary.
+	 * ML: KS says that OpenMP is only guaranteed to work for
+	 * GCC 4.9.2. Pthreads should work for most recent GCC
+	 * releases. */
+	ELFIO::elfio reader;
+	bool is_gcc_compatible = false;
+	std::string gcc_version_needed("4.9.2");
+	std::string gcc_version_found;
+	if (reader.load(tokens[0]) != 0) 
+	{
+		ELFIO::Elf_Half sec_num = reader.sections.size();
+		for (int i=0; i<sec_num; ++i) 
+		{
+			ELFIO::section* psec = reader.sections[i];
+			if (psec->get_name().compare(".comment") == 0)
+			{
+				const char* p = reader.sections[i]->get_data();
+				if (p != nullptr)
+				{
+					/* Check for "GCC: (GNU) X.X.X" */
+					std::string comment(p);
+					size_t pos = comment.find_last_of(')');
+					gcc_version_found = comment.substr(pos+2);
+					if (gcc_version_found.compare(gcc_version_needed) == 0) is_gcc_compatible = true;
+				}
+				break;
+			}
+		}
+	}
+
+	if (is_gcc_compatible == false)
+	{
+		spdlog::get("sigil2-console")->info() 
+			<< '\'' << tokens[0] << '\'' << ":";
+		spdlog::get("sigil2-console")->info() 
+			<< "GCC version " << gcc_version_needed << " not detected";
+		if (gcc_version_found.empty() == false) spdlog::get("sigil2-console")->info() 
+			<< "GCC version " << gcc_version_found << " found";
+		spdlog::get("sigil2-console")->info() 
+			<< "OpenMP synchronization events may not be captured";
+		spdlog::get("sigil2-console")->info() 
+			<< "Pthread synchronization events are probably fine";
+	}
+
+	/* format valgrind options */
 	//                 program name + valgrind options + tmp_dir + user program options + null
 	int vg_opts_size = 1            + 2                + 1       + tokens.size()        + 1;
 	char** vg_opts = static_cast<char**>( malloc(vg_opts_size * sizeof(char*)) );
@@ -273,7 +320,7 @@ void startValgrind (const std::string &user_exec, const std::string &args, const
 
 	/* check if function capture is available 
 	 * (for multithreaded lib intercepts) */
-	std::string sglwrapper(std::string(path) + std::string("/sglwrapper.so"));
+	std::string sglwrapper(std::string(path) + std::string("/libsglwrapper.so"));
 	std::ifstream sofile(sglwrapper);
 	if (sofile.good() == true)
 	{
@@ -285,8 +332,12 @@ void startValgrind (const std::string &user_exec, const std::string &args, const
 	}
 	else
 	{
+		/* If the wrapper library is in LD_PRELOAD, 
+		 * but not in the sigil2 directory,
+		 * then this warning can be ignored */
 		spdlog::get("sigil2-console")->info() << "'sglwrapper.so' not found";
-		spdlog::get("sigil2-console")->info() << "Synchronization Events will not be detected";
+		spdlog::get("sigil2-console")->info() 
+			<< "Synchronization events will not be detected without the wrapper library loaded";
 	}
 	sofile.close();
 

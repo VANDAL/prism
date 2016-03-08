@@ -71,6 +71,7 @@ flags = [
 '-I','../include/spdlog/include/spdlog',
 '-I','../include/Catch/include',
 '-I','../include/whereami/src',
+'-I','../include/elfio-3.1',
 '-I',
 './ClangCompleter',
 '-isystem',

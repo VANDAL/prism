@@ -16,6 +16,7 @@ include( CTest )
 include_directories(include/whereami/src)
 include_directories(include/optionparser-1.4/src)
 include_directories(include/spdlog/include/spdlog)
+include_directories(include/elfio-3.1)
 include_directories(src)
 
 set(SIGIL2_DIR src/Sigil2)
