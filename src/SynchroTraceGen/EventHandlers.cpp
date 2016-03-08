@@ -18,9 +18,8 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 	{
 		if/*new thread*/(event_ids.find(ev.id) == event_ids.cend())
 		{
-			stdout_logger->info()
-				<< "creating thread: " << ev.id;
-		}
+			thread_creates.push_back(ev.id);
+		} 
 		setThread(ev.id);
 	}
 	else
@@ -57,7 +56,7 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 			break;
 		case SyncType::SGLPRIM_SYNC_CREATE:
 		{
-			thread_spawns.emplace(curr_thread_id, ev.id);
+			thread_spawns.push_back(std::make_pair(curr_thread_id, ev.id));
 		}
 			STtype = 3;
 			break;
@@ -66,7 +65,22 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 			break;
 		case SyncType::SGLPRIM_SYNC_BARRIER:
 		{
-			barrier_participants.emplace(ev.id, curr_thread_id);
+			unsigned int idx = 0;
+			for (auto &pair : barrier_participants)
+			{
+				if (pair.first == (unsigned long)ev.id) break;
+
+				++idx;
+			}
+
+			if/*no matches found*/(idx == barrier_participants.size())
+			{
+				barrier_participants.push_back(std::make_pair(ev.id, std::set<TId>({curr_thread_id})));
+			}
+			else
+			{
+				barrier_participants[idx].second.insert(curr_thread_id);
+			}
 		}
 			STtype = 5;
 			break;
@@ -190,7 +204,7 @@ void EventHandlers::onStore(const SglMemEv& ev)
 }
 
 ////////////////////////////////////////////////////////////
-// Cleanup - Flush remaining events
+// Cleanup any remaining events and logging
 ////////////////////////////////////////////////////////////
 void EventHandlers::cleanup()
 {
@@ -198,23 +212,47 @@ void EventHandlers::cleanup()
 	st_comp_ev.flush();
 	// sync events already flush immediately
 
-	stdout_logger->info("Flushing thread metadata");
+	std::string pthread_metadata("sigil.pthread.out");
+	stdout_logger->info("Flushing thread metadata to: ") << pthread_metadata;
 
+	std::ofstream pthread_file(pthread_metadata, std::ios::trunc|std::ios::out);
+	auto ostream_sink = make_shared<spdlog::sinks::ostream_sink_st>(pthread_file);
+	auto pthread_logger = make_shared<spdlog::logger>(pthread_metadata, ostream_sink);
+	pthread_logger->set_pattern("%v");
+
+	/* The order the threads were seen SHOULD match to
+	 * the order of thread_t values of the pthread_create 
+	 * calls. For example, with the valgrind frontend,
+	 * the --fair-sched=yes option should make sure each
+	 * thread is switched to in the order they were created */
+	assert( thread_spawns.size() == thread_creates.size() );
+	int create_idx = 1; //skip the first idx, which is the initial thread
 	for (auto& pair : thread_spawns)
 	{
-		/* XXX ML: is this always going to be posix threads? */
-		stdout_logger->info()
-			<< "pthread create from thread_id:" << pair.first 
-			<< " -- pthread_t:" << pair.second;
+		/* SynchroTraceSim only supports threads
+		 * that were spawned from the original thread */
+		if (pair.first == 1)
+		{
+			pthread_logger->info() << "##" << pair.second << "," << thread_creates[create_idx];
+		}
+		++create_idx; //skip past thread spawns that happened in other threads
 	}
 
-	for (auto& pair : barrier_participants)
+	/* TODO Confirm with KS and SN how barriers are processed */
+	/* Iterate through each unique barrier_t address and 
+	 * aggregate all the associated, participating threads */
+	for (auto &pair : barrier_participants)
 	{
-		stdout_logger->info()
-			<< "barrier:" << pair.first 
-			<< " -- thread:" << pair.second;
+		std::ostringstream ss;
+		ss << "**" << pair.first; 
+		for (auto &tid : pair.second)
+		{
+			ss << "," << tid;
+		}
+		pthread_logger->info(ss.str());
 	}
 
+	pthread_logger->flush();
 	stdout_logger->flush();
 	if (curr_logger != nullptr) curr_logger->flush();
 }
@@ -264,9 +302,9 @@ EventHandlers::~EventHandlers()
 {
 	/* ogzstreams MUST be closed before 
 	 * their ofstream counterparts */
-	for(auto &p : gzlog_streams)
+	for(auto &ptr : gzlog_streams)
 	{
-		p.reset();
+		ptr.reset();
 	}
 
 	/* the ofstreams will close and destruct here */

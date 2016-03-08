@@ -30,11 +30,19 @@ class EventHandlers
 	TId curr_thread_id;
 	EId curr_event_id;
 
-	/* spawner, address of spawnee thread_t */
-	std::multimap<TId, Addr> thread_spawns;
+	/* vector of spawner, address of spawnee thread_t
+	 *
+	 * All addresses associated with the same spawner are in
+	 * the order they were inserted */
+	std::vector<std::pair<TId, Addr>> thread_spawns;
 
-	/* addr of barrier_t, participating thread */
-	std::multimap<Addr, TId> barrier_participants;
+	/* each spawned thread's ID, in the order it first seen ('created') */
+	std::vector<TId> thread_creates;
+
+	/* vecotr of barrier_t addr, participating threads
+	 *
+	 * order matters for SynchroTraceSim */
+	std::vector<std::pair<Addr, std::set<TId>>> barrier_participants;
 
 	/* Compatibility with SynchroTraceSim parser */ 
 	constexpr const static char filename[18] = "sigil.events.out-";
