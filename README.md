@@ -29,7 +29,7 @@ $ git clone --recursive https://github.com/mdlui/Sigil2
 $ cd Sigil2
 $ mkdir build && cd build
 $ cmake -DCMAKE_BUILD_TYPE=release ..
-$ make -j
+$ make -j<JOBS>
 ```
 
 The executable will be put in `build/bin`. It can be run in place, or the folder can be moved to an install location.  

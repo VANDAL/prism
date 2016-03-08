@@ -72,6 +72,7 @@ flags = [
 '-I','../include/Catch/include',
 '-I','../include/whereami/src',
 '-I','../include/elfio-3.1',
+'-I','../include/zstream-cpp',
 '-I',
 './ClangCompleter',
 '-isystem',

@@ -1,13 +1,18 @@
 #ifndef STGEN_EVENTHANDLERS_H
 #define STGEN_EVENTHANDLERS_H
 
+#include <unistd.h>
+#include <memory>
+#include <fstream>
+#include "spdlog.h"
+#include "ozstream.hpp"
 #include "ShadowMemory.hpp"
 #include "STEvent.hpp"
-#include "spdlog.h"
-#include <unistd.h>
 
 namespace STGen
 {
+using std::make_shared;
+using std::shared_ptr;
 
 void onCompEv(SglCompEv ev);
 void onMemEv(SglMemEv ev);
@@ -31,13 +36,25 @@ class EventHandlers
 	/* addr of barrier_t, participating thread */
 	std::multimap<Addr, TId> barrier_participants;
 
-	constexpr const static char filename[32] = "sigil.events-";
+	/* Compatibility with SynchroTraceSim parser */ 
+	constexpr const static char filename[18] = "sigil.events.out-";
+
+	/* Output directly to a *.gz stream to save space */
+	/* Keep these ostreams open until deconstruction */
+	vector<shared_ptr<std::ofstream>> gzlog_files;
+	vector<shared_ptr<zstream::ogzstream>> gzlog_streams;
 	vector<shared_ptr<spdlog::logger>> loggers;
+
+	/* One logger for stdout,
+	 * one logger for the current thread event log */
 	shared_ptr<spdlog::logger> curr_logger;
 	shared_ptr<spdlog::logger> stdout_logger;
 
 public:
 	EventHandlers();
+	EventHandlers(const EventHandlers&) = delete;
+	EventHandlers& operator=(const EventHandlers&) = delete;
+	~EventHandlers();
 
 	void onSyncEv(SglSyncEv ev);
 	void onCompEv(SglCompEv ev);

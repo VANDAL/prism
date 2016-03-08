@@ -1,10 +1,9 @@
 #include "EventHandlers.hpp"
 #include <cassert>
-#include "spdlog.h"
+#include "sinks/ostream_sink.h"
 
 namespace STGen
 {
-
 ////////////////////////////////////////////////////////////
 // Synchronization Event Handling
 ////////////////////////////////////////////////////////////
@@ -151,10 +150,11 @@ void EventHandlers::onLoad(const SglMemEv& ev)
 		TId writer_thread = shad_mem.getWriterTID(curr_addr);
 		TId reader_thread = shad_mem.getReaderTID(curr_addr);
 
-		
-		if/*comm edge*/( (writer_thread != curr_thread_id) 
-				&& (reader_thread != curr_thread_id)
-				&& (writer_thread != SO_UNDEF )) /* FIXME treat a read/write to an address 
+		if (reader_thread != curr_thread_id) shad_mem.updateReader(curr_addr, 1, curr_thread_id);
+
+		if/*comm edge*/( (reader_thread != curr_thread_id) //TODO support for multiple readers
+				&& (writer_thread != curr_thread_id)
+				&& (writer_thread != SO_UNDEF )) /* XXX treat a read/write to an address 
 												   with UNDEF thread as local compute event */
 		{
 			is_comm_edge = true;
@@ -167,7 +167,6 @@ void EventHandlers::onLoad(const SglMemEv& ev)
 			st_comp_ev.updateReads(curr_addr, 1);
 		}
 
-		shad_mem.updateReader(curr_addr, 1, curr_thread_id);
 	}
 
 	/* A situation when a singular memory event is both 
@@ -246,7 +245,10 @@ EventHandlers::EventHandlers()
 	, st_comm_ev(curr_thread_id, curr_event_id, curr_logger)
 	, st_sync_ev(curr_thread_id, curr_event_id, curr_logger)
 {
+	gzlog_files.resize(16, nullptr);
+	gzlog_streams.resize(16, nullptr);
 	loggers.resize(16, nullptr);
+
 	stdout_logger = spdlog::stdout_logger_st("stgen-console");
 
 	std::string header = "[SynchroTraceGen]";
@@ -256,6 +258,18 @@ EventHandlers::EventHandlers()
 
 	curr_thread_id = -1;
 	curr_event_id = -1;
+}
+
+EventHandlers::~EventHandlers()
+{
+	/* ogzstreams MUST be closed before 
+	 * their ofstream counterparts */
+	for(auto &p : gzlog_streams)
+	{
+		p.reset();
+	}
+
+	/* the ofstreams will close and destruct here */
 }
 
 void EventHandlers::setThread(TId tid)
@@ -289,19 +303,26 @@ void EventHandlers::initThreadLog(TId tid)
 {
 	assert( tid >= 0 );
 
-	std::string thread_filename = filename + std::to_string(tid);
+	std::string thread_filename = filename + std::to_string(tid) + std::string(".gz");
 
-	spdlog::set_async_mode(8192);
-	spdlog::create_simple_file_logger(std::to_string(tid), thread_filename, true);
-	spdlog::get(std::to_string(tid))->set_pattern("%v");
+	auto thread_file = make_shared<std::ofstream>(thread_filename, std::ios::trunc|std::ios::out);
+	auto thread_gz = make_shared<zstream::ogzstream>(*thread_file);
+	auto ostream_sink = make_shared<spdlog::sinks::ostream_sink_st>(*thread_gz);
+	auto logger = make_shared<spdlog::logger>(std::to_string(tid), ostream_sink);
+	logger->set_pattern("%v");
 
-	if ( static_cast<int>(loggers.size()) <= tid )
+	if ( static_cast<int>(gzlog_files.size()) <= tid )
 	{
+		gzlog_files.resize(loggers.size()*2, nullptr);
+		gzlog_streams.resize(loggers.size()*2, nullptr);
 		loggers.resize(loggers.size()*2, nullptr);
 	}
-	loggers[tid] = spdlog::get(std::to_string(tid));
 
-	curr_logger = loggers[tid];
+	/* keep ostreams alive */
+	gzlog_files[tid] = thread_file;
+	gzlog_streams[tid] = thread_gz;
+	loggers[tid] = logger;
+	curr_logger = logger;
 }
 
 void EventHandlers::switchThreadLog(TId tid)
@@ -309,6 +330,7 @@ void EventHandlers::switchThreadLog(TId tid)
 	assert( static_cast<int>(loggers.size()) > tid );
 	assert( loggers[tid] != nullptr );
 
+	curr_logger->flush();
 	curr_logger = loggers[tid];
 }
 

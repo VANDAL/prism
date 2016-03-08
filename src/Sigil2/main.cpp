@@ -42,6 +42,7 @@ int main(int argc, char* argv[])
 	std::string header = "[Sigil2]";
 	if (isatty(fileno(stdout))) header = "[" + ANSIcolors_fg["red"] + "Sigil2" + ANSIcolors_fg["end"] + "]";
 	spdlog::get("sigil2-console")->set_pattern(header+" %v");
+	spdlog::set_async_mode(8192);
 
 
 	try 
