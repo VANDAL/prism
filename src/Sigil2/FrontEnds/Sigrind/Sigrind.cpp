@@ -232,11 +232,15 @@ char* const* tokenizeOpts (const std::string &tmp_dir, const std::string &user_e
 		std::istream_iterator<std::string>()};
 
 	//                 program name + valgrind options + tmp_dir + user program options + null
-	int vg_opts_size = 1            + 1                + 1       + tokens.size()        + 1;
+	int vg_opts_size = 1            + 2                + 1       + tokens.size()        + 1;
 	char** vg_opts = static_cast<char**>( malloc(vg_opts_size * sizeof(char*)) );
 
 	int i = 0;
 	vg_opts[i++] = strdup("valgrind");
+	vg_opts[i++] = strdup("--fair-sched=yes"); /* more reliable and reproducible 
+												  thread interleaving; round robins
+												  each thread instead of letting one
+												  thread dominate execution */
 	vg_opts[i++] = strdup("--tool=sigrind");
 	vg_opts[i++] = strdup((std::string("--tmp-dir=") + tmp_dir).c_str());
 	for (std::string token : tokens) 
