@@ -26,6 +26,8 @@
 /* Sigil2's Valgrind frontend forks Valgrind off as a separate process;
  * Valgrind sends the frontend dynamic events from the application via shared memory */
 
+//TODO got a little carried away with throwing errors...
+
 namespace sgl
 {
 
@@ -103,33 +105,55 @@ void Sigrind::makeNewFifo(const char* path) const
 			if ( std::remove(path) != 0 )
 			{
 				std::perror(path);
-				throw std::runtime_error("Sigrind could not delete old fifos");
+				throw std::runtime_error("Sigil2 could not delete old fifos");
 			}
 			if ( mkfifo(path, 0600) < 0 )
 			{
 				std::perror("mkfifo");
-				throw std::runtime_error("Sigrind failed to create Valgrind fifos");
+				throw std::runtime_error("Sigil2 failed to create Valgrind fifos");
 			}
 		}
 		else
 		{
 			std::perror("mkfifo");
-			throw std::runtime_error("Sigrind failed to create Valgrind fifos");
+			throw std::runtime_error("Sigil2 failed to create Valgrind fifos");
 		}
 	}
 }
 
 void Sigrind::connectValgrind()
 {
-	/* XXX Sigil might get stuck waiting for Valgrind
-	 * if Valgrind unexpectedly exits before trying
-	 * to connect */
-	emptyfd = open(empty_file.c_str(), O_WRONLY);
+	int tries = 0;
+	do 
+	{
+		emptyfd = open(empty_file.c_str(), O_WRONLY|O_NONBLOCK);
+
+		if (emptyfd < 0) 
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		}
+		else /* connected */ 
+		{
+			break;
+		}
+
+		++tries;
+	} 
+	while (tries < 4);
+
+	if (tries == 4 || emptyfd < 0)
+	{
+		throw std::runtime_error("Sigil2 failed to connect to Valgrind");
+	}
+
+	/* XXX Sigil might get stuck blocking if Valgrind
+	 * unexpectedly exits before connecting at this point */
 	fullfd = open(full_file.c_str(), O_RDONLY);
-	if ( emptyfd < 1 || fullfd < 1 )
+
+	if (fullfd < 0)
 	{
 		std::perror("open fifo");
-		throw std::runtime_error("Sigrind failed to open Valgrind fifos");
+		throw std::runtime_error("Sigil2 failed to open Valgrind fifos");
 	}
 }
 
@@ -236,7 +260,8 @@ char* const* tokenizeOpts (const std::string &tmp_dir, const std::string &user_e
 	/* Naively assume the first option is the user binary.
 	 * ML: KS says that OpenMP is only guaranteed to work for
 	 * GCC 4.9.2. Pthreads should work for most recent GCC
-	 * releases. */
+	 * releases. Cannot check if file exists because it is
+	 * not guaranteed that this string is actually the binary */
 	ELFIO::elfio reader;
 	bool is_gcc_compatible = false;
 	std::string gcc_version_needed("4.9.2");
@@ -255,8 +280,14 @@ char* const* tokenizeOpts (const std::string &tmp_dir, const std::string &user_e
 					/* Check for "GCC: (GNU) X.X.X" */
 					std::string comment(p);
 					size_t pos = comment.find_last_of(')');
-					gcc_version_found = comment.substr(pos+2);
-					if (gcc_version_found.compare(gcc_version_needed) == 0) is_gcc_compatible = true;
+					if (pos+2 < comment.size()) 
+					{
+						gcc_version_found = comment.substr(pos+2);
+						if (gcc_version_found.compare(gcc_version_needed) == 0) 
+						{
+							is_gcc_compatible = true;
+						}
+					}
 				}
 				break;
 			}
