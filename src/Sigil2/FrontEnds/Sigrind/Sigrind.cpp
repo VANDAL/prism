@@ -245,16 +245,12 @@ void Sigrind::produceFromBuffer(unsigned int idx, unsigned int used)
 
 namespace
 {
-char* const* tokenizeOpts (const std::string &tmp_dir, const std::string &user_exec)
+char* const* tokenizeOpts (
+		const std::vector<std::string> &user_exec,
+		const std::vector<std::string> &args,
+		const std::string &tmp_dir)
 {
 	assert( !tmp_dir.empty() );
-
-	/* FIXME this does not account for quoted arguments with spaces
-	 * Both whitespace and quote pairs should be delimiters */
-	std::istringstream iss(user_exec);
-	std::vector<std::string> tokens{
-		std::istream_iterator<std::string>(iss),
-		std::istream_iterator<std::string>()};
 
 	/* Check that the binary was compiled with GCC 4.9.2. */
 	/* Naively assume the first option is the user binary.
@@ -266,7 +262,7 @@ char* const* tokenizeOpts (const std::string &tmp_dir, const std::string &user_e
 	bool is_gcc_compatible = false;
 	std::string gcc_version_needed("4.9.2");
 	std::string gcc_version_found;
-	if (reader.load(tokens[0]) != 0) 
+	if (reader.load(user_exec[0]) != 0)
 	{
 		ELFIO::Elf_Half sec_num = reader.sections.size();
 		for (int i=0; i<sec_num; ++i) 
@@ -297,7 +293,7 @@ char* const* tokenizeOpts (const std::string &tmp_dir, const std::string &user_e
 	if (is_gcc_compatible == false)
 	{
 		spdlog::get("sigil2-console")->info() 
-			<< '\'' << tokens[0] << '\'' << ":";
+			<< '\'' << user_exec[0] << '\'' << ":";
 		spdlog::get("sigil2-console")->info() 
 			<< "GCC version " << gcc_version_needed << " not detected";
 		if (gcc_version_found.empty() == false) spdlog::get("sigil2-console")->info() 
@@ -310,7 +306,7 @@ char* const* tokenizeOpts (const std::string &tmp_dir, const std::string &user_e
 
 	/* format valgrind options */
 	//                 program name + valgrind options + tmp_dir + user program options + null
-	int vg_opts_size = 1            + 2                + 1       + tokens.size()        + 1;
+	int vg_opts_size = 1            + 2+args.size()    + 1       + user_exec.size()        + 1;
 	char** vg_opts = static_cast<char**>( malloc(vg_opts_size * sizeof(char*)) );
 
 	int i = 0;
@@ -321,16 +317,23 @@ char* const* tokenizeOpts (const std::string &tmp_dir, const std::string &user_e
 												  thread dominate execution */
 	vg_opts[i++] = strdup("--tool=sigrind");
 	vg_opts[i++] = strdup((std::string("--tmp-dir=") + tmp_dir).c_str());
-	for (std::string token : tokens) 
+	for (auto &arg : args)
 	{
-		vg_opts[i++] = strdup(token.c_str());
+		vg_opts[i++] = strdup(arg.c_str());
+	}
+	for (auto &arg : user_exec)
+	{
+		vg_opts[i++] = strdup(arg.c_str());
 	}
 	vg_opts[i] = nullptr;
 
 	return vg_opts;
 }
 
-void startValgrind (const std::string &user_exec, const std::string &args, const std::string &tmp_path) 
+void startValgrind (
+		const std::vector<std::string> &user_exec,
+		const std::vector<std::string> &args,
+		const std::string &tmp_path)
 {
 	/* check for valgrind directory 
 	 * TODO hardcoded, check args instead */
@@ -381,7 +384,7 @@ void startValgrind (const std::string &user_exec, const std::string &args, const
 	std::string vg_exec = std::string(path) + std::string("/vg/bin/valgrind");
 
 	/* execvp() expects a const char* const* */
-	auto vg_opts = tokenizeOpts(tmp_path, user_exec);
+	auto vg_opts = tokenizeOpts(user_exec, args, tmp_path);
 
 	/* kickoff Valgrind */
 	if ( execvp(vg_exec.c_str(), vg_opts) == -1 )
@@ -392,7 +395,9 @@ void startValgrind (const std::string &user_exec, const std::string &args, const
 }
 }; //end namespace
 
-void frontendSigrind (const std::string &user_exec, const std::string &args)
+void frontendSigrind (
+		const std::vector<std::string> &user_exec,
+		const std::vector<std::string> &args)
 {
 	assert (user_exec.empty() == false);
 

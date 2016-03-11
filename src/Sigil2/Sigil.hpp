@@ -38,12 +38,12 @@ public:
 		static Sigil singleton;
 		return singleton;
 	}
-	void registerEventHandler(std::string &toolname, std::function<void(SglMemEv)> handler);
-	void registerEventHandler(std::string &toolname, std::function<void(SglCompEv)> handler);
-	void registerEventHandler(std::string &toolname, std::function<void(SglSyncEv)> handler);
-	void registerEventHandler(std::string &toolname, std::function<void(SglCxtEv)> handler);
-	void registerToolFinish(std::string &toolname, std::function<void(void)> handler);
-	void registerToolParser(std::string &toolname, std::function<void(int,char**)> handler);
+	void registerEventHandler(std::string toolname, std::function<void(SglMemEv)> handler);
+	void registerEventHandler(std::string toolname, std::function<void(SglCompEv)> handler);
+	void registerEventHandler(std::string toolname, std::function<void(SglSyncEv)> handler);
+	void registerEventHandler(std::string toolname, std::function<void(SglCxtEv)> handler);
+	void registerToolFinish(std::string toolname, std::function<void(void)> handler);
+	void registerToolParser(std::string toolname, std::function<void(int,char**)> handler);
 
 	template <typename T>
 	void addEvent(const T &ev)

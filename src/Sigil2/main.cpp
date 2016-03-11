@@ -45,14 +45,6 @@ int main(int argc, char* argv[])
 	spdlog::set_async_mode(8192);
 
 
-	try 
-	{
-		Sigil::instance().parseOptions(argc, argv);
-		Sigil::instance().generateEvents();
-	} 
-	catch (std::exception& e) 
-	{
-		//TODO anything useful to do?
-		std::terminate();
-	}
+	Sigil::instance().parseOptions(argc, argv);
+	Sigil::instance().generateEvents();
 }

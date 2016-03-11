@@ -1,15 +1,15 @@
 #ifndef SGL_FRONTENDS_H
 #define SGL_FRONTENDS_H
 
-/* All available frontends for Sigil */
-
 #include <string>
+#include <vector>
 
+/* All available frontends for Sigil */
 namespace sgl
 {
-void frontendSigrind(const std::string& user_exec, const std::string& args); 
-
-//const std::string& tmp_dir);
+void frontendSigrind(
+		const std::vector<std::string> &user_exec, 
+		const std::vector<std::string> &args);
 };
 
 #endif

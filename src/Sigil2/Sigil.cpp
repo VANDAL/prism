@@ -1,165 +1,217 @@
 #include <algorithm>
 
 #include "spdlog.h"
-#include "optionparser.h"
 
 #include "FrontEnds.hpp"
 #include "Sigil.hpp"
 
-void Sigil::registerEventHandler(std::string &toolname, std::function<void(SglMemEv)> handler)
+void Sigil::generateEvents()
+{
+	start_frontend();
+	mgr.finish();
+}
+
+void Sigil::registerEventHandler(std::string toolname, std::function<void(SglMemEv)> handler)
 {
 	std::transform(toolname.begin(), toolname.end(), toolname.begin(), ::tolower);
 	backend_registry[toolname].mem_callback = handler;
 }
 
-void Sigil::registerEventHandler(std::string &toolname, std::function<void(SglCompEv)> handler)
+void Sigil::registerEventHandler(std::string toolname, std::function<void(SglCompEv)> handler)
 {
 	std::transform(toolname.begin(), toolname.end(), toolname.begin(), ::tolower);
 	backend_registry[toolname].comp_callback = handler;
 }
 
-void Sigil::registerEventHandler(std::string &toolname, std::function<void(SglSyncEv)> handler)
+void Sigil::registerEventHandler(std::string toolname, std::function<void(SglSyncEv)> handler)
 {
 	std::transform(toolname.begin(), toolname.end(), toolname.begin(), ::tolower);
 	backend_registry[toolname].sync_callback = handler;
 }
 
-void Sigil::registerEventHandler(std::string &toolname, std::function<void(SglCxtEv)> handler)
+void Sigil::registerEventHandler(std::string toolname, std::function<void(SglCxtEv)> handler)
 {
 	std::transform(toolname.begin(), toolname.end(), toolname.begin(), ::tolower);
 	backend_registry[toolname].cxt_callback = handler;
 }
 
-void Sigil::registerToolParser(std::string &toolname, std::function<void(int,char**)> handler)
+void Sigil::registerToolParser(std::string toolname, std::function<void(int,char**)> handler)
 {
 	std::transform(toolname.begin(), toolname.end(), toolname.begin(), ::tolower);
 	backend_registry[toolname].parse_args = handler;
 }
 
-void Sigil::registerToolFinish(std::string &toolname, std::function<void(void)> handler)
+void Sigil::registerToolFinish(std::string toolname, std::function<void(void)> handler)
 {
 	std::transform(toolname.begin(), toolname.end(), toolname.begin(), ::tolower);
 	backend_registry[toolname].finish = handler;
 }
 
-namespace
-{
-struct Arg : public option::Arg
-{
-	static option::ArgStatus Unknown(const option::Option& option, bool msg)
-	{
-		if (msg == true) 
-		{
-			spdlog::get("sigil2-console")->info() << "Unknown option '" << option.name << "'";
-		}
-
-		return option::ARG_ILLEGAL;
-	}
-	
-	static option::ArgStatus Required(const option::Option& option, bool msg)
-	{
-		if (option.arg != 0 && *option.arg != 0 && option.name[option.namelen] != 0)
-		{
-			return option::ARG_OK;
-		}
-	
-		if (msg == true) 
-		{
-			spdlog::get("sigil2-console")->info() << "Option '" << option.name << "' requires an argument"; 
-			spdlog::get("sigil2-console")->info() << "Arguments are attached with '='";
-		}
-
-		return option::ARG_ILLEGAL;
-	}
-};
-
-enum optionIndex 
-{ 
-	UNKNOWN, 
-	HELP, 
-	FRONTEND, 
-	BACKEND, 
-	FRONTEND_ARGS, 
-	BACKEND_ARGS, 
-	EXEC_COMMAND 
-};
-
-const option::Descriptor usage[] =
-{
-	{UNKNOWN       ,0, ""  , ""         ,  Arg::Unknown     , 
-		"USAGE: sigil2 --frontend=TOOL [--frontend-args=\"options\"]\n"
-		"              --backend=TOOL [--backend-args=\"options\"]\n"
-		"              --exec=\"EXECUTABLE [options]\"\n\n"
-																"Options:" },
-	{HELP          ,0, ""  , "help"     , option::Arg::None     , "  --help, -h   Print usage."},
-	{FRONTEND      ,0, ""  , "frontend" , Arg::Required         , "  --frontend=TOOL\n        Where TOOL can be:\n        valgrind\n"},
-	{BACKEND       ,0, ""  , "backend"  , Arg::Required         , "  --backend=TOOL\n        Where TOOL can be:\n        valgrind\n"},
-	{FRONTEND_ARGS ,0, ""  , "frontend-args" , Arg::Required    , "  --frontend-args=\"options\"\n        Where \"options\" are options for the frontend\n"},
-	{BACKEND_ARGS  ,0, ""  , "backend-args"  , Arg::Required    , "  --backend-args=\"[tool options]\""},
-	{EXEC_COMMAND  ,0, ""  , "exec"     , Arg::Required         , "  --exec=          \"[executable] [options]\""},
-	{0             ,0, 0   , 0          , Arg::Optional         , 0 }
-};
-};
 
 void Sigil::parseOptions(int argc, char *argv[])
 {
-	argc-=(argc>0); argv+=(argc>0); // skip program name argv[0] if present
+	constexpr const char frontend[]="frontend";
+	constexpr const char backend[]="backend";
+	constexpr const char executable[]="executable";
 
-	option::Stats stats(usage, argc, argv);
-	auto options = new option::Option[stats.options_max];
-	auto buffer = new option::Option[stats.buffer_max];
-	option::Parser parse(true, usage, argc, argv, options, buffer);
+	constexpr const char sigil2bin[] = "sigil2";
+	constexpr const char frontend_usage[]=  "--frontend=FRONTEND [options]";
+	constexpr const char backend_usage[]=   "--backend=BACKEND [options]";
+	constexpr const char executable_usage[]="--executable=BINARY [options]";
 
-	if (parse.error())
+	static auto parse_error_exit = [&](const std::string& msg)
 	{
-		spdlog::get("sigil2-console")->info() << "Error parsing arguments...exiting";
+		spdlog::get("sigil2-console")->info() << "Error parsing arguments: " << msg;
+		std::cout << "\nUSAGE:" << std::endl;
+		std::cout << "    " << sigil2bin
+			<< " " << frontend_usage
+			<< " " << backend_usage
+			<< " " << executable_usage << std::endl << std::endl;
 		exit(1);
+	};
+
+	/* Sigil2 groups options together based on their position
+	 * in order to pass the option group to the frontend
+	 * instrumentation, the backend analysis, or the executable */
+	/* Most parsers have limited or confusing support for 
+	 * order of non-option arguments in relation to option 
+	 * arguments, including getopt */
+
+	/* Only allow long opts to avoid ambiguities.
+	 * Additionally imposes the constraint that the frontend,
+	 * backend, and executable cannot have any options that
+	 * match */
+	static class ArgGroup
+	{
+		using Args = std::vector<std::string>;
+
+		/* long opt -> args */
+		std::map<std::string, std::vector<std::string>> args;
+		std::vector<std::string> empty;
+		std::string prev_opt;
+
+	public:
+		/* Add a long option to group args */
+		void addGroup(const std::string &group)
+		{
+			if (group.empty() == true) return;
+			args.emplace(group, std::vector<std::string>());
+		}
+
+		/* Check an argv[] to see if it's been added as an
+		 * arg group. If it is a validly formed arg group,
+		 * begin grouping consecutive options under this group
+		 * and return true; otherwise return false.
+		 *
+		 * long_opt is to be in the form: "--long_opt=argument" */
+		bool tryGroup(const std::string &arg)
+		{
+			/* only long opts valid */
+			if (arg.substr(0,2).compare("--") != 0)
+			{
+				return false;
+			}
+
+			std::string rem(arg.substr(2));
+			auto eqidx = rem.find('=');
+
+			/* was this added? */
+			if (args.find(rem.substr(0, eqidx)) == args.cend())
+			{
+				return false;
+			}
+
+			/* a valid arg group requires '=argument' */
+			if (eqidx == std::string::npos || eqidx == rem.size()-1)
+			{
+				parse_error_exit(std::string(arg).append(" missing argument"));
+			}
+
+			/* duplicate option groups not allowed */
+			prev_opt = rem.substr(0, eqidx);
+			if (args.at(prev_opt).empty() == false)
+			{
+				parse_error_exit(std::string(arg).append(" is duplicate option"));
+			}
+
+			/* initialize the group of args with this first argument */
+			args.at(prev_opt).push_back(rem.substr(eqidx+1));
+
+			return true;
+		}
+
+		void addArg(const std::string &arg)
+		{
+			if (arg.empty() == true) return;
+
+			/* the first argument must be an arg group */
+			if (prev_opt.empty() == true)
+			{
+				parse_error_exit(std::string(arg).append(" is not valid here"));
+			}
+
+			args.at(prev_opt).push_back(arg);
+		}
+
+		Args& operator[](const std::string &group)
+		{
+			if (args.find(group) == args.cend())
+			{
+				return empty;
+			}
+			else
+			{
+				return args.at(group);
+			}
+		}
+
+	} arg_group;
+
+	/* Pass through args to frontend/backend. */
+	arg_group.addGroup(frontend);
+	arg_group.addGroup(backend);
+	arg_group.addGroup(executable);
+
+	/* Parse loop */
+	for (int optidx=1; optidx<argc; ++optidx)
+	{
+		const char* curr_arg = argv[optidx];
+
+		if (arg_group.tryGroup(curr_arg) == false)
+		{
+			arg_group.addArg(curr_arg);
+		}
 	}
 
-	/* options are only passed with -ab or --long for flags
-	 * or -a=b --opt=arg for arguments */
-	if (parse.nonOptionsCount() > 0)
+	if (arg_group[frontend].empty() == true
+			|| arg_group[backend].empty() == true
+			|| arg_group[executable].empty() == true)
 	{
-		spdlog::get("sigil2-console")->info() << "Encountered unhandled arguments";
-		spdlog::get("sigil2-console")->info() << "Error parsing arguments...exiting";
-		exit(1);
+		parse_error_exit("missing required arguments");
 	}
-
-	if (options[HELP] || argc == 0)
-	{
-		int columns = getenv("COLUMNS")? atoi(getenv("COLUMNS")) : 80;
-		option::printUsage(fwrite, stdout, usage, columns);
-		exit(1);
-	}
-
-	if (options[EXEC_COMMAND] == nullptr || options[FRONTEND] == nullptr || options[BACKEND] == nullptr)
-	{
-		spdlog::get("sigil2-console")->info() << "Missing required arguments";
-		spdlog::get("sigil2-console")->info() << "Error parsing arguments...exiting";
-		exit(1);
-	}
-
-	std::string exec = options[EXEC_COMMAND].arg;
 
 	/* check valid frontends */
-	std::string frontend_name = options[FRONTEND].arg;
+	std::string frontend_name = arg_group[frontend][0];
 	std::transform(frontend_name.begin(), frontend_name.end(), frontend_name.begin(), ::tolower);
+
 	if (frontend_name.compare("valgrind") == 0)
 	{
-		std::string frontend_args;
-		if (options[FRONTEND_ARGS].arg != nullptr) frontend_args = options[FRONTEND_ARGS].arg;
+		auto start = arg_group[frontend].cbegin()+1;
+		auto end = arg_group[frontend].cend();
+		auto frontend_args = std::vector<std::string>(start, end);
 
-		start_frontend = std::bind(sgl::frontendSigrind, exec, frontend_args); 
+		start_frontend = std::bind(
+				sgl::frontendSigrind,
+				arg_group[executable],
+				frontend_args);
 	}
 	else
 	{
-		spdlog::get("sigil2-console")->info() << "Invalid frontend argument: " << frontend_name;
-		//TODO list available frontends
-		exit(1);
+		parse_error_exit(" invalid frontend");
 	}
 
 	/* check valid backends */
-	std::string backend_name = options[BACKEND].arg;
+	std::string backend_name = arg_group[backend][0];
 	std::transform(backend_name.begin(), backend_name.end(), backend_name.begin(), ::tolower);
 	if (backend_registry.find(backend_name) != backend_registry.cend())
 	{
@@ -187,8 +239,3 @@ void Sigil::parseOptions(int argc, char *argv[])
 	}
 }
 
-void Sigil::generateEvents()
-{
-	start_frontend();
-	mgr.finish();
-}
