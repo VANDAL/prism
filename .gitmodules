@@ -7,6 +7,6 @@
 [submodule "include/whereami"]
 	path = include/whereami
 	url = https://github.com/gpakosz/whereami
-[submodule "include/zstream-cpp"]
-	path = include/zstream-cpp
-	url = https://github.com/geromueller/zstream-cpp
+[submodule "include/zlib"]
+	path = include/zlib
+	url = https://github.com/madler/zlib

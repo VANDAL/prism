@@ -5,14 +5,13 @@
 #include <memory>
 #include <fstream>
 #include "spdlog.h"
-#include "ozstream.hpp"
+#include "zfstream.h"
 #include "ShadowMemory.hpp"
 #include "STEvent.hpp"
 
 namespace STGen
 {
-using std::make_shared;
-using std::shared_ptr;
+using namespace std;
 
 void onCompEv(SglCompEv ev);
 void onMemEv(SglMemEv ev);
@@ -26,7 +25,7 @@ class EventHandlers
 
 	/* Per-thread event count. Logged to SynchroTrace event trace.
 	 * Each derived SynchroTrace event tracks the same event id.  */
-	std::unordered_map<TId, EId> event_ids;
+	unordered_map<TId, EId> event_ids;
 	TId curr_thread_id;
 	EId curr_event_id;
 
@@ -34,24 +33,20 @@ class EventHandlers
 	 *
 	 * All addresses associated with the same spawner are in
 	 * the order they were inserted */
-	std::vector<std::pair<TId, Addr>> thread_spawns;
+	vector<pair<TId, Addr>> thread_spawns;
 
 	/* each spawned thread's ID, in the order it first seen ('created') */
-	std::vector<TId> thread_creates;
+	vector<TId> thread_creates;
 
 	/* vecotr of barrier_t addr, participating threads
 	 *
 	 * order matters for SynchroTraceSim */
-	std::vector<std::pair<Addr, std::set<TId>>> barrier_participants;
-
-	/* Compatibility with SynchroTraceSim parser */ 
-	constexpr const static char filename[18] = "sigil.events.out-";
+	vector<pair<Addr, set<TId>>> barrier_participants;
 
 	/* Output directly to a *.gz stream to save space */
 	/* Keep these ostreams open until deconstruction */
-	vector<shared_ptr<std::ofstream>> gzlog_files;
-	vector<shared_ptr<zstream::ogzstream>> gzlog_streams;
-	vector<shared_ptr<spdlog::logger>> loggers;
+	vector<shared_ptr<gzofstream>> gz_streams;
+	map<string, shared_ptr<spdlog::logger>> loggers;
 
 	/* One logger for stdout,
 	 * one logger for the current thread event log */
@@ -68,6 +63,9 @@ public:
 	void onCompEv(SglCompEv ev);
 	void onMemEv(SglMemEv ev);
 	void cleanup();
+
+	/* Compatibility with SynchroTraceSim parser */ 
+	constexpr const static char filebase[18] = "sigil.events.out-";
 
 	/* SynchroTraceGen makes use of 3 SynchroTrace events,
 	 * i.e. Computation, Communication, and Synchronization.

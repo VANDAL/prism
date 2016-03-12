@@ -1,6 +1,8 @@
-#include "EventHandlers.hpp"
 #include <cassert>
+#include <sstream>
+
 #include "sinks/ostream_sink.h"
+#include "EventHandlers.hpp"
 
 namespace STGen
 {
@@ -56,7 +58,7 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 			break;
 		case SyncType::SGLPRIM_SYNC_CREATE:
 		{
-			thread_spawns.push_back(std::make_pair(curr_thread_id, ev.id));
+			thread_spawns.push_back(make_pair(curr_thread_id, ev.id));
 		}
 			STtype = 3;
 			break;
@@ -75,7 +77,7 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 
 			if/*no matches found*/(idx == barrier_participants.size())
 			{
-				barrier_participants.push_back(std::make_pair(ev.id, std::set<TId>({curr_thread_id})));
+				barrier_participants.push_back(make_pair(ev.id, set<TId>({curr_thread_id})));
 			}
 			else
 			{
@@ -212,10 +214,10 @@ void EventHandlers::cleanup()
 	st_comp_ev.flush();
 	// sync events already flush immediately
 
-	std::string pthread_metadata("sigil.pthread.out");
+	string pthread_metadata("sigil.pthread.out");
 	stdout_logger->info("Flushing thread metadata to: ") << pthread_metadata;
 
-	std::ofstream pthread_file(pthread_metadata, std::ios::trunc|std::ios::out);
+	ofstream pthread_file(pthread_metadata, ios::trunc|ios::out);
 	auto ostream_sink = make_shared<spdlog::sinks::ostream_sink_st>(pthread_file);
 	auto pthread_logger = make_shared<spdlog::logger>(pthread_metadata, ostream_sink);
 	pthread_logger->set_pattern("%v");
@@ -243,7 +245,7 @@ void EventHandlers::cleanup()
 	 * aggregate all the associated, participating threads */
 	for (auto &pair : barrier_participants)
 	{
-		std::ostringstream ss;
+		ostringstream ss;
 		ss << "**" << pair.first; 
 		for (auto &tid : pair.second)
 		{
@@ -263,7 +265,7 @@ void EventHandlers::cleanup()
 ////////////////////////////////////////////////////////////
 namespace
 {
-std::map<std::string,std::string> ANSIcolors_fg =
+map<string,string> ANSIcolors_fg =
 {
 	{"black", "\033[30m"},
 	{"red", "\033[31m"},
@@ -275,23 +277,23 @@ std::map<std::string,std::string> ANSIcolors_fg =
 	{"white", "\033[37m"},
 	{"end", "\033[0m"}
 };
+
+string toFilename(TId tid)
+{
+	return EventHandlers::filebase + to_string(tid) + string(".gz");
+}
 }; //end namespace 
 
-constexpr const char EventHandlers::filename[];
+constexpr const char EventHandlers::filebase[];
 EventHandlers::EventHandlers()
 	: st_comp_ev(curr_thread_id, curr_event_id, curr_logger)
 	, st_comm_ev(curr_thread_id, curr_event_id, curr_logger)
 	, st_sync_ev(curr_thread_id, curr_event_id, curr_logger)
 {
-	gzlog_files.resize(16, nullptr);
-	gzlog_streams.resize(16, nullptr);
-	loggers.resize(16, nullptr);
-
-	stdout_logger = spdlog::stdout_logger_st("stgen-console");
-
-	std::string header = "[SynchroTraceGen]";
+	string header = "[SynchroTraceGen]";
 	if (isatty(fileno(stdout))) header = "[" + ANSIcolors_fg["blue"] + "SynchroTraceGen" + ANSIcolors_fg["end"] + "]";
 
+	stdout_logger = spdlog::stdout_logger_st("stgen-console");
 	stdout_logger->set_pattern(header+" %v");
 
 	curr_thread_id = -1;
@@ -300,14 +302,25 @@ EventHandlers::EventHandlers()
 
 EventHandlers::~EventHandlers()
 {
-	/* ogzstreams MUST be closed before 
-	 * their ofstream counterparts */
-	for(auto &ptr : gzlog_streams)
+	/* close remaining logs before gzstreams close 
+	 * to prevent nasty race conditions that can
+	 * manifest if asynchronous logging is enabled 
+	 *
+	 * the destructors should call a blocking flush */
+	for(auto &p : loggers)
+	{
+		p.second->flush();
+		p.second.reset();
+		spdlog::drop(p.first);
+	}
+
+	curr_logger.reset();
+
+	/* close streams */
+	for(auto &ptr : gz_streams)
 	{
 		ptr.reset();
 	}
-
-	/* the ofstreams will close and destruct here */
 }
 
 void EventHandlers::setThread(TId tid)
@@ -341,35 +354,27 @@ void EventHandlers::initThreadLog(TId tid)
 {
 	assert( tid >= 0 );
 
-	std::string thread_filename = filename + std::to_string(tid) + std::string(".gz");
+	/* make the filename == logger key */
+	auto key = toFilename(tid);
 
-	auto thread_file = make_shared<std::ofstream>(thread_filename, std::ios::trunc|std::ios::out);
-	auto thread_gz = make_shared<zstream::ogzstream>(*thread_file);
+	auto thread_gz = make_shared<gzofstream>(key.c_str(), ios::trunc|ios::out);
 	auto ostream_sink = make_shared<spdlog::sinks::ostream_sink_st>(*thread_gz);
-	auto logger = make_shared<spdlog::logger>(std::to_string(tid), ostream_sink);
-	logger->set_pattern("%v");
 
-	if ( static_cast<int>(gzlog_files.size()) <= tid )
-	{
-		gzlog_files.resize(loggers.size()*2, nullptr);
-		gzlog_streams.resize(loggers.size()*2, nullptr);
-		loggers.resize(loggers.size()*2, nullptr);
-	}
+	curr_logger = spdlog::create(key, {ostream_sink});
+	curr_logger->set_pattern("%v");
+	loggers[key] = curr_logger;
 
 	/* keep ostreams alive */
-	gzlog_files[tid] = thread_file;
-	gzlog_streams[tid] = thread_gz;
-	loggers[tid] = logger;
-	curr_logger = logger;
+	gz_streams.push_back(thread_gz);
 }
 
 void EventHandlers::switchThreadLog(TId tid)
 {
-	assert( static_cast<int>(loggers.size()) > tid );
-	assert( loggers[tid] != nullptr );
+	auto key = toFilename(tid);
+	assert( loggers.find(key) != loggers.cend() );
 
 	curr_logger->flush();
-	curr_logger = loggers[tid];
+	curr_logger = loggers[key];
 }
 
 ////////////////////////////////////////////////////////////
@@ -399,6 +404,4 @@ void cleanup()
 {
 	handler.cleanup();
 }
-
-
 }; //end namespace STGen

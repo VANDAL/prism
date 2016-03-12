@@ -1,5 +1,6 @@
 #include "spdlog.h"
 #include "Sigil.hpp"
+#include <iostream>
 
 void prettyPrintSigil2()
 {
@@ -38,12 +39,11 @@ int main(int argc, char* argv[])
 		{"white", "\033[37m"},
 		{"end", "\033[0m"}
 	};
-	spdlog::stderr_logger_st("sigil2-console");
 	std::string header = "[Sigil2]";
 	if (isatty(fileno(stdout))) header = "[" + ANSIcolors_fg["red"] + "Sigil2" + ANSIcolors_fg["end"] + "]";
-	spdlog::get("sigil2-console")->set_pattern(header+" %v");
-	spdlog::set_async_mode(8192);
 
+	auto logger = spdlog::stderr_logger_st("sigil2-console");
+	logger->set_pattern(header+" %v");
 
 	Sigil::instance().parseOptions(argc, argv);
 	Sigil::instance().generateEvents();
