@@ -31,7 +31,9 @@
 namespace sgl
 {
 
-Sigrind::Sigrind(std::string tmp_dir) 
+using namespace std;
+
+Sigrind::Sigrind(string tmp_dir) 
 	: shmem_file(tmp_dir + "/" + SIGRIND_SHMEM_NAME)
 	, empty_file(tmp_dir + "/" + SIGRIND_EMPTYFIFO_NAME)
 	, full_file(tmp_dir + "/" + SIGRIND_FULLFIFO_NAME)
@@ -50,23 +52,23 @@ Sigrind::~Sigrind()
 	close(fullfd);
 
 	/* file cleanup */
-	if ( std::remove(shmem_file.c_str()) != 0 ||
-			std::remove(empty_file.c_str()) != 0 ||
-			std::remove(full_file.c_str()) != 0)
+	if ( remove(shmem_file.c_str()) != 0 ||
+			remove(empty_file.c_str()) != 0 ||
+			remove(full_file.c_str()) != 0)
 	{
-		std::perror("deleting IPC files");
+		perror("deleting IPC files");
 	}
 }
 
 void Sigrind::initShMem()
 {
-	std::unique_ptr<SigrindSharedData> init(new SigrindSharedData());
+	unique_ptr<SigrindSharedData> init(new SigrindSharedData());
 
 	FILE *fd = fopen(shmem_file.c_str(), "wb+");
 	if ( fd == nullptr )
 	{
-		std::perror("shared memory initialization");
-		throw std::runtime_error("Sigrind shared memory file open failed");
+		perror("shared memory initialization");
+		throw runtime_error("Sigrind shared memory file open failed");
 	}
 
 	/* XXX From write(2) man pages:
@@ -80,18 +82,18 @@ void Sigrind::initShMem()
 	int count = fwrite(init.get(),sizeof(SigrindSharedData), 1, fd);
 	if ( count != 1 )
 	{
-		std::perror("shared memory initialization");
+		perror("shared memory initialization");
 		fclose(fd);
-		throw std::runtime_error("Sigrind shared memory file write failed");
+		throw runtime_error("Sigrind shared memory file write failed");
 	}	
 
 	shared_mem = reinterpret_cast<SigrindSharedData*>
 		(mmap(nullptr, sizeof(SigrindSharedData), PROT_READ|PROT_WRITE, MAP_SHARED, fileno(fd), 0));
 	if (shared_mem == (void*) -1)
 	{
-		std::perror("shared memory initialization");
+		perror("shared memory initialization");
 		fclose(fd);
-		throw std::runtime_error("Sigrind mmap shared memory failed");
+		throw runtime_error("Sigrind mmap shared memory failed");
 	}
 	fclose(fd);
 }
@@ -102,21 +104,21 @@ void Sigrind::makeNewFifo(const char* path) const
 	{
 		if (errno == EEXIST)
 		{
-			if ( std::remove(path) != 0 )
+			if ( remove(path) != 0 )
 			{
-				std::perror(path);
-				throw std::runtime_error("Sigil2 could not delete old fifos");
+				perror(path);
+				throw runtime_error("Sigil2 could not delete old fifos");
 			}
 			if ( mkfifo(path, 0600) < 0 )
 			{
-				std::perror("mkfifo");
-				throw std::runtime_error("Sigil2 failed to create Valgrind fifos");
+				perror("mkfifo");
+				throw runtime_error("Sigil2 failed to create Valgrind fifos");
 			}
 		}
 		else
 		{
-			std::perror("mkfifo");
-			throw std::runtime_error("Sigil2 failed to create Valgrind fifos");
+			perror("mkfifo");
+			throw runtime_error("Sigil2 failed to create Valgrind fifos");
 		}
 	}
 }
@@ -130,7 +132,7 @@ void Sigrind::connectValgrind()
 
 		if (emptyfd < 0) 
 		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+			this_thread::sleep_for(chrono::milliseconds(500));
 		}
 		else /* connected */ 
 		{
@@ -143,7 +145,7 @@ void Sigrind::connectValgrind()
 
 	if (tries == 4 || emptyfd < 0)
 	{
-		throw std::runtime_error("Sigil2 failed to connect to Valgrind");
+		throw runtime_error("Sigil2 failed to connect to Valgrind");
 	}
 
 	/* XXX Sigil might get stuck blocking if Valgrind
@@ -152,8 +154,8 @@ void Sigrind::connectValgrind()
 
 	if (fullfd < 0)
 	{
-		std::perror("open fifo");
-		throw std::runtime_error("Sigil2 failed to open Valgrind fifos");
+		perror("open fifo");
+		throw runtime_error("Sigil2 failed to open Valgrind fifos");
 	}
 }
 
@@ -197,12 +199,12 @@ int Sigrind::readFullFifo()
 
 	if (res == 0)
 	{
-		throw std::runtime_error("Unexpected end of fifo");
+		throw runtime_error("Unexpected end of fifo");
 	}
 	else if (res < 0)
 	{
 		perror("Reading from full fifo");
-		throw std::runtime_error("Could not read from Valgrind full fifo");
+		throw runtime_error("Could not read from Valgrind full fifo");
 	}
 
 	return full_data;
@@ -212,8 +214,8 @@ void Sigrind::writeEmptyFifo(unsigned int idx)
 {
 	if (write(emptyfd, &idx, sizeof(idx)) < 0)
 	{
-		std::perror("write Empty");
-		throw std::runtime_error("Could not send Valgrind empty buffer status");
+		perror("write Empty");
+		throw runtime_error("Could not send Valgrind empty buffer status");
 	}
 }
 
@@ -237,7 +239,7 @@ void Sigrind::produceFromBuffer(unsigned int idx, unsigned int used)
 			SGLnotifySync(buf[i].sync);
 			break;
 		default:
-			throw std::runtime_error("Received unhandled event in Sigrind");
+			throw runtime_error("Received unhandled event in Sigrind");
 			break;
 		}
 	}
@@ -246,9 +248,9 @@ void Sigrind::produceFromBuffer(unsigned int idx, unsigned int used)
 namespace
 {
 char* const* tokenizeOpts (
-		const std::vector<std::string> &user_exec,
-		const std::vector<std::string> &args,
-		const std::string &tmp_dir)
+		const vector<string> &user_exec,
+		const vector<string> &args,
+		const string &tmp_dir)
 {
 	assert( !tmp_dir.empty() );
 
@@ -260,8 +262,8 @@ char* const* tokenizeOpts (
 	 * not guaranteed that this string is actually the binary */
 	ELFIO::elfio reader;
 	bool is_gcc_compatible = false;
-	std::string gcc_version_needed("4.9.2");
-	std::string gcc_version_found;
+	string gcc_version_needed("4.9.2");
+	string gcc_version_found;
 	if (reader.load(user_exec[0]) != 0)
 	{
 		ELFIO::Elf_Half sec_num = reader.sections.size();
@@ -274,7 +276,7 @@ char* const* tokenizeOpts (
 				if (p != nullptr)
 				{
 					/* Check for "GCC: (GNU) X.X.X" */
-					std::string comment(p);
+					string comment(p);
 					size_t pos = comment.find_last_of(')');
 					if (pos+2 < comment.size()) 
 					{
@@ -316,7 +318,7 @@ char* const* tokenizeOpts (
 												  each thread instead of letting one
 												  thread dominate execution */
 	vg_opts[i++] = strdup("--tool=sigrind");
-	vg_opts[i++] = strdup((std::string("--tmp-dir=") + tmp_dir).c_str());
+	vg_opts[i++] = strdup((string("--tmp-dir=") + tmp_dir).c_str());
 	for (auto &arg : args)
 	{
 		vg_opts[i++] = strdup(arg.c_str());
@@ -330,12 +332,12 @@ char* const* tokenizeOpts (
 	return vg_opts;
 }
 
-void startValgrind (
-		const std::vector<std::string> &user_exec,
-		const std::vector<std::string> &args,
-		const std::string &tmp_path)
+pair<string, char *const *> configureValgrind(
+		const vector<string> &user_exec,
+		const vector<string> &args,
+		const string &tmp_path)
 {
-	/* check for valgrind directory 
+	/* check for valgrind directory
 	 * TODO hardcoded, check args instead */
 
 	int len, dirname_len;
@@ -349,19 +351,19 @@ void startValgrind (
 	}
 	else
 	{
-		throw std::runtime_error("Couldn't find executable path");
+		throw runtime_error("Couldn't find executable path");
 	}
 
 	/* check if function capture is available 
 	 * (for multithreaded lib intercepts) */
-	std::string sglwrapper(std::string(path) + std::string("/libsglwrapper.so"));
-	std::ifstream sofile(sglwrapper);
+	string sglwrapper(string(path) + string("/libsglwrapper.so"));
+	ifstream sofile(sglwrapper);
 	if (sofile.good() == true)
 	{
 		const char *get_preload = getenv("LD_PRELOAD");
-		std::string set_preload;
+		string set_preload;
 		if (get_preload == nullptr) set_preload = sglwrapper;
-		else set_preload = std::string(get_preload) + std::string(":") + sglwrapper;
+		else set_preload = string(get_preload) + string(":") + sglwrapper;
 		setenv("LD_PRELOAD", set_preload.c_str(), true);
 	}
 	else
@@ -378,31 +380,27 @@ void startValgrind (
 	/* HACK if the user decides to move the install folder, valgrind will
 	 * get confused and require that VALGRIND_LIB be set.
 	 * Set this variable for the user to avoid confusion */
-	std::string vg_lib = std::string(path) + std::string("/vg/lib/valgrind");
+	string vg_lib = string(path) + string("/vg/lib/valgrind");
 	setenv("VALGRIND_LIB", vg_lib.c_str(), true);
 
-	std::string vg_exec = std::string(path) + std::string("/vg/bin/valgrind");
+	string vg_exec = string(path) + string("/vg/bin/valgrind");
 
 	/* execvp() expects a const char* const* */
 	auto vg_opts = tokenizeOpts(user_exec, args, tmp_path);
 
-	/* kickoff Valgrind */
-	if ( execvp(vg_exec.c_str(), vg_opts) == -1 )
-	{
-		std::perror("starting valgrind");
-		throw std::runtime_error("Valgrind exec failed");
-	}
+	return make_pair(vg_exec, vg_opts);
 }
 }; //end namespace
 
+
 void frontendSigrind (
-		const std::vector<std::string> &user_exec,
-		const std::vector<std::string> &args)
+		const vector<string> &user_exec,
+		const vector<string> &args)
 {
 	assert (user_exec.empty() == false);
 
 	/* check IPC path */
-	char* tmp_path = std::getenv("TMPDIR");
+	char* tmp_path = getenv("TMPDIR");
 	if (tmp_path == nullptr)
 	{
 		spdlog::get("sigil2-console")->info() << "'TMPDIR' not detected, defaulting to '/tmp'";
@@ -411,14 +409,24 @@ void frontendSigrind (
 
 	try
 	{
+		/* set up interface to valgrind */
 		Sigrind sigrind_iface(tmp_path);
+
+		/* set up valgrind environment */
+		auto valgrind_args = configureValgrind(user_exec, args, tmp_path);
 
 		pid_t pid = fork();
 		if ( pid >= 0 )
 		{
-			if ( pid == 0 )
+			if (pid == 0)
 			{
-				startValgrind(user_exec, args, tmp_path);
+				/* kickoff Valgrind */
+				int res = execvp(valgrind_args.first.c_str(), valgrind_args.second);
+				if (res == -1)
+				{
+					perror("starting valgrind");
+					throw runtime_error("Valgrind exec failed");
+				}
 			}
 			else
 			{
@@ -427,17 +435,17 @@ void frontendSigrind (
 		}
 		else
 		{
-			std::perror("Sigrind frontend initialization");
-			throw std::runtime_error("Sigrind fork failed");
+			perror("Sigrind frontend initialization");
+			throw runtime_error("Sigrind fork failed");
 		}
 	}
-	catch(std::runtime_error& e)
+	catch(runtime_error& e)
 	{
-		std::terminate();
+		terminate();
 	}
-	catch(std::exception &e)
+	catch(exception &e)
 	{
-		std::terminate();
+		terminate();
 	}
 }
 }; //end namespace sgl

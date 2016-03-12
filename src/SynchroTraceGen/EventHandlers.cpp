@@ -360,6 +360,8 @@ void EventHandlers::initThreadLog(TId tid)
 	auto thread_gz = make_shared<gzofstream>(key.c_str(), ios::trunc|ios::out);
 	auto ostream_sink = make_shared<spdlog::sinks::ostream_sink_st>(*thread_gz);
 
+	spdlog::set_async_mode(1 << 20);
+
 	curr_logger = spdlog::create(key, {ostream_sink});
 	curr_logger->set_pattern("%v");
 	loggers[key] = curr_logger;

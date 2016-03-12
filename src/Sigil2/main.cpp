@@ -42,6 +42,8 @@ int main(int argc, char* argv[])
 	std::string header = "[Sigil2]";
 	if (isatty(fileno(stdout))) header = "[" + ANSIcolors_fg["red"] + "Sigil2" + ANSIcolors_fg["end"] + "]";
 
+	spdlog::set_sync_mode();
+
 	auto logger = spdlog::stderr_logger_st("sigil2-console");
 	logger->set_pattern(header+" %v");
 
