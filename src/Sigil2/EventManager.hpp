@@ -61,21 +61,21 @@ public:
 	 * to track access. The 'count' values of each semaphore are used
 	 * to index which buffer the producer(frontend)/consumer(backend) 
 	 * should use. 
-	 * */
+	 */
 	//TODO clean up implementation, cohesion is lacking here...
 	template<typename T>
 	void addEvent(const T& ev)
 	{
-		if/*not full*/( prod_buf->used < MAX_EVENTS )
+		if/*not full*/(prod_buf->used < MAX_EVENTS)
 		{
-			produceEvent( ev );
+			produceEvent(ev);
 		}
 		else
 		{
 			empty.P();
 			prod_buf = &bufbuf[prod_idx.increment()];
 			full.V();
-			produceEvent( ev );
+			produceEvent(ev);
 		}
 	}
 
@@ -117,7 +117,7 @@ private:
 	 * are decided in the future. */
 	struct CircularCounter
 	{
-		CircularCounter( int mod_val ) : mod_val(mod_val) {val = 0;}
+		CircularCounter(int mod_val) : mod_val(mod_val) {val = 0;}
 		int increment() 
 		{
 			int old_val = val;
@@ -154,6 +154,7 @@ private:
 	void consumeEvents();
 	void flushNotifications(EventBuffer& buf);
 };
+
 }; //end namespace sigil
 
 #endif

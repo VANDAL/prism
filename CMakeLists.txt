@@ -27,7 +27,6 @@ set(SOURCES
 	include/whereami/src/whereami.c
 	${SIGIL2_DIR}/Sigil.cpp
 	${SIGIL2_DIR}/Plugins.cpp
-	${SIGIL2_DIR}/InstrumentationIface.cpp
 	${SIGIL2_DIR}/EventManager.cpp
 	${SIGIL2_DIR}/main.cpp)
 add_executable(sigil2 ${SOURCES})

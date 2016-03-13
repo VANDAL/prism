@@ -6,6 +6,7 @@
 
 namespace STGen
 {
+
 ////////////////////////////////////////////////////////////
 // Synchronization Event Handling
 ////////////////////////////////////////////////////////////
@@ -15,8 +16,8 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 	st_comm_ev.flush();
 	st_comp_ev.flush();
 
-	if/*switching threads*/( ev.type == SyncType::SGLPRIM_SYNC_SWAP 
-			&& curr_thread_id != static_cast<TId>(ev.id) )
+	if/*switching threads*/(ev.type == SyncType::SGLPRIM_SYNC_SWAP &&
+			curr_thread_id != static_cast<TId>(ev.id))
 	{
 		if/*new thread*/(event_ids.find(ev.id) == event_ids.cend())
 		{
@@ -58,7 +59,7 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 			break;
 		case SyncType::SGLPRIM_SYNC_CREATE:
 		{
-			thread_spawns.push_back(make_pair(curr_thread_id, ev.id));
+			thread_spawns.push_back(std::make_pair(curr_thread_id, ev.id));
 		}
 			STtype = 3;
 			break;
@@ -68,16 +69,16 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 		case SyncType::SGLPRIM_SYNC_BARRIER:
 		{
 			unsigned int idx = 0;
-			for (auto &pair : barrier_participants)
+			for(auto &pair : barrier_participants)
 			{
-				if (pair.first == (unsigned long)ev.id) break;
+				if(pair.first == (unsigned long)ev.id) break;
 
 				++idx;
 			}
 
 			if/*no matches found*/(idx == barrier_participants.size())
 			{
-				barrier_participants.push_back(make_pair(ev.id, set<TId>({curr_thread_id})));
+				barrier_participants.push_back(make_pair(ev.id, std::set<TId>({curr_thread_id})));
 			}
 			else
 			{
@@ -103,12 +104,13 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 			break;
 		}
 
-		if/*valid sync event*/( STtype > 0 )
+		if/*valid sync event*/(STtype > 0)
 		{
 			st_sync_ev.flush(STtype, ev.id);
 		}
 	}
 }
+
 
 ////////////////////////////////////////////////////////////
 // Compute Event Handling
@@ -118,7 +120,7 @@ void EventHandlers::onCompEv(SglCompEv ev)
 	/* local compute event, flush most recent comm event */
 	st_comm_ev.flush(); 
 
-	switch( ev.type )
+	switch(ev.type)
 	{
 	case CompCostType::SGLPRIM_COMP_IOP:
 		st_comp_ev.incIOP();
@@ -131,12 +133,13 @@ void EventHandlers::onCompEv(SglCompEv ev)
 	}
 }
 
+
 ////////////////////////////////////////////////////////////
 // Memory Access Event Handling
 ////////////////////////////////////////////////////////////
 void EventHandlers::onMemEv(SglMemEv ev)
 {
-	switch( ev.type )
+	switch(ev.type)
 	{
 	case MemType::SGLPRIM_MEM_LOAD:
 		onLoad(ev);
@@ -149,11 +152,12 @@ void EventHandlers::onMemEv(SglMemEv ev)
 	}
 
 	/* hardcoding STGen to split STEvents at 100 memory events */
-	if ( st_comp_ev.thread_local_store_cnt > 99 || st_comp_ev.thread_local_load_cnt > 99 )
+	if(st_comp_ev.thread_local_store_cnt > 99 || st_comp_ev.thread_local_load_cnt > 99)
 	{
 		st_comp_ev.flush();
 	}
 }
+
 
 void EventHandlers::onLoad(const SglMemEv& ev)
 {
@@ -166,11 +170,11 @@ void EventHandlers::onLoad(const SglMemEv& ev)
 		TId writer_thread = shad_mem.getWriterTID(curr_addr);
 		TId reader_thread = shad_mem.getReaderTID(curr_addr);
 
-		if (reader_thread != curr_thread_id) shad_mem.updateReader(curr_addr, 1, curr_thread_id);
+		if(reader_thread != curr_thread_id) shad_mem.updateReader(curr_addr, 1, curr_thread_id);
 
-		if/*comm edge*/( (reader_thread != curr_thread_id) //TODO support for multiple readers
-				&& (writer_thread != curr_thread_id)
-				&& (writer_thread != SO_UNDEF )) /* XXX treat a read/write to an address 
+		if/*comm edge*/((reader_thread != curr_thread_id) && //TODO support for multiple readers
+				(writer_thread != curr_thread_id) &&
+				(writer_thread != SO_UNDEF )) /* XXX treat a read/write to an address 
 												   with UNDEF thread as local compute event */
 		{
 			is_comm_edge = true;
@@ -191,11 +195,12 @@ void EventHandlers::onLoad(const SglMemEv& ev)
 	 * that is a communication edge counts the whole event as
 	 * a communication event, and not as part of a
 	 * computation event */
-	if (is_comm_edge == false)
+	if(is_comm_edge == false)
 	{
 		st_comp_ev.incReads();
 	}
 }
+
 
 void EventHandlers::onStore(const SglMemEv& ev)
 {
@@ -204,6 +209,7 @@ void EventHandlers::onStore(const SglMemEv& ev)
 
 	shad_mem.updateWriter( ev.begin_addr, ev.size, curr_thread_id, curr_event_id);
 }
+
 
 ////////////////////////////////////////////////////////////
 // Cleanup any remaining events and logging
@@ -214,12 +220,12 @@ void EventHandlers::cleanup()
 	st_comp_ev.flush();
 	// sync events already flush immediately
 
-	string pthread_metadata("sigil.pthread.out");
+	std::string pthread_metadata("sigil.pthread.out");
 	stdout_logger->info("Flushing thread metadata to: ") << pthread_metadata;
 
-	ofstream pthread_file(pthread_metadata, ios::trunc|ios::out);
-	auto ostream_sink = make_shared<spdlog::sinks::ostream_sink_st>(pthread_file);
-	auto pthread_logger = make_shared<spdlog::logger>(pthread_metadata, ostream_sink);
+	std::ofstream pthread_file(pthread_metadata, std::ios::trunc|std::ios::out);
+	auto ostream_sink = std::make_shared<spdlog::sinks::ostream_sink_st>(pthread_file);
+	auto pthread_logger = std::make_shared<spdlog::logger>(pthread_metadata, ostream_sink);
 	pthread_logger->set_pattern("%v");
 
 	/* The order the threads were seen SHOULD match to
@@ -227,13 +233,13 @@ void EventHandlers::cleanup()
 	 * calls. For example, with the valgrind frontend,
 	 * the --fair-sched=yes option should make sure each
 	 * thread is switched to in the order they were created */
-	assert( thread_spawns.size() == thread_creates.size() );
+	assert(thread_spawns.size() == thread_creates.size());
 	int create_idx = 1; //skip the first idx, which is the initial thread
-	for (auto& pair : thread_spawns)
+	for(auto& pair : thread_spawns)
 	{
 		/* SynchroTraceSim only supports threads
 		 * that were spawned from the original thread */
-		if (pair.first == 1)
+		if(pair.first == 1)
 		{
 			pthread_logger->info() << "##" << pair.second << "," << thread_creates[create_idx];
 		}
@@ -243,11 +249,11 @@ void EventHandlers::cleanup()
 	/* TODO Confirm with KS and SN how barriers are processed */
 	/* Iterate through each unique barrier_t address and 
 	 * aggregate all the associated, participating threads */
-	for (auto &pair : barrier_participants)
+	for(auto &pair : barrier_participants)
 	{
-		ostringstream ss;
+		std::ostringstream ss;
 		ss << "**" << pair.first; 
-		for (auto &tid : pair.second)
+		for(auto &tid : pair.second)
 		{
 			ss << "," << tid;
 		}
@@ -256,7 +262,7 @@ void EventHandlers::cleanup()
 
 	pthread_logger->flush();
 	stdout_logger->flush();
-	if (curr_logger != nullptr) curr_logger->flush();
+	if(curr_logger != nullptr) curr_logger->flush();
 }
 
 
@@ -265,7 +271,7 @@ void EventHandlers::cleanup()
 ////////////////////////////////////////////////////////////
 namespace
 {
-map<string,string> ANSIcolors_fg =
+std::map<std::string,std::string> ANSIcolors_fg =
 {
 	{"black", "\033[30m"},
 	{"red", "\033[31m"},
@@ -278,11 +284,13 @@ map<string,string> ANSIcolors_fg =
 	{"end", "\033[0m"}
 };
 
-string toFilename(TId tid)
+
+std::string toFilename(TId tid)
 {
-	return EventHandlers::filebase + to_string(tid) + string(".gz");
+	return EventHandlers::filebase + std::to_string(tid) + std::string(".gz");
 }
 }; //end namespace 
+
 
 constexpr const char EventHandlers::filebase[];
 EventHandlers::EventHandlers()
@@ -290,8 +298,8 @@ EventHandlers::EventHandlers()
 	, st_comm_ev(curr_thread_id, curr_event_id, curr_logger)
 	, st_sync_ev(curr_thread_id, curr_event_id, curr_logger)
 {
-	string header = "[SynchroTraceGen]";
-	if (isatty(fileno(stdout))) header = "[" + ANSIcolors_fg["blue"] + "SynchroTraceGen" + ANSIcolors_fg["end"] + "]";
+	std::string header = "[SynchroTraceGen]";
+	if(isatty(fileno(stdout))) header = "[" + ANSIcolors_fg["blue"] + "SynchroTraceGen" + ANSIcolors_fg["end"] + "]";
 
 	stdout_logger = spdlog::stdout_logger_st("stgen-console");
 	stdout_logger->set_pattern(header+" %v");
@@ -299,6 +307,7 @@ EventHandlers::EventHandlers()
 	curr_thread_id = -1;
 	curr_event_id = -1;
 }
+
 
 EventHandlers::~EventHandlers()
 {
@@ -323,17 +332,18 @@ EventHandlers::~EventHandlers()
 	}
 }
 
+
 void EventHandlers::setThread(TId tid)
 {
-	assert( tid >= 0 );
+	assert(tid >= 0);
 
-	if ( curr_thread_id == tid )
+	if(curr_thread_id == tid)
 	{
 		return;
 	}
 
 	event_ids[curr_thread_id] = curr_event_id;
-	if/*new thread*/( event_ids.find(tid) == event_ids.cend() )
+	if/*new thread*/(event_ids.find(tid) == event_ids.cend())
 	{
 		event_ids[tid] = 0;
 		curr_event_id = 0;
@@ -350,15 +360,16 @@ void EventHandlers::setThread(TId tid)
 	curr_thread_id = tid;
 }
 
+
 void EventHandlers::initThreadLog(TId tid)
 {
-	assert( tid >= 0 );
+	assert(tid >= 0);
 
 	/* make the filename == logger key */
 	auto key = toFilename(tid);
 
-	auto thread_gz = make_shared<gzofstream>(key.c_str(), ios::trunc|ios::out);
-	auto ostream_sink = make_shared<spdlog::sinks::ostream_sink_st>(*thread_gz);
+	auto thread_gz = std::make_shared<gzofstream>(key.c_str(), std::ios::trunc|std::ios::out);
+	auto ostream_sink = std::make_shared<spdlog::sinks::ostream_sink_st>(*thread_gz);
 
 	spdlog::set_async_mode(1 << 20);
 
@@ -370,14 +381,16 @@ void EventHandlers::initThreadLog(TId tid)
 	gz_streams.push_back(thread_gz);
 }
 
+
 void EventHandlers::switchThreadLog(TId tid)
 {
 	auto key = toFilename(tid);
-	assert( loggers.find(key) != loggers.cend() );
+	assert(loggers.find(key) != loggers.cend());
 
 	curr_logger->flush();
 	curr_logger = loggers[key];
 }
+
 
 ////////////////////////////////////////////////////////////
 // Callbacks
@@ -387,23 +400,28 @@ namespace
 EventHandlers handler;
 };
 
+
 void onSyncEv(SglSyncEv ev)
 {
 	handler.onSyncEv(ev);
 }
+
 
 void onCompEv(SglCompEv ev)
 {
 	handler.onCompEv(ev);
 }
 
+
 void onMemEv(SglMemEv ev)
 {
 	handler.onMemEv(ev);
 }
 
+
 void cleanup()
 {
 	handler.cleanup();
 }
+
 }; //end namespace STGen

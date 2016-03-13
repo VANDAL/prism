@@ -19,9 +19,11 @@
 
 namespace STGen
 {
+
 using TId = int32_t;
 using EId = int32_t;
 constexpr TId SO_UNDEF = -1;
+
 class ShadowMemory
 {
 public:
@@ -67,6 +69,7 @@ private:
 	uint64_t getSMidx(Addr addr) const;
 	uint64_t getPMidx(Addr addr) const;
 };
+
 }; //end namespace STGen
 
 #endif

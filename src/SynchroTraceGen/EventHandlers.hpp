@@ -11,8 +11,6 @@
 
 namespace STGen
 {
-using namespace std;
-
 void onCompEv(SglCompEv ev);
 void onMemEv(SglMemEv ev);
 void onSyncEv(SglSyncEv ev);
@@ -25,7 +23,7 @@ class EventHandlers
 
 	/* Per-thread event count. Logged to SynchroTrace event trace.
 	 * Each derived SynchroTrace event tracks the same event id.  */
-	unordered_map<TId, EId> event_ids;
+	std::unordered_map<TId, EId> event_ids;
 	TId curr_thread_id;
 	EId curr_event_id;
 
@@ -33,25 +31,25 @@ class EventHandlers
 	 *
 	 * All addresses associated with the same spawner are in
 	 * the order they were inserted */
-	vector<pair<TId, Addr>> thread_spawns;
+	std::vector<std::pair<TId, Addr>> thread_spawns;
 
 	/* each spawned thread's ID, in the order it first seen ('created') */
-	vector<TId> thread_creates;
+	std::vector<TId> thread_creates;
 
 	/* vecotr of barrier_t addr, participating threads
 	 *
 	 * order matters for SynchroTraceSim */
-	vector<pair<Addr, set<TId>>> barrier_participants;
+	std::vector<std::pair<Addr, std::set<TId>>> barrier_participants;
 
 	/* Output directly to a *.gz stream to save space */
 	/* Keep these ostreams open until deconstruction */
-	vector<shared_ptr<gzofstream>> gz_streams;
-	map<string, shared_ptr<spdlog::logger>> loggers;
+	std::vector<std::shared_ptr<gzofstream>> gz_streams;
+	std::map<std::string, std::shared_ptr<spdlog::logger>> loggers;
 
 	/* One logger for stdout,
 	 * one logger for the current thread event log */
-	shared_ptr<spdlog::logger> curr_logger;
-	shared_ptr<spdlog::logger> stdout_logger;
+	std::shared_ptr<spdlog::logger> curr_logger;
+	std::shared_ptr<spdlog::logger> stdout_logger;
 
 public:
 	EventHandlers();

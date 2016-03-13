@@ -1,43 +1,55 @@
-#include "EventManager.hpp"
 #include <thread>
 #include <chrono>
 #include <cassert>
+
+#include "EventManager.hpp"
+#include "spdlog.h"
 
 namespace sgl
 {
 
 void EventManager::consumeEvents()
 {
-	assert( prod_buf != nullptr );
+	assert(prod_buf != nullptr);
 
-	while (finish_consumer == false || empty.count < MAX_BUFFERS)
+	try
 	{
-		full.P();
-		flushNotifications(bufbuf[cons_idx.increment()]);
-		empty.V();
+		while(finish_consumer == false || empty.count < MAX_BUFFERS)
+		{
+			full.P();
+			flushNotifications(bufbuf[cons_idx.increment()]);
+			empty.V();
+		}
+	}
+	catch(std::exception &e)
+	{
+		spdlog::get("sigil2-console")->info() << "error: " << e.what();
+		exit(EXIT_FAILURE);
 	}
 }
 
+
 void EventManager::finish()
 {
-	assert( prod_buf != nullptr );
+	assert(prod_buf != nullptr);
 
 	finish_consumer = true;
 	full.V(); // signal that the partially full buffer can be consumed
 
 	consumer.join();
 
-	for( auto& cleanup : cleanup_observers )
+	for(auto& cleanup : cleanup_observers)
 	{
 		cleanup();
 	}
 }
 
-void EventManager::flushNotifications(EventBuffer& buf)
+
+void EventManager::flushNotifications(EventBuffer &buf)
 {
-	for (UInt i=0; i < buf.used; ++i)
+	for(uint32_t i=0; i<buf.used; ++i)
 	{
-		BufferedSglEv& ev = buf.events[i];
+		BufferedSglEv &ev = buf.events[i];
 		switch(ev.tag)
 		{
 		case EvTag::SGL_MEM_TAG:
@@ -73,34 +85,40 @@ void EventManager::flushNotifications(EventBuffer& buf)
 	buf.used = 0;
 }
 
+
 void EventManager::addObserver(std::function<void(SglMemEv)> obs)
 {
 	mem_observers.push_back(obs);
 }
+
 
 void EventManager::addObserver(std::function<void(SglCompEv)> obs)
 {
 	comp_observers.push_back(obs);
 }
 
+
 void EventManager::addObserver(std::function<void(SglSyncEv)> obs)
 {
 	sync_observers.push_back(obs);
 }
+
 
 void EventManager::addObserver(std::function<void(SglCxtEv)> obs)
 {
 	cxt_observers.push_back(obs);
 }
 
+
 void EventManager::addCleanup(std::function<void()> obs)
 {
 	cleanup_observers.push_back(obs);
 }
 
-void EventManager::produceEvent(const SglMemEv& ev)
+
+void EventManager::produceEvent(const SglMemEv &ev)
 {
-	assert( prod_buf != nullptr );
+	assert(prod_buf != nullptr);
 
 	UInt& used = prod_buf->used;
 	BufferedSglEv (&buf)[MAX_EVENTS] = prod_buf->events;
@@ -109,9 +127,11 @@ void EventManager::produceEvent(const SglMemEv& ev)
 	buf[used].mem = ev;
 	++used;
 }
-void EventManager::produceEvent(const SglCompEv& ev)
+
+
+void EventManager::produceEvent(const SglCompEv &ev)
 {
-	assert( prod_buf != nullptr );
+	assert(prod_buf != nullptr);
 
 	UInt& used = prod_buf->used;
 	BufferedSglEv (&buf)[MAX_EVENTS] = prod_buf->events;
@@ -120,9 +140,11 @@ void EventManager::produceEvent(const SglCompEv& ev)
 	buf[used].comp = ev;
 	++used;
 }
-void EventManager::produceEvent(const SglSyncEv& ev)
+
+
+void EventManager::produceEvent(const SglSyncEv &ev)
 {
-	assert( prod_buf != nullptr );
+	assert(prod_buf != nullptr);
 
 	UInt& used = prod_buf->used;
 	BufferedSglEv (&buf)[MAX_EVENTS] = prod_buf->events;
@@ -131,9 +153,11 @@ void EventManager::produceEvent(const SglSyncEv& ev)
 	buf[used].sync = ev;
 	++used;
 }
-void EventManager::produceEvent(const SglCxtEv& ev)
+
+
+void EventManager::produceEvent(const SglCxtEv &ev)
 {
-	assert( prod_buf != nullptr );
+	assert(prod_buf != nullptr);
 
 	UInt& used = prod_buf->used;
 	BufferedSglEv (&buf)[MAX_EVENTS] = prod_buf->events;

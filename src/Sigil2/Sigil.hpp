@@ -38,6 +38,7 @@ public:
 		static Sigil singleton;
 		return singleton;
 	}
+
 	void registerEventHandler(std::string toolname, std::function<void(SglMemEv)> handler);
 	void registerEventHandler(std::string toolname, std::function<void(SglCompEv)> handler);
 	void registerEventHandler(std::string toolname, std::function<void(SglSyncEv)> handler);

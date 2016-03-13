@@ -6,15 +6,11 @@
 
 namespace STGen
 {
-using std::stringstream;
-using std::make_pair;
-using std::make_tuple;
-using std::get;
 
 ////////////////////////////////////////////////////////////
 // SynchroTrace - Compute Event
 ////////////////////////////////////////////////////////////
-STCompEvent::STCompEvent(TId &tid, EId &eid, const shared_ptr<spdlog::logger> &logger)
+STCompEvent::STCompEvent(TId &tid, EId &eid, const std::shared_ptr<spdlog::logger> &logger)
 	: thread_id(tid)
 	, event_id(eid)
 	, logger(logger)
@@ -22,11 +18,12 @@ STCompEvent::STCompEvent(TId &tid, EId &eid, const shared_ptr<spdlog::logger> &l
 	reset();
 }
 
+
 void STCompEvent::flush()
 {
-	if (is_empty == false)
+	if(is_empty == false)
 	{
-		stringstream logmsg;
+		std::stringstream logmsg;
 		logmsg << event_id
 			<< "," << thread_id 
 			<< "," << iop_cnt
@@ -36,18 +33,18 @@ void STCompEvent::flush()
 			<< std::hex << std::showbase;
 
 		/* log write addresses */
-		for (auto& addr_pair : stores_unique.get())
+		for(auto &addr_pair : stores_unique.get())
 		{
-			assert (addr_pair.first <= addr_pair.second);
+			assert(addr_pair.first <= addr_pair.second);
 			logmsg << " $ " //unique write delimiter
 				<< addr_pair.first << " "
 				<< addr_pair.second;
 		}
 
 		/* log read addresses */
-		for (auto& addr_pair : loads_unique.get())
+		for(auto &addr_pair : loads_unique.get())
 		{
-			assert (addr_pair.first <= addr_pair.second);
+			assert(addr_pair.first <= addr_pair.second);
 			logmsg << " * " //unique read delimiter
 				<< addr_pair.first << " "
 				<< addr_pair.second;
@@ -59,25 +56,30 @@ void STCompEvent::flush()
 	}
 }
 
-void STCompEvent::updateWrites(Addr begin, Addr size)
+
+void STCompEvent::updateWrites(const Addr begin, const Addr size)
 {
-	stores_unique.insert(make_pair(begin, begin+size-1));
+	stores_unique.insert(std::make_pair(begin, begin+size-1));
 }
 
-void STCompEvent::updateWrites(SglMemEv ev)
+
+void STCompEvent::updateWrites(const SglMemEv &ev)
 {
-	stores_unique.insert(make_pair(ev.begin_addr, ev.begin_addr+ev.size-1));
+	stores_unique.insert(std::make_pair(ev.begin_addr, ev.begin_addr+ev.size-1));
 }
 
-void STCompEvent::updateReads(Addr begin, Addr size)
+
+void STCompEvent::updateReads(const Addr begin, const Addr size)
 {
-	loads_unique.insert(make_pair(begin, begin+size-1));
+	loads_unique.insert(std::make_pair(begin, begin+size-1));
 }
 
-void STCompEvent::updateReads(SglMemEv ev)
+
+void STCompEvent::updateReads(const SglMemEv &ev)
 {
-	loads_unique.insert(make_pair(ev.begin_addr, ev.begin_addr+ev.size-1));
+	loads_unique.insert(std::make_pair(ev.begin_addr, ev.begin_addr+ev.size-1));
 }
+
 
 void STCompEvent::incWrites()
 {
@@ -86,12 +88,14 @@ void STCompEvent::incWrites()
 	++total_events;
 }
 
+
 void STCompEvent::incReads()
 {
 	is_empty = false;
 	++thread_local_load_cnt;
 	++total_events;
 }
+
 
 void STCompEvent::incIOP()
 {
@@ -100,12 +104,14 @@ void STCompEvent::incIOP()
 	++total_events;
 }
 
+
 void STCompEvent::incFLOP()
 {
 	is_empty = false;
 	++flop_cnt;
 	++total_events;
 }
+
 
 void STCompEvent::reset()
 {
@@ -120,10 +126,11 @@ void STCompEvent::reset()
 	is_empty = true;
 }
 
+
 ////////////////////////////////////////////////////////////
 // SynchroTrace - Communication Event
 ////////////////////////////////////////////////////////////
-STCommEvent::STCommEvent(TId &tid, EId &eid, const shared_ptr<spdlog::logger> &logger)
+STCommEvent::STCommEvent(TId &tid, EId &eid, const std::shared_ptr<spdlog::logger> &logger)
 	: thread_id(tid)
 	, event_id(eid)
 	, logger(logger)
@@ -131,25 +138,26 @@ STCommEvent::STCommEvent(TId &tid, EId &eid, const shared_ptr<spdlog::logger> &l
 	reset();
 }
 
+
 void STCommEvent::flush()
 {
-	if (is_empty == false)
+	if(is_empty == false)
 	{
-		stringstream logmsg;
+		std::stringstream logmsg;
 		logmsg << event_id
 			<< "," << thread_id;
 
-		assert (comms.empty() == false);
+		assert(comms.empty() == false);
 
 		/* log comm edges between current and other threads */
-		for (auto& edge : comms)
+		for(auto& edge : comms)
 		{
-			for (auto& addr_pair : get<2>(edge).get())
+			for(auto& addr_pair : std::get<2>(edge).get())
 			{
-				assert (addr_pair.first <= addr_pair.second);
+				assert(addr_pair.first <= addr_pair.second);
 				logmsg << " # "/*unique write delimiter*/
-					<< get<0>(edge) << " "
-					<< get<1>(edge) << " "
+					<< std::get<0>(edge) << " "
+					<< std::get<1>(edge) << " "
 					<< std::hex << std::showbase
 					<< addr_pair.first << " "
 					<< addr_pair.second
@@ -163,46 +171,50 @@ void STCommEvent::flush()
 	}
 }
 
-void STCommEvent::addEdge(TId writer, EId writer_event, Addr addr)
+
+void STCommEvent::addEdge(const TId writer, const EId writer_event, const Addr addr)
 {
 	is_empty = false;
 
-	if (comms.empty())
+	if(comms.empty())
 	{
-		comms.push_back(make_tuple(writer, writer_event, AddrSet(make_pair(addr, addr))));
+		comms.push_back(std::make_tuple(writer, writer_event, AddrSet(std::make_pair(addr, addr))));
 	}
 	else
 	{
-		for (auto& edge : comms)
+		for(auto& edge : comms)
 		{
-			if (get<0>(edge) == writer && get<1>(edge) == writer_event)
+			if(std::get<0>(edge) == writer && std::get<1>(edge) == writer_event)
 			{
-				get<2>(edge).insert(make_pair(addr,addr));
+				std::get<2>(edge).insert(std::make_pair(addr,addr));
 				return;
 			}
 		}
 
-		comms.push_back(make_tuple(writer, writer_event, AddrSet(make_pair(addr, addr))));
+		comms.push_back(std::make_tuple(writer, writer_event, AddrSet(std::make_pair(addr, addr))));
 	}
 }
+
 
 void STCommEvent::reset()
 {
 	comms.clear();
 	is_empty = true;
 }
-	
+
+
 ////////////////////////////////////////////////////////////
 // SynchroTrace - Synchronization Event
 ////////////////////////////////////////////////////////////
-STSyncEvent::STSyncEvent(TId &tid, EId &eid, const shared_ptr<spdlog::logger> &logger)
+STSyncEvent::STSyncEvent(TId &tid, EId &eid, const std::shared_ptr<spdlog::logger> &logger)
 	: thread_id(tid)
 	, event_id(eid)
 	, logger(logger) { }
 
-void STSyncEvent::flush(UChar type, Addr sync_addr)
+
+void STSyncEvent::flush(const UChar type, const Addr sync_addr)
 {
-	stringstream logmsg;
+	std::stringstream logmsg;
 	logmsg << event_id
 		<< "," << thread_id
 		<< "," << "pth_ty:"
@@ -213,7 +225,8 @@ void STSyncEvent::flush(UChar type, Addr sync_addr)
 	logger->info(logmsg.str());
 	++event_id;
 }
-	
+
+
 ////////////////////////////////////////////////////////////
 // Unique Address Set
 ////////////////////////////////////////////////////////////
@@ -221,10 +234,10 @@ void AddrSet::insert(const AddrRange &range)
 {
 /* TODO clean up flow control */
 
-	assert (range.first <= range.second);
+	assert(range.first <= range.second);
 
 	/* insert if this is the first addr */
-	if (ms.empty() == true)
+	if(ms.empty() == true)
 	{
 		ms.insert(range);
 		return;
@@ -234,9 +247,9 @@ void AddrSet::insert(const AddrRange &range)
 	/* see http://en.cppreference.com/w/cpp/utility/pair/operator_cmp */
 	auto it = ms.lower_bound(range);
 
-	if (it != ms.cbegin())
+	if(it != ms.cbegin())
 	{
-		if (it == ms.cend())
+		if(it == ms.cend())
 		/* if no address range starts at a higher address, 
 		 * check the last element */
 		{
@@ -246,39 +259,39 @@ void AddrSet::insert(const AddrRange &range)
 		/* check if the previous addr pair overlaps with range */
 		{
 			--it;
-			if (range.first > it->second+1)
+			if(range.first > it->second+1)
 			{
 				++it;
 			}
 		}
 	}
 
-	if (range.first == it->second+1)
+	if(range.first == it->second+1)
 	{
 		/* extend 'it' by 'range'; recheck, may overrun other addresses */
-		auto tmp = make_pair(it->first, range.second);
+		auto tmp = std::make_pair(it->first, range.second);
 		ms.erase(it);
 		insert(tmp);
 	}
-	else if (range.second+1 == it->first)
+	else if(range.second+1 == it->first)
 	{
 		/* extend 'it' by 'range'; recheck, may overrun other addresses */
-		auto tmp = make_pair(range.first, it->second);
+		auto tmp = std::make_pair(range.first, it->second);
 		ms.erase(it);
 		insert(tmp);
 	}
-	else if (range.first > it->second)
+	else if(range.first > it->second)
 	{
 		/* can't merge, just insert (at end) */
 		ms.insert(range);
 	}
-	else if (range.first >= it->first)
+	else if(range.first >= it->first)
 	{
-		if (range.second > it->second)
+		if(range.second > it->second)
 		/* extending 'it' to the end of 'range' */
 		{
 			/* merge, delete, and recheck, may overrun other addresses */
-			auto tmp = make_pair(it->first, range.second);
+			auto tmp = std::make_pair(it->first, range.second);
 			ms.erase(it);
 			insert(tmp);
 		}
@@ -286,7 +299,7 @@ void AddrSet::insert(const AddrRange &range)
 	}
 	else /* if (range.first < it->first) */
 	{
-		if (range.second < it->first)
+		if(range.second < it->first)
 		/* no overlap */
 		{
 			/* nothing to merge */
@@ -310,8 +323,10 @@ void AddrSet::insert(const AddrRange &range)
 	}
 }
 
+
 void AddrSet::clear()
 {
 	ms.clear();
 }
+
 }; //end namespace STGen

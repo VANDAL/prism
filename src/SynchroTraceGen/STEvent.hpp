@@ -16,27 +16,22 @@
  * Defines an application event trace for later replay
  * in the SynchroTraceSim CMP simulator.
  *
- * Please see Section 2.B in the SynchroTrace paper for further clarification.
+ * See Section 2.B in the SynchroTrace paper for further clarification.
  ******************************************************************************/
 
 namespace STGen
 {
-using std::shared_ptr;
-using std::pair;
-using std::tuple;
-using std::vector;
-using std::multiset;
 
 /* Helper class to track unique ranges of addresses */
 struct AddrSet
 {
-	using AddrRange = pair<Addr,Addr>;
+	using AddrRange = std::pair<Addr,Addr>;
 	AddrSet(){ }
 	AddrSet(const AddrRange &range) { ms.insert(range); }
 	AddrSet(const AddrSet &other) { ms = other.ms; }
 	AddrSet& operator=(const AddrSet&) = delete;
 private:
-	multiset<AddrRange, std::less<AddrRange>, MemoryPool<AddrRange>> ms;
+	std::multiset<AddrRange, std::less<AddrRange>, MemoryPool<AddrRange>> ms;
 public:
 	/* A range of addresses is specified by the pair.
 	 * This call inserts that range and merges existing ranges
@@ -45,6 +40,7 @@ public:
 	void clear();
 	const decltype(ms)& get(){ return ms; }
 };
+
 
 /**
  * A SynchroTrace Compute Event.
@@ -61,7 +57,6 @@ public:
  */
 struct STCompEvent 
 {
-
 	UInt iop_cnt;
 	UInt flop_cnt;	
 
@@ -80,15 +75,15 @@ struct STCompEvent
 
 	TId &thread_id;
 	EId &event_id;
-	const shared_ptr<spdlog::logger> &logger;
+	const std::shared_ptr<spdlog::logger> &logger;
 
 public:
-	STCompEvent(TId &tid, EId &eid, const shared_ptr<spdlog::logger> &logger);
+	STCompEvent(TId &tid, EId &eid, const std::shared_ptr<spdlog::logger> &logger);
 	void flush();
-	void updateWrites(SglMemEv ev);
-	void updateWrites(Addr begin, Addr size);
-	void updateReads(SglMemEv ev);
-	void updateReads(Addr begin, Addr size);
+	void updateWrites(const SglMemEv &ev);
+	void updateWrites(const Addr begin, const Addr size);
+	void updateReads(const SglMemEv &ev);
+	void updateReads(const Addr begin, const Addr size);
 
 	/* Compute Event metadata */
 	void incWrites();
@@ -99,6 +94,7 @@ public:
 private:
 	void reset();
 };
+
 
 /**
  * A SynchroTrace Communication Event.
@@ -111,7 +107,7 @@ private:
  */
 struct STCommEvent
 {
-	typedef vector<tuple<TId, EId, AddrSet>> LoadEdges;
+	typedef std::vector<std::tuple<TId, EId, AddrSet>> LoadEdges;
 	/**< vector of: 
 	 *     producer thread id, 
 	 *     producer event id, 
@@ -124,10 +120,10 @@ struct STCommEvent
 
 	TId &thread_id;
 	EId &event_id;
-	const shared_ptr<spdlog::logger> &logger;
+	const std::shared_ptr<spdlog::logger> &logger;
 
 public:
-	STCommEvent(TId &tid, EId &eid, const shared_ptr<spdlog::logger> &logger);
+	STCommEvent(TId &tid, EId &eid, const std::shared_ptr<spdlog::logger> &logger);
 	void flush();
 
 	/** 
@@ -142,11 +138,12 @@ public:
 	 *
 	 * Use STEvent::flush() between different read primitives.
 	 */
-	void addEdge(TId writer, EId writer_event, Addr addr);
+	void addEdge(const TId writer, const EId writer_event, const Addr addr);
 
 private:
 	void reset();
 };
+
 
 /**
  * A SynchroTrace Synchronization Event.
@@ -164,13 +161,13 @@ class STSyncEvent
 
 	TId &thread_id;
 	EId &event_id;
-	const shared_ptr<spdlog::logger> &logger;
+	const std::shared_ptr<spdlog::logger> &logger;
 
 public:
-	STSyncEvent(TId &tid, EId &eid, const shared_ptr<spdlog::logger> &logger);
+	STSyncEvent(TId &tid, EId &eid, const std::shared_ptr<spdlog::logger> &logger);
 
 	/* only behavior is immediate flush */
-	void flush(UChar type, Addr sync_addr);
+	void flush(const UChar type, const Addr sync_addr);
 };
 
 }; //end namespace STGen
