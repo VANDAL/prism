@@ -3,6 +3,8 @@
 
 #include <map>
 
+#include "spdlog.h"
+
 #include "Primitive.h"
 #include "EventManager.hpp"
 
@@ -56,7 +58,49 @@ public:
 	void generateEvents();
 
 private:
-	Sigil(){}
+	Sigil()
+	{
+		/* Set up Sigil2 logging.
+		 * TODO this needs to be cleaned up;
+		 * an access to spdlog via spdlog::get with an invalid
+		 * descriptor will fail with a segfault and may be confusing 
+		 * to debug. Perhaps make a global variable somewhere... */
+		std::map<std::string,std::string> ANSIcolors_fg =
+		{
+			{"black", "\033[30m"},
+			{"red", "\033[31m"},
+			{"green", "\033[32m"},
+			{"yellow", "\033[33m"},
+			{"blue", "\033[34m"},
+			{"magenta", "\033[35m"},
+			{"cyan", "\033[36m"},
+			{"white", "\033[37m"},
+			{"end", "\033[0m"}
+		};
+
+		auto color = [&ANSIcolors_fg](const char* text, const char* color)
+		{
+			std::string ret(text);
+			if (isatty(fileno(stdout))) ret = std::string(ANSIcolors_fg[color]).append(text).append(ANSIcolors_fg["end"]);
+			return ret;
+		};
+
+		std::string header = "[Sigil2]";
+		std::string info = "[" + color("INFO", "blue") + "]";
+		std::string warn = "[" + color("WARN", "yellow") + "]";
+		std::string error = "[" + color("ERROR", "red") + "]";
+
+		spdlog::set_sync_mode();
+
+		auto out_logger = spdlog::stderr_logger_st("sigil2-console");
+		out_logger->set_pattern(header+info+"  %v");
+
+		auto warn_logger = spdlog::stderr_logger_st("sigil2-warn");
+		warn_logger->set_pattern(header+warn+"  %v");
+
+		auto err_logger = spdlog::stderr_logger_st("sigil2-err");
+		err_logger->set_pattern(header+error+" %v");
+	}
 
 	sgl::EventManager mgr;
 	std::map<std::string, Backend> backend_registry;

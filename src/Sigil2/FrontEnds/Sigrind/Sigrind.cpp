@@ -63,7 +63,7 @@ Sigrind::~Sigrind()
 			remove(empty_file.c_str()) != 0 ||
 			remove(full_file.c_str()) != 0)
 	{
-		perror("deleting IPC files");
+		spdlog::get("sigil2-warn")->info() << std::string("deleting IPC files -- ").append(strerror(errno));
 	}
 }
 
@@ -75,8 +75,7 @@ void Sigrind::initShMem()
 	FILE *fd = fopen(shmem_file.c_str(), "wb+");
 	if ( fd == nullptr )
 	{
-		perror("shared memory initialization");
-		throw std::runtime_error("Sigrind shared memory file open failed");
+		throw std::runtime_error(std::string("sigrind shared memory file open failed -- ").append(strerror(errno)));
 	}
 
 	/* XXX From write(2) man pages:
@@ -90,18 +89,16 @@ void Sigrind::initShMem()
 	int count = fwrite(init.get(),sizeof(SigrindSharedData), 1, fd);
 	if ( count != 1 )
 	{
-		perror("shared memory initialization");
 		fclose(fd);
-		throw std::runtime_error("Sigrind shared memory file write failed");
+		throw std::runtime_error(std::string("sigrind shared memory file write failed -- ").append(strerror(errno)));
 	}	
 
 	shared_mem = reinterpret_cast<SigrindSharedData*>
 		(mmap(nullptr, sizeof(SigrindSharedData), PROT_READ|PROT_WRITE, MAP_SHARED, fileno(fd), 0));
 	if (shared_mem == (void*) -1)
 	{
-		perror("shared memory initialization");
 		fclose(fd);
-		throw std::runtime_error("Sigrind mmap shared memory failed");
+		throw std::runtime_error(std::string("sigrind mmap shared memory failed -- ").append(strerror(errno)));
 	}
 	fclose(fd);
 }
@@ -115,19 +112,16 @@ void Sigrind::makeNewFifo(const char* path) const
 		{
 			if ( remove(path) != 0 )
 			{
-				perror(path);
-				throw std::runtime_error("Sigil2 could not delete old fifos");
+				throw std::runtime_error(std::string("sigil2 could not delete old fifos -- ").append(strerror(errno)));
 			}
 			if ( mkfifo(path, 0600) < 0 )
 			{
-				perror("mkfifo");
-				throw std::runtime_error("Sigil2 failed to create Valgrind fifos");
+				throw std::runtime_error(std::string("sigil2 failed to create valgrind fifos -- ").append(strerror(errno)));
 			}
 		}
 		else
 		{
-			perror("mkfifo");
-			throw std::runtime_error("Sigil2 failed to create Valgrind fifos");
+			throw std::runtime_error(std::string("sigil2 failed to create valgrind fifos -- ").append(strerror(errno)));
 		}
 	}
 }
@@ -155,7 +149,7 @@ void Sigrind::connectValgrind()
 
 	if (tries == 4 || emptyfd < 0)
 	{
-		throw std::runtime_error("Sigil2 failed to connect to Valgrind");
+		throw std::runtime_error("sigil2 failed to connect to valgrind");
 	}
 
 	/* XXX Sigil might get stuck blocking if Valgrind
@@ -164,8 +158,7 @@ void Sigrind::connectValgrind()
 
 	if (fullfd < 0)
 	{
-		perror("open fifo");
-		throw std::runtime_error("Sigil2 failed to open Valgrind fifos");
+		throw std::runtime_error(std::string("sigil2 failed to open valgrind fifos -- ").append(strerror(errno)));
 	}
 }
 
@@ -180,8 +173,7 @@ int Sigrind::readFullFifo()
 	}
 	else if (res < 0)
 	{
-		perror("Reading from full fifo");
-		throw std::runtime_error("Could not read from Valgrind full fifo");
+		throw std::runtime_error(std::string("could not read from valgrind full fifo -- ").append(strerror(errno)));
 	}
 
 	return full_data;
@@ -192,8 +184,7 @@ void Sigrind::writeEmptyFifo(unsigned int idx)
 {
 	if (write(emptyfd, &idx, sizeof(idx)) < 0)
 	{
-		perror("write Empty");
-		throw std::runtime_error("Could not send Valgrind empty buffer status");
+		throw std::runtime_error(std::string("could not send valgrind empty buffer status -- ").append(strerror(errno)));
 	}
 }
 
@@ -218,7 +209,7 @@ void Sigrind::produceFromBuffer(unsigned int idx, unsigned int used)
 			SGLnotifySync(buf[i].sync);
 			break;
 		default:
-			throw std::runtime_error("Received unhandled event in Sigrind");
+			throw std::runtime_error("received unhandled event in sigrind");
 			break;
 		}
 	}
@@ -260,6 +251,10 @@ void Sigrind::produceSigrindEvents()
 			/* tell Valgrind that the buffer is empty again */
 			writeEmptyFifo(idx);
 		}
+	}
+	catch (std::runtime_error &e)
+	{
+		throw(e);
 	}
 	catch (std::exception &e)
 	{
@@ -316,15 +311,17 @@ void gccWarn(const std::vector<std::string> &user_exec)
 
 	if (is_gcc_compatible == false)
 	{
-		spdlog::get("sigil2-console")->info() 
+		spdlog::get("sigil2-warn")->info() 
 			<< '\'' << user_exec[0] << '\'' << ":";
-		spdlog::get("sigil2-console")->info() 
+		spdlog::get("sigil2-warn")->info() 
 			<< "GCC version " << gcc_version_needed << " not detected";
-		if (gcc_version_found.empty() == false) spdlog::get("sigil2-console")->info() 
+		if (gcc_version_found.empty() == false) spdlog::get("sigil2-console")->info()
 			<< "GCC version " << gcc_version_found << " found";
-		spdlog::get("sigil2-console")->info() 
+		else spdlog::get("sigil2-console")->info()
+			<< "GCC version could not be detected";
+		spdlog::get("sigil2-warn")->info() 
 			<< "OpenMP synchronization events may not be captured";
-		spdlog::get("sigil2-console")->info() 
+		spdlog::get("sigil2-warn")->info() 
 			<< "Pthread synchronization events are probably fine";
 	}
 }
@@ -352,8 +349,8 @@ void configureWrapperEnv(std::string sigil2_path)
 		/* If the wrapper library is in LD_PRELOAD, 
 		 * but not in the sigil2 directory,
 		 * then this warning can be ignored */
-		spdlog::get("sigil2-console")->info() << "'sglwrapper.so' not found";
-		spdlog::get("sigil2-console")->info() 
+		spdlog::get("sigil2-warn")->info() << "'sglwrapper.so' not found";
+		spdlog::get("sigil2-warn")->info() 
 			<< "Synchronization events will not be detected without the wrapper library loaded";
 	}
 	sofile.close();
@@ -444,7 +441,7 @@ void frontendSigrind (
 	char* tmp_path = getenv("TMPDIR");
 	if (tmp_path == nullptr)
 	{
-		spdlog::get("sigil2-console")->info() << "'TMPDIR' not detected, defaulting to '/tmp'";
+		spdlog::get("sigil2-warn")->info() << "'TMPDIR' not detected, defaulting to '/tmp'";
 		tmp_path = strdup("/tmp");
 	}
 
@@ -465,8 +462,7 @@ void frontendSigrind (
 				int res = execvp(valgrind_args.first.c_str(), valgrind_args.second);
 				if (res == -1)
 				{
-					perror("starting valgrind");
-					throw std::runtime_error("Valgrind exec failed");
+					throw std::runtime_error(std::string("starting valgrind failed -- ").append(strerror(errno)));
 				}
 			}
 			else
@@ -476,13 +472,12 @@ void frontendSigrind (
 		}
 		else
 		{
-			perror("Sigrind frontend initialization");
-			throw std::runtime_error("Sigrind fork failed");
+			throw std::runtime_error(std::string("sigrind fork failed -- ").append(strerror(errno)));
 		}
 	}
 	catch(std::exception &e)
 	{
-		spdlog::get("sigil2-console")->info() << "error: " << e.what();
+		spdlog::get("sigil2-err")->info() << e.what();
 		exit(EXIT_FAILURE);
 	}
 }

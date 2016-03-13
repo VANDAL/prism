@@ -1,12 +1,13 @@
 #ifndef SGL_EVENTMANAGER_H
-#define SGL_EVENTMANAGER_H
-
+#define SGL_EVENTMANAGER_H 
 #include <functional>
 #include <vector>
 #include <thread>
 #include <condition_variable>
+#include <chrono>
 #include <mutex>
 
+#include "spdlog.h"
 #include "Primitive.h"
 
 /**
@@ -45,6 +46,19 @@ public:
 	}
 	EventManager(const EventManager&) = delete;
 	EventManager& operator=(const EventManager&) = delete;
+
+	~EventManager()
+	{
+		/* if consumer never finished, 
+		 * then something bad must have interrupted
+		 * normal execution. Detach consumer and warn
+		 * the user */
+		if (consumer.joinable() == true)
+		{
+			spdlog::get("sigil2-warn")->info() << "unexpected exit: event generation did not complete";
+			consumer.detach();
+		}
+	}
 
 	/* Plugins add observers in the form of function callbacks */
 	void addObserver(std::function<void(SglMemEv)> obs);
@@ -149,7 +163,6 @@ private:
 
 	/* plugins implemented as separate thread */
 	std::thread consumer;
-	void startConsumer();
 	bool finish_consumer;
 	void consumeEvents();
 	void flushNotifications(EventBuffer& buf);

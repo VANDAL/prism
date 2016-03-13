@@ -223,6 +223,8 @@ void EventHandlers::cleanup()
 	std::string pthread_metadata("sigil.pthread.out");
 	stdout_logger->info("Flushing thread metadata to: ") << pthread_metadata;
 
+	spdlog::set_sync_mode();
+
 	std::ofstream pthread_file(pthread_metadata, std::ios::trunc|std::ios::out);
 	auto ostream_sink = std::make_shared<spdlog::sinks::ostream_sink_st>(pthread_file);
 	auto pthread_logger = std::make_shared<spdlog::logger>(pthread_metadata, ostream_sink);
@@ -271,20 +273,6 @@ void EventHandlers::cleanup()
 ////////////////////////////////////////////////////////////
 namespace
 {
-std::map<std::string,std::string> ANSIcolors_fg =
-{
-	{"black", "\033[30m"},
-	{"red", "\033[31m"},
-	{"green", "\033[32m"},
-	{"yellow", "\033[33m"},
-	{"blue", "\033[34m"},
-	{"magenta", "\033[35m"},
-	{"cyan", "\033[36m"},
-	{"white", "\033[37m"},
-	{"end", "\033[0m"}
-};
-
-
 std::string toFilename(TId tid)
 {
 	return EventHandlers::filebase + std::to_string(tid) + std::string(".gz");
@@ -299,7 +287,6 @@ EventHandlers::EventHandlers()
 	, st_sync_ev(curr_thread_id, curr_event_id, curr_logger)
 {
 	std::string header = "[SynchroTraceGen]";
-	if(isatty(fileno(stdout))) header = "[" + ANSIcolors_fg["blue"] + "SynchroTraceGen" + ANSIcolors_fg["end"] + "]";
 
 	stdout_logger = spdlog::stdout_logger_st("stgen-console");
 	stdout_logger->set_pattern(header+" %v");

@@ -1,7 +1,5 @@
 #include <algorithm>
 
-#include "spdlog.h"
-
 #include "InstrumentationIface.h"
 #include "FrontEnds.hpp"
 #include "Sigil.hpp"
@@ -111,7 +109,7 @@ constexpr const char executable_usage[]="--executable=BINARY [options]";
 
 [[noreturn]] void parse_error_exit(const std::string& msg)
 {
-	spdlog::get("sigil2-console")->info() << "Error parsing arguments: " << msg;
+	spdlog::get("sigil2-err")->info() << "Error parsing arguments: " << msg;
 
 	std::cout << "\nUSAGE:" << std::endl;
 	std::cout << "    " << sigil2bin

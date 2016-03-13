@@ -23,7 +23,7 @@ void EventManager::consumeEvents()
 	}
 	catch(std::exception &e)
 	{
-		spdlog::get("sigil2-console")->info() << "error: " << e.what();
+		spdlog::get("sigil2-err")->info() << "error: " << e.what();
 		exit(EXIT_FAILURE);
 	}
 }
