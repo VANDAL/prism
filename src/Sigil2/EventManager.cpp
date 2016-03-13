@@ -6,25 +6,15 @@
 namespace sgl
 {
 
-void EventManager::startConsumer()
-{
-	consumer = std::thread(&EventManager::consumeEvents, this);
-	consumer.detach();
-}
-
 void EventManager::consumeEvents()
 {
 	assert( prod_buf != nullptr );
 
-	while (finish_consumer == false)
+	while (finish_consumer == false || empty.count < MAX_BUFFERS)
 	{
 		full.P();
-		cons_buf = &bufbuf[cons_idx.increment()];
-		if/*full*/( cons_buf->used == MAX_EVENTS )
-		{
-			flushNotifications(*cons_buf);
-			empty.V();
-		}
+		flushNotifications(bufbuf[cons_idx.increment()]);
+		empty.V();
 	}
 }
 
@@ -32,25 +22,17 @@ void EventManager::finish()
 {
 	assert( prod_buf != nullptr );
 
-	//let consumer finish and flush remaning buffers
-	while ( empty.count < MAX_BUFFERS-1 ) 
-	{
-		using namespace std::chrono;
-		std::this_thread::sleep_for(milliseconds(500));
-	}
-	flushNotifications(*prod_buf);
 	finish_consumer = true;
+	full.V(); // signal that the partially full buffer can be consumed
 
-	//let everyone know its cleanup time
+	consumer.join();
+
 	for( auto& cleanup : cleanup_observers )
 	{
 		cleanup();
 	}
 }
 
-
-/* Not thread-safe!!! Only the producer or consumer can 
- * flush at any instance */
 void EventManager::flushNotifications(EventBuffer& buf)
 {
 	for (UInt i=0; i < buf.used; ++i)

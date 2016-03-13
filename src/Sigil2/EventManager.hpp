@@ -35,10 +35,13 @@ public:
 		full(0),empty(MAX_BUFFERS),
 		prod_idx(MAX_BUFFERS), cons_idx(MAX_BUFFERS)
 	{ 
+		/* initialize producer-consumer state */
 		empty.P();
 		prod_buf = &bufbuf[prod_idx.increment()];
 		finish_consumer = false;
-		startConsumer();
+
+		/* start consumer */
+		consumer = std::thread(&EventManager::consumeEvents, this);
 	}
 	EventManager(const EventManager&) = delete;
 	EventManager& operator=(const EventManager&) = delete;
@@ -136,7 +139,7 @@ private:
 	};
 
 	Sem full, empty;
-	EventBuffer *prod_buf, *cons_buf;
+	EventBuffer *prod_buf;
 	EventBuffer bufbuf[MAX_BUFFERS];
 	CircularCounter prod_idx, cons_idx;
 	void produceEvent(const SglMemEv& ev);
