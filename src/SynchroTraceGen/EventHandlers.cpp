@@ -2,6 +2,8 @@
 #include <sstream>
 
 #include "sinks/ostream_sink.h"
+#include "Sigil2/SigiLog.hpp"
+
 #include "EventHandlers.hpp"
 
 namespace STGen
@@ -220,15 +222,22 @@ void EventHandlers::cleanup()
 	st_comp_ev.flush();
 	// sync events already flush immediately
 
-	std::string pthread_metadata("sigil.pthread.out");
-	stdout_logger->info("Flushing thread metadata to: ") << pthread_metadata;
+
+	std::string pthread_metadata(output_directory + "/sigil.pthread.out");
+	std::ofstream pthread_file(pthread_metadata, std::ios::trunc|std::ios::out);
+
+	if(pthread_file.fail() == true)
+	{
+		SigiLog::error("Failed to open: " + pthread_metadata);
+		exit(EXIT_FAILURE);
+	}
 
 	spdlog::set_sync_mode();
-
-	std::ofstream pthread_file(pthread_metadata, std::ios::trunc|std::ios::out);
 	auto ostream_sink = std::make_shared<spdlog::sinks::ostream_sink_st>(pthread_file);
-	auto pthread_logger = std::make_shared<spdlog::logger>(pthread_metadata, ostream_sink);
+	auto pthread_logger = spdlog::create(pthread_metadata, {ostream_sink});
 	pthread_logger->set_pattern("%v");
+
+	SigiLog::info("Flushing thread metadata to: " + pthread_metadata);
 
 	/* The order the threads were seen SHOULD match to
 	 * the order of thread_t values of the pthread_create 
@@ -263,7 +272,6 @@ void EventHandlers::cleanup()
 	}
 
 	pthread_logger->flush();
-	stdout_logger->flush();
 	if(curr_logger != nullptr) curr_logger->flush();
 }
 
@@ -271,16 +279,6 @@ void EventHandlers::cleanup()
 ////////////////////////////////////////////////////////////
 // Miscellaneous
 ////////////////////////////////////////////////////////////
-namespace
-{
-std::string toFilename(TId tid)
-{
-	return EventHandlers::filebase + std::to_string(tid) + std::string(".gz");
-}
-}; //end namespace 
-
-
-constexpr const char EventHandlers::filebase[];
 EventHandlers::EventHandlers()
 	: st_comp_ev(curr_thread_id, curr_event_id, curr_logger)
 	, st_comm_ev(curr_thread_id, curr_event_id, curr_logger)
@@ -288,8 +286,7 @@ EventHandlers::EventHandlers()
 {
 	std::string header = "[SynchroTraceGen]";
 
-	stdout_logger = spdlog::stdout_logger_st("stgen-console");
-	stdout_logger->set_pattern(header+" %v");
+	output_directory = ".";
 
 	curr_thread_id = -1;
 	curr_event_id = -1;
@@ -353,9 +350,14 @@ void EventHandlers::initThreadLog(TId tid)
 	assert(tid >= 0);
 
 	/* make the filename == logger key */
-	auto key = toFilename(tid);
+	auto key = filename(tid);
 
 	auto thread_gz = std::make_shared<gzofstream>(key.c_str(), std::ios::trunc|std::ios::out);
+	if (thread_gz->fail() == true)
+	{
+		SigiLog::error("Failed to open: " + key);
+		exit(EXIT_FAILURE);
+	}
 	auto ostream_sink = std::make_shared<spdlog::sinks::ostream_sink_st>(*thread_gz);
 
 	spdlog::set_async_mode(1 << 20);
@@ -371,7 +373,7 @@ void EventHandlers::initThreadLog(TId tid)
 
 void EventHandlers::switchThreadLog(TId tid)
 {
-	auto key = toFilename(tid);
+	auto key = filename(tid);
 	assert(loggers.find(key) != loggers.cend());
 
 	curr_logger->flush();
@@ -409,6 +411,55 @@ void onMemEv(SglMemEv ev)
 void cleanup()
 {
 	handler.cleanup();
+}
+
+
+//TODO clean up, one-off custom parsing
+void parseArgs(std::vector<std::string> args)
+{
+	/* only accept short options */
+	std::set<char> options;
+	options.insert('o'); 
+
+	int unmatched = 0;
+	std::map<char, std::string> matches;
+
+	for(auto arg=args.cbegin(); arg!=args.cend(); ++arg)
+	{
+		if/*opt found, '-<char>'*/(((*arg).substr(0,1).compare("-") == 0) &&
+									((*arg).length() > 1))
+		{
+			/* check if the option matches */
+			auto opt=options.cbegin();
+			for(; opt!=options.cend(); ++opt)
+			{
+				if((*arg).substr(1,1).compare({*opt}) == 0)
+				{
+					if((*arg).length() > 2) matches[*opt]=(*arg).substr(2,std::string::npos);
+					else if(arg+1 != args.cend()) matches[*opt]=*(++arg);
+					break;
+				}
+			}
+			if/*no match*/(opt == options.cend())
+			{
+				++unmatched;
+			}
+		}
+		else
+		{
+			++unmatched;
+		}
+	}
+
+	if(unmatched > 0)
+	{
+		SigiLog::warn("unexpected synchrotracegen options");
+	}
+
+	if(matches['o'].empty() == false)
+	{
+		handler.output_directory = matches['o'];
+	}
 }
 
 }; //end namespace STGen

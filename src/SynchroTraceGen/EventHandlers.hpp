@@ -11,10 +11,11 @@
 
 namespace STGen
 {
+void onSyncEv(SglSyncEv ev);
 void onCompEv(SglCompEv ev);
 void onMemEv(SglMemEv ev);
-void onSyncEv(SglSyncEv ev);
 void cleanup();
+void parseArgs(std::vector<std::string>);
 
 class EventHandlers
 {
@@ -45,11 +46,13 @@ class EventHandlers
 	/* Keep these ostreams open until deconstruction */
 	std::vector<std::shared_ptr<gzofstream>> gz_streams;
 	std::map<std::string, std::shared_ptr<spdlog::logger>> loggers;
-
-	/* One logger for stdout,
-	 * one logger for the current thread event log */
 	std::shared_ptr<spdlog::logger> curr_logger;
-	std::shared_ptr<spdlog::logger> stdout_logger;
+
+	std::string filename(TId tid)
+	{
+		return output_directory + "/" + filebase +
+			std::to_string(tid) + ".gz";
+	}
 
 public:
 	EventHandlers();
@@ -57,13 +60,14 @@ public:
 	EventHandlers& operator=(const EventHandlers&) = delete;
 	~EventHandlers();
 
+	/* Compatibility with SynchroTraceSim parser */ 
+	const char filebase[32] = "sigil.events.out-";
+	std::string output_directory;
+
 	void onSyncEv(SglSyncEv ev);
 	void onCompEv(SglCompEv ev);
 	void onMemEv(SglMemEv ev);
 	void cleanup();
-
-	/* Compatibility with SynchroTraceSim parser */ 
-	constexpr const static char filebase[18] = "sigil.events.out-";
 
 	/* SynchroTraceGen makes use of 3 SynchroTrace events,
 	 * i.e. Computation, Communication, and Synchronization.

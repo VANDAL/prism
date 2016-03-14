@@ -17,7 +17,7 @@
 std::string tmp;
 #define EVENT_HANDLER(func) Sigil::instance().registerEventHandler(tmp, func)
 #define USAGE(func) Sigil::instance().registerToolUsage(tmp, func)
-#define OPTIONS(func) Sigil::instance().registerToolParser(tmp, func)
+#define PARSER(func) Sigil::instance().registerToolParser(tmp, func)
 #define FINISH(func) Sigil::instance().registerToolFinish(tmp, func)
 
 #endif

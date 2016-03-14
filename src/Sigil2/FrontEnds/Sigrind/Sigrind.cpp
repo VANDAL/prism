@@ -15,11 +15,11 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 
+#include "Sigil2/SigiLog.hpp"
 #include "Sigil2/FrontEnds.hpp"
 #include "Sigil2/EventManager.hpp" 
 #include "Sigil2/InstrumentationIface.h" 
 #include "Sigrind.hpp"
-#include "spdlog.h"
 #include "whereami.h"
 #include "elfio/elfio.hpp"
 
@@ -63,7 +63,7 @@ Sigrind::~Sigrind()
 			remove(empty_file.c_str()) != 0 ||
 			remove(full_file.c_str()) != 0)
 	{
-		spdlog::get("sigil2-warn")->info() << std::string("deleting IPC files -- ").append(strerror(errno));
+		SigiLog::warn(std::string("deleting IPC files -- ").append(strerror(errno)));
 	}
 }
 
@@ -311,18 +311,16 @@ void gccWarn(const std::vector<std::string> &user_exec)
 
 	if (is_gcc_compatible == false)
 	{
-		spdlog::get("sigil2-warn")->info() 
-			<< '\'' << user_exec[0] << '\'' << ":";
-		spdlog::get("sigil2-warn")->info() 
-			<< "GCC version " << gcc_version_needed << " not detected";
-		if (gcc_version_found.empty() == false) spdlog::get("sigil2-console")->info()
-			<< "GCC version " << gcc_version_found << " found";
-		else spdlog::get("sigil2-console")->info()
-			<< "GCC version could not be detected";
-		spdlog::get("sigil2-warn")->info() 
-			<< "OpenMP synchronization events may not be captured";
-		spdlog::get("sigil2-warn")->info() 
-			<< "Pthread synchronization events are probably fine";
+		SigiLog::warn("\'" + user_exec[0] + "\'" + ":");
+		SigiLog::warn("GCC version " + gcc_version_needed + " not detected");
+
+		if (gcc_version_found.empty() == false)
+			SigiLog::warn("GCC version " + gcc_version_found + " found");
+		else
+			SigiLog::warn("GCC version could not be detected");
+
+		SigiLog::warn("OpenMP synchronization events may not be captured");
+		SigiLog::warn("Pthread synchronization events are probably fine");
 	}
 }
 
@@ -349,9 +347,8 @@ void configureWrapperEnv(std::string sigil2_path)
 		/* If the wrapper library is in LD_PRELOAD, 
 		 * but not in the sigil2 directory,
 		 * then this warning can be ignored */
-		spdlog::get("sigil2-warn")->info() << "'sglwrapper.so' not found";
-		spdlog::get("sigil2-warn")->info() 
-			<< "Synchronization events will not be detected without the wrapper library loaded";
+		SigiLog::warn("'sglwrapper.so' not found");
+		SigiLog::warn("Synchronization events will not be detected without the wrapper library loaded");
 	}
 	sofile.close();
 }
@@ -441,7 +438,7 @@ void frontendSigrind (
 	char* tmp_path = getenv("TMPDIR");
 	if (tmp_path == nullptr)
 	{
-		spdlog::get("sigil2-warn")->info() << "'TMPDIR' not detected, defaulting to '/tmp'";
+		SigiLog::warn("'TMPDIR' not detected, defaulting to '/tmp'");
 		tmp_path = strdup("/tmp");
 	}
 
@@ -477,7 +474,7 @@ void frontendSigrind (
 	}
 	catch(std::exception &e)
 	{
-		spdlog::get("sigil2-err")->info() << e.what();
+		SigiLog::error(e.what());
 		exit(EXIT_FAILURE);
 	}
 }

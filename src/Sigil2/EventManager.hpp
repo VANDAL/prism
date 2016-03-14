@@ -1,5 +1,6 @@
 #ifndef SGL_EVENTMANAGER_H
 #define SGL_EVENTMANAGER_H 
+
 #include <functional>
 #include <vector>
 #include <thread>
@@ -7,8 +8,8 @@
 #include <chrono>
 #include <mutex>
 
-#include "spdlog.h"
 #include "Primitive.h"
+#include "SigiLog.hpp"
 
 /**
  * The sigil EventManager receives sigil event primitives from 
@@ -55,7 +56,7 @@ public:
 		 * the user */
 		if (consumer.joinable() == true)
 		{
-			spdlog::get("sigil2-warn")->info() << "unexpected exit: event generation did not complete";
+			SigiLog::warn("unexpected exit: event generation did not complete");
 			consumer.detach();
 		}
 	}

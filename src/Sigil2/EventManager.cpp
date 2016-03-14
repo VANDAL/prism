@@ -3,7 +3,6 @@
 #include <cassert>
 
 #include "EventManager.hpp"
-#include "spdlog.h"
 
 namespace sgl
 {
@@ -23,7 +22,7 @@ void EventManager::consumeEvents()
 	}
 	catch(std::exception &e)
 	{
-		spdlog::get("sigil2-err")->info() << "error: " << e.what();
+		SigiLog::error(std::string("error: ").append(e.what()));
 		exit(EXIT_FAILURE);
 	}
 }

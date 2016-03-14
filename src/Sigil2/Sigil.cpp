@@ -1,12 +1,66 @@
 #include <algorithm>
 
+#include "SigiLog.hpp"
+
 #include "InstrumentationIface.h"
 #include "FrontEnds.hpp"
 #include "Sigil.hpp"
 
 
+////////////////////////////////////////////////////////////
+// initialize logging
+////////////////////////////////////////////////////////////
+std::shared_ptr<spdlog::logger> SigiLog::info_ = nullptr;
+std::shared_ptr<spdlog::logger> SigiLog::warn_ = nullptr;
+std::shared_ptr<spdlog::logger> SigiLog::error_ = nullptr;
+
+Sigil::Sigil()
+{
+	std::map<std::string,std::string> ANSIcolors_fg =
+	{
+		{"black", "\033[30m"},
+		{"red", "\033[31m"},
+		{"green", "\033[32m"},
+		{"yellow", "\033[33m"},
+		{"blue", "\033[34m"},
+		{"magenta", "\033[35m"},
+		{"cyan", "\033[36m"},
+		{"white", "\033[37m"},
+		{"end", "\033[0m"}
+	};
+
+	auto color = [&ANSIcolors_fg](const char* text, const char* color)
+	{
+		std::string ret(text);
+		if (isatty(fileno(stdout))) ret = std::string(ANSIcolors_fg[color]).append(text).append(ANSIcolors_fg["end"]);
+		return ret;
+	};
+
+	std::string header = "[Sigil2]";
+	std::string info = "[" + color("INFO", "blue") + "]";
+	std::string warn = "[" + color("WARN", "yellow") + "]";
+	std::string error = "[" + color("ERROR", "red") + "]";
+
+	spdlog::set_sync_mode();
+
+	SigiLog::info_ = spdlog::stderr_logger_st("sigil2-console");
+	SigiLog::info_->set_pattern(header+info+"  %v");
+
+	SigiLog::warn_ = spdlog::stderr_logger_st("sigil2-warn");
+	SigiLog::warn_->set_pattern(header+warn+"  %v");
+
+	SigiLog::error_ = spdlog::stderr_logger_st("sigil2-err");
+	SigiLog::error_->set_pattern(header+error+" %v");
+}
+
+
+////////////////////////////////////////////////////////////
+// event generation loop
+////////////////////////////////////////////////////////////
 void Sigil::generateEvents()
 {
+	assert(start_frontend != nullptr);
+
 	start_frontend();
 	mgr.finish();
 }
@@ -46,7 +100,7 @@ void SGLnotifySync(SglSyncEv ev)
 
 
 ////////////////////////////////////////////////////////////
-// Event Registration
+// Event Handler Registration
 ////////////////////////////////////////////////////////////
 void Sigil::registerEventHandler(std::string toolname, std::function<void(SglMemEv)> handler)
 {
@@ -76,7 +130,7 @@ void Sigil::registerEventHandler(std::string toolname, std::function<void(SglCxt
 }
 
 
-void Sigil::registerToolParser(std::string toolname, std::function<void(int,char**)> handler)
+void Sigil::registerToolParser(std::string toolname, std::function<void(std::vector<std::string>)> handler)
 {
 	std::transform(toolname.begin(), toolname.end(), toolname.begin(), ::tolower);
 	backend_registry[toolname].parse_args = handler;
@@ -109,7 +163,7 @@ constexpr const char executable_usage[]="--executable=BINARY [options]";
 
 [[noreturn]] void parse_error_exit(const std::string& msg)
 {
-	spdlog::get("sigil2-err")->info() << "Error parsing arguments: " << msg;
+	SigiLog::error("Error parsing arguments: " + msg);
 
 	std::cout << "\nUSAGE:" << std::endl;
 	std::cout << "    " << sigil2bin
@@ -250,7 +304,6 @@ void Sigil::parseOptions(int argc, char *argv[])
 	/* check valid frontends */
 	std::string frontend_name = arg_group[frontend][0];
 	std::transform(frontend_name.begin(), frontend_name.end(), frontend_name.begin(), ::tolower);
-
 	if (frontend_name.compare("valgrind") == 0)
 	{
 		auto start = arg_group[frontend].cbegin()+1;
@@ -274,12 +327,13 @@ void Sigil::parseOptions(int argc, char *argv[])
 	{
 		/* Set up event callbacks. 
 		 * Only one backend supported for now */
-		Backend &backend = backend_registry[backend_name];
-		if (backend.mem_callback  != nullptr) mgr.addObserver(backend.mem_callback);
-		if (backend.comp_callback != nullptr) mgr.addObserver(backend.comp_callback);
-		if (backend.sync_callback != nullptr) mgr.addObserver(backend.sync_callback);
-		if (backend.cxt_callback  != nullptr) mgr.addObserver(backend.cxt_callback);
-		if (backend.finish  != nullptr) mgr.addCleanup(backend.finish);
+		Backend &registered = backend_registry[backend_name];
+		if (registered.mem_callback  != nullptr) mgr.addObserver(registered.mem_callback);
+		if (registered.comp_callback != nullptr) mgr.addObserver(registered.comp_callback);
+		if (registered.sync_callback != nullptr) mgr.addObserver(registered.sync_callback);
+		if (registered.cxt_callback  != nullptr) mgr.addObserver(registered.cxt_callback);
+		if (registered.finish != nullptr) mgr.addCleanup(registered.finish);
+		if (registered.parse_args != nullptr) registered.parse_args({arg_group[backend].cbegin()+1,arg_group[backend].cend()});
 	}
 	else
 	{
@@ -295,4 +349,3 @@ void Sigil::parseOptions(int argc, char *argv[])
 		parse_error_exit(backend_error);
 	}
 }
-
