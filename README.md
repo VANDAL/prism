@@ -25,7 +25,7 @@ Sigil2 provides the *dynamic* behavior of an application with 4 event primitives
 Each event has specific attributes that are accessible via the [Sigil2 API](https://github.com/mdlui/Sigil2/wiki/Event-API)
 
 ## Platform support
-* Linux (64-bit CentOS 7 and ArchLinux tested)
+* Linux (64-bit CentOS 7 and ArchLinux tested on x86\_64)
   * 32-bit and ARM testing planned
 * C++11 compiler support (g++ 4.8.5 and 5.3.0 tested)
 * CMake 3.0+

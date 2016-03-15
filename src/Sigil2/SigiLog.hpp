@@ -16,6 +16,12 @@ public:
 	static void info(const std::string &msg) { info_->info(msg); }
 	static void warn(const std::string &msg) { warn_->warn(msg); }
 	static void error(const std::string &msg) { error_->error(msg); }
+
+	[[noreturn]] static void fatal(const std::string &msg)
+	{
+		error_->error(std::string("Fatal: ").append(msg));
+		std::exit(EXIT_FAILURE);
+	}
 };
 
 #endif

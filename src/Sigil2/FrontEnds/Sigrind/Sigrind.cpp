@@ -38,16 +38,9 @@ Sigrind::Sigrind(std::string tmp_dir)
 	, full_file(tmp_dir + "/" + SIGRIND_FULLFIFO_NAME)
 
 {
-	try
-	{
-		initShMem();
-		makeNewFifo(empty_file.c_str());
-		makeNewFifo(full_file.c_str());
-	}
-	catch (std::exception &e)
-	{
-		throw(e);
-	}
+	initShMem();
+	makeNewFifo(empty_file.c_str());
+	makeNewFifo(full_file.c_str());
 }
 
 
@@ -75,7 +68,7 @@ void Sigrind::initShMem()
 	FILE *fd = fopen(shmem_file.c_str(), "wb+");
 	if ( fd == nullptr )
 	{
-		throw std::runtime_error(std::string("sigrind shared memory file open failed -- ").append(strerror(errno)));
+		SigiLog::fatal(std::string("sigrind shared memory file open failed -- ").append(strerror(errno)));
 	}
 
 	/* XXX From write(2) man pages:
@@ -90,7 +83,7 @@ void Sigrind::initShMem()
 	if ( count != 1 )
 	{
 		fclose(fd);
-		throw std::runtime_error(std::string("sigrind shared memory file write failed -- ").append(strerror(errno)));
+		SigiLog::fatal(std::string("sigrind shared memory file write failed -- ").append(strerror(errno)));
 	}	
 
 	shared_mem = reinterpret_cast<SigrindSharedData*>
@@ -98,7 +91,7 @@ void Sigrind::initShMem()
 	if (shared_mem == (void*) -1)
 	{
 		fclose(fd);
-		throw std::runtime_error(std::string("sigrind mmap shared memory failed -- ").append(strerror(errno)));
+		SigiLog::fatal(std::string("sigrind mmap shared memory failed -- ").append(strerror(errno)));
 	}
 	fclose(fd);
 }
@@ -112,16 +105,16 @@ void Sigrind::makeNewFifo(const char* path) const
 		{
 			if ( remove(path) != 0 )
 			{
-				throw std::runtime_error(std::string("sigil2 could not delete old fifos -- ").append(strerror(errno)));
+				SigiLog::fatal(std::string("sigil2 could not delete old fifos -- ").append(strerror(errno)));
 			}
 			if ( mkfifo(path, 0600) < 0 )
 			{
-				throw std::runtime_error(std::string("sigil2 failed to create valgrind fifos -- ").append(strerror(errno)));
+				SigiLog::fatal(std::string("sigil2 failed to create valgrind fifos -- ").append(strerror(errno)));
 			}
 		}
 		else
 		{
-			throw std::runtime_error(std::string("sigil2 failed to create valgrind fifos -- ").append(strerror(errno)));
+			SigiLog::fatal(std::string("sigil2 failed to create valgrind fifos -- ").append(strerror(errno)));
 		}
 	}
 }
@@ -149,7 +142,7 @@ void Sigrind::connectValgrind()
 
 	if (tries == 4 || emptyfd < 0)
 	{
-		throw std::runtime_error("sigil2 failed to connect to valgrind");
+		SigiLog::fatal("sigil2 failed to connect to valgrind");
 	}
 
 	/* XXX Sigil might get stuck blocking if Valgrind
@@ -158,7 +151,7 @@ void Sigrind::connectValgrind()
 
 	if (fullfd < 0)
 	{
-		throw std::runtime_error(std::string("sigil2 failed to open valgrind fifos -- ").append(strerror(errno)));
+		SigiLog::fatal(std::string("sigil2 failed to open valgrind fifos -- ").append(strerror(errno)));
 	}
 }
 
@@ -169,11 +162,11 @@ int Sigrind::readFullFifo()
 
 	if (res == 0)
 	{
-		throw std::runtime_error("Unexpected end of fifo");
+		SigiLog::fatal("Unexpected end of fifo");
 	}
 	else if (res < 0)
 	{
-		throw std::runtime_error(std::string("could not read from valgrind full fifo -- ").append(strerror(errno)));
+		SigiLog::fatal(std::string("could not read from valgrind full fifo -- ").append(strerror(errno)));
 	}
 
 	return full_data;
@@ -184,7 +177,7 @@ void Sigrind::writeEmptyFifo(unsigned int idx)
 {
 	if (write(emptyfd, &idx, sizeof(idx)) < 0)
 	{
-		throw std::runtime_error(std::string("could not send valgrind empty buffer status -- ").append(strerror(errno)));
+		SigiLog::fatal(std::string("could not send valgrind empty buffer status -- ").append(strerror(errno)));
 	}
 }
 
@@ -209,7 +202,7 @@ void Sigrind::produceFromBuffer(unsigned int idx, unsigned int used)
 			SGLnotifySync(buf[i].sync);
 			break;
 		default:
-			throw std::runtime_error("received unhandled event in sigrind");
+			SigiLog::fatal("received unhandled event in sigrind");
 			break;
 		}
 	}
@@ -218,47 +211,36 @@ void Sigrind::produceFromBuffer(unsigned int idx, unsigned int used)
 
 void Sigrind::produceSigrindEvents()
 {
-	try
-	{
-		/* Valgrind should have started by now */
-		connectValgrind();
+	/* Valgrind should have started by now */
+	connectValgrind();
 
-		while (finished == false)
+	while (finished == false)
+	{
+		/* Valgrind sends event buffer metadata */
+		unsigned int from_valgrind = readFullFifo();
+
+		unsigned int idx;
+		unsigned int used;
+		if (from_valgrind == SIGRIND_FINISHED)
 		{
-			/* Valgrind sends event buffer metadata */
-			unsigned int from_valgrind = readFullFifo();
-
-			unsigned int idx;
-			unsigned int used;
-			if (from_valgrind == SIGRIND_FINISHED)
-			{
-				/* Valgrind finished;
-				 * partial leftover buffer */
-				finished = true;
-				idx = readFullFifo();
-				used = readFullFifo();
-			}
-			else
-			{
-				/* full buffer */
-				idx = from_valgrind;
-				used = SIGRIND_BUFSIZE;
-			}
-
-			/* send data to backend */
-			produceFromBuffer(idx, used);
-
-			/* tell Valgrind that the buffer is empty again */
-			writeEmptyFifo(idx);
+			/* Valgrind finished;
+			 * partial leftover buffer */
+			finished = true;
+			idx = readFullFifo();
+			used = readFullFifo();
 		}
-	}
-	catch (std::runtime_error &e)
-	{
-		throw(e);
-	}
-	catch (std::exception &e)
-	{
-		throw(e);
+		else
+		{
+			/* full buffer */
+			idx = from_valgrind;
+			used = SIGRIND_BUFSIZE;
+		}
+
+		/* send data to backend */
+		produceFromBuffer(idx, used);
+
+		/* tell Valgrind that the buffer is empty again */
+		writeEmptyFifo(idx);
 	}
 }
 
@@ -404,7 +386,7 @@ std::pair<std::string, char *const *> configureValgrind(
 	}
 	else
 	{
-		throw std::runtime_error("Couldn't find executable path");
+		SigiLog::fatal("couldn't find executable path");
 	}
 
 	/* set up valgrind function wrapping to capture synchronization */
@@ -420,7 +402,7 @@ std::pair<std::string, char *const *> configureValgrind(
 	/* execvp() expects a const char* const* */
 	auto vg_opts = tokenizeOpts(user_exec, args, tmp_path);
 
-	return make_pair(vg_exec, vg_opts);
+	return std::make_pair(vg_exec, vg_opts);
 }
 }; //end namespace
 
@@ -442,40 +424,33 @@ void frontendSigrind (
 		tmp_path = strdup("/tmp");
 	}
 
-	try
+	/* set up interface to valgrind */
+	Sigrind sigrind_iface(tmp_path);
+
+	/* set up valgrind environment */
+	auto valgrind_args = configureValgrind(user_exec, args, tmp_path);
+
+	pid_t pid = fork();
+	if ( pid >= 0 )
 	{
-		/* set up interface to valgrind */
-		Sigrind sigrind_iface(tmp_path);
-
-		/* set up valgrind environment */
-		auto valgrind_args = configureValgrind(user_exec, args, tmp_path);
-
-		pid_t pid = fork();
-		if ( pid >= 0 )
+		if (pid == 0)
 		{
-			if (pid == 0)
+			/* kickoff Valgrind */
+			int res = execvp(valgrind_args.first.c_str(), valgrind_args.second);
+			if (res == -1)
 			{
-				/* kickoff Valgrind */
-				int res = execvp(valgrind_args.first.c_str(), valgrind_args.second);
-				if (res == -1)
-				{
-					throw std::runtime_error(std::string("starting valgrind failed -- ").append(strerror(errno)));
-				}
-			}
-			else
-			{
-				sigrind_iface.produceSigrindEvents();
+				SigiLog::fatal(std::string("starting valgrind failed -- ").append(strerror(errno)));
 			}
 		}
 		else
 		{
-			throw std::runtime_error(std::string("sigrind fork failed -- ").append(strerror(errno)));
+			sigrind_iface.produceSigrindEvents();
 		}
 	}
-	catch(std::exception &e)
+	else
 	{
-		SigiLog::error(e.what());
-		exit(EXIT_FAILURE);
+		SigiLog::fatal(std::string("sigrind fork failed -- ").append(strerror(errno)));
 	}
 }
+
 }; //end namespace sgl

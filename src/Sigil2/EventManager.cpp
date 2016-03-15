@@ -11,19 +11,11 @@ void EventManager::consumeEvents()
 {
 	assert(prod_buf != nullptr);
 
-	try
+	while(finish_consumer == false || empty.count < MAX_BUFFERS)
 	{
-		while(finish_consumer == false || empty.count < MAX_BUFFERS)
-		{
-			full.P();
-			flushNotifications(bufbuf[cons_idx.increment()]);
-			empty.V();
-		}
-	}
-	catch(std::exception &e)
-	{
-		SigiLog::error(std::string("error: ").append(e.what()));
-		exit(EXIT_FAILURE);
+		full.P();
+		flushNotifications(bufbuf[cons_idx.increment()]);
+		empty.V();
 	}
 }
 
@@ -77,8 +69,7 @@ void EventManager::flushNotifications(EventBuffer &buf)
 			break;
 		default:
 			/* control flow unimplemented */
-			throw std::runtime_error("Received unhandled event in EventManager");
-			break;
+			SigiLog::fatal("Received unhandled event in EventManager");
 		}
 	}
 	buf.used = 0;

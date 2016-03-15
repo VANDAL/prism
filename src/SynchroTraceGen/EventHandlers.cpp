@@ -284,10 +284,7 @@ EventHandlers::EventHandlers()
 	, st_comm_ev(curr_thread_id, curr_event_id, curr_logger)
 	, st_sync_ev(curr_thread_id, curr_event_id, curr_logger)
 {
-	std::string header = "[SynchroTraceGen]";
-
 	output_directory = ".";
-
 	curr_thread_id = -1;
 	curr_event_id = -1;
 }
