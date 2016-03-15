@@ -1,29 +1,8 @@
-# SIGIL2
-See COPYING for license details
+# [SIGIL2](https://github.com/mdlui/Sigil2/wiki)
 
-Sigil2 helps users capture **architecture-agnostic** events from an application.
+Captures **architecture-agnostic** events from applications.
 
-Instead of x86, ARM, PPC, etc instructions, 
-Sigil2 uses a straight-forward intermediate representation (IR) designed
-to aid in system architecture studies. Sigil2 provides the **dynamic** execution
-of an application in the form of 4 event types:
-* **Compute** Events - IOPs & FLOPs
-* **Memory** Events - data retrieval and storage
-* **Synchronization** Events - task-level create, join, sync, etc
-* **Context** Events - markers for basic blocks, subroutines, instructions, etc
-* Control Flow support is planned upon necessity
-
-Each event has specific attributes that are accessible in the [Sigil2 API](https://github.com/mdlui/Sigil2/wiki)
-
-### Platform support
-* C++11 compiler support
-  * tested with g++ version 5.3.0
-* cmake v3.0+
-* dependencies of each frontend
-  * Valgrind 3.11.0 support - http://valgrind.org/info/platforms.html
-* 64-bit Linux has been officially tested; further 32-bit and ARM testing is planned
-
-## Quick build instructions
+## Install
 ```
 $ git clone --recursive https://github.com/mdlui/Sigil2 
 $ cd Sigil2
@@ -31,31 +10,51 @@ $ mkdir build && cd build
 $ cmake -DCMAKE_BUILD_TYPE=release ..
 $ make -j<JOBS>
 ```
-
 The executable will be put in `build/bin`. It can be run in place, or the folder can be moved to an install location.  
 
-## Running Sigil2
-### Sigil2 with Valgrind
-####Multithreaded Support
-Pthread and OpenMP support is supported for **applications** compiled with the following GCC versions:
-* 4.9.2
+## What is it?
 
-This can be different than the GCC version used to compile Sigil2.   
-Support for other GCC versions is contingent on whether or not symbols in the relevant libraries change.  
-Most pthread synchronization events *should* be captured with recent GCC versions, however OpenMP synchronization events may not be captured. 
+Uses a straight-forward intermediate representation (IR) for system architecture and application behavior studies.  
+Sigil2 provides the *dynamic* behavior of an application with 4 event primitives:
+* **Compute** - IOPs & FLOPs
+* **Memory** - data access
+* **Synchronization** - task-level create, join, sync, et al
+* **Context** - markers for basic blocks, subroutines, instructions, etc
+* Control Flow support is pending community demand
 
-####Workload capture
+Each event has specific attributes that are accessible via the [Sigil2 API](https://github.com/mdlui/Sigil2/wiki/Event-API)
+
+## Platform support
+* Linux (64-bit CentOS 7 and ArchLinux tested)
+  * 32-bit and ARM testing planned
+* C++11 compiler support (g++ 4.8.5 and 5.3.0 tested)
+* CMake 3.0+
+* dependencies for frontends
+  * Valgrind 3.11.0 support - http://valgrind.org/info/platforms.html
+
+## Example Usage
+* Valgrind frontend generating events
+* [SynchroTraceGen](http://ece.drexel.edu/faculty/taskin/wiki/vlsilab/index.php/SynchroTrace) backend processing events into a special event trace  
+
+`$ bin/sigil2 --frontend=valgrind --backend=stgen --executable=./myprogram -with --args`
 
 Users supply at least 3 arguments to Sigil2:
-* which frontend instrumentation tool is used to generate events
-* which backend analysis tool is used to process events
-* what application to profile
+* the frontend instrumentation tool used to generate events
+* the backend analysis tool used to process events
+* the application
 
-Example using Valgrind frontend and [SynchroTraceGen](http://ece.drexel.edu/faculty/taskin/wiki/vlsilab/index.php/SynchroTrace) backend:  
-**Make sure an environment variable `TMPDIR` is set to a directory mounted as a tmpfs**. Sigil2 uses this for IPC.  
-For example, on CentOS 7, the user should set `TMPDIR` to `/dev/shm`. By default, Sigil2 will set this to `/tmp`.
+####Multithreaded Support
+The Valgrind frontend has Pthread and OpenMP support for *applications* compiled with the following GCC versions:
+* 4.9.2
 
-`$ TMPDIR="/dev/shm" bin/sigil2 --frontend=valgrind --backend=stgen --executable=myprogram --with --args`
+This version can be different than the GCC version used to compile Sigil2.  Support for other GCC versions is contingent on whether or not symbols in the relevant libraries change.  Most pthread synchronization events *should* be captured with recent GCC versions, however OpenMP synchronization events may not be captured. 
+
+####Additional Notes
+
+**Make sure** an environment variable **`TMPDIR` is set** to a directory mounted as a tmpfs.  Sigil2 uses this for IPC.  
+For example, on CentOS 7, the user should set `TMPDIR` to `/dev/shm`. By default, Sigil2 will set this to `/tmp`:
+
+`$ TMPDIR="/dev/shm" bin/sigil2 --frontend=valgrind --backend=stgen --executable=./myprogram -with --args`
 
 ## Developing for Sigil2
 See the [wiki](https://github.com/mdlui/Sigil2/wiki)
