@@ -102,47 +102,11 @@ void SGLnotifySync(SglSyncEv ev)
 ////////////////////////////////////////////////////////////
 // Event Handler Registration
 ////////////////////////////////////////////////////////////
-void Sigil::registerEventHandler(std::string toolname, std::function<void(SglMemEv)> handler)
+void Sigil::registerBackend(ToolName toolname, BackendRegistration register_the_tool)
 {
 	std::transform(toolname.begin(), toolname.end(), toolname.begin(), ::tolower);
-	backend_registry[toolname].mem_callback = handler;
+	backend_registry[toolname] = register_the_tool;
 }
-
-
-void Sigil::registerEventHandler(std::string toolname, std::function<void(SglCompEv)> handler)
-{
-	std::transform(toolname.begin(), toolname.end(), toolname.begin(), ::tolower);
-	backend_registry[toolname].comp_callback = handler;
-}
-
-
-void Sigil::registerEventHandler(std::string toolname, std::function<void(SglSyncEv)> handler)
-{
-	std::transform(toolname.begin(), toolname.end(), toolname.begin(), ::tolower);
-	backend_registry[toolname].sync_callback = handler;
-}
-
-
-void Sigil::registerEventHandler(std::string toolname, std::function<void(SglCxtEv)> handler)
-{
-	std::transform(toolname.begin(), toolname.end(), toolname.begin(), ::tolower);
-	backend_registry[toolname].cxt_callback = handler;
-}
-
-
-void Sigil::registerToolParser(std::string toolname, std::function<void(std::vector<std::string>)> handler)
-{
-	std::transform(toolname.begin(), toolname.end(), toolname.begin(), ::tolower);
-	backend_registry[toolname].parse_args = handler;
-}
-
-
-void Sigil::registerToolFinish(std::string toolname, std::function<void(void)> handler)
-{
-	std::transform(toolname.begin(), toolname.end(), toolname.begin(), ::tolower);
-	backend_registry[toolname].finish = handler;
-}
-
 
 
 ////////////////////////////////////////////////////////////
@@ -179,8 +143,8 @@ constexpr const char executable_usage[]="--executable=BINARY [options]";
  * in order to pass the option group to the frontend
  * instrumentation, the backend analysis, or the executable
  *
- * Most parsers have limited or confusing support for 
- * order of non-option arguments in relation to option 
+ * Most parsers have limited or confusing support for
+ * order of non-option arguments in relation to option
  * arguments, including getopt
  *
  * Only allow long opts to avoid ambiguities.
@@ -188,10 +152,8 @@ constexpr const char executable_usage[]="--executable=BINARY [options]";
  * backend, and executable cannot have any options that match */
 class ArgGroup
 {
-	using Args = std::vector<std::string>;
-
 	/* long opt -> args */
-	std::map<std::string, std::vector<std::string>> args;
+	std::map<std::string, Sigil::Args> args;
 	std::vector<std::string> empty;
 	std::string prev_opt;
 
@@ -200,7 +162,7 @@ public:
 	void addGroup(const std::string &group)
 	{
 		if (group.empty() == true) return;
-		args.emplace(group, std::vector<std::string>());
+		args.emplace(group, Sigil::Args());
 	}
 
 	/* Check an argv[] to see if it's been added as an
@@ -258,7 +220,7 @@ public:
 		args.at(prev_opt).push_back(arg);
 	}
 
-	Args& operator[](const std::string &group)
+	const Sigil::Args& operator[](const std::string &group) const
 	{
 		if (args.find(group) == args.cend())
 		{
@@ -294,26 +256,36 @@ void Sigil::parseOptions(int argc, char *argv[])
 		}
 	}
 
-	if (arg_group[frontend].empty() == true
-			|| arg_group[backend].empty() == true
-			|| arg_group[executable].empty() == true)
+	if (arg_group[backend].empty() == true || arg_group[executable].empty() == true)
 	{
 		parse_error_exit("missing required arguments");
 	}
 
-	/* check valid frontends */
-	std::string frontend_name = arg_group[frontend][0];
+	/* check frontend */
+	std::string frontend_name;
+	if (arg_group[frontend].empty() == false)
+	{
+		frontend_name = arg_group[frontend][0];
+	}
+	else
+	{
+		frontend_name = "valgrind"; //default
+	}
+
 	std::transform(frontend_name.begin(), frontend_name.end(), frontend_name.begin(), ::tolower);
 	if (frontend_name.compare("valgrind") == 0)
 	{
-		auto start = arg_group[frontend].cbegin()+1;
-		auto end = arg_group[frontend].cend();
-		auto frontend_args = std::vector<std::string>(start, end);
-
-		start_frontend = std::bind(
-				sgl::frontendSigrind,
-				arg_group[executable],
-				frontend_args);
+		start_frontend = [arg_group]()
+		{
+			Sigil::Args args;
+			if (arg_group[backend].size() > 1)
+			{
+				auto start = arg_group[backend].cbegin()+1;
+				auto end = arg_group[backend].cend();
+				args = {start, end};
+			}
+			sgl::frontendSigrind(arg_group[executable],args);
+		};
 	}
 	else
 	{
@@ -323,17 +295,22 @@ void Sigil::parseOptions(int argc, char *argv[])
 	/* check valid backends */
 	std::string backend_name = arg_group[backend][0];
 	std::transform(backend_name.begin(), backend_name.end(), backend_name.begin(), ::tolower);
+
 	if (backend_registry.find(backend_name) != backend_registry.cend())
 	{
-		/* Set up event callbacks. 
-		 * Only one backend supported for now */
-		Backend &registered = backend_registry[backend_name];
-		if (registered.mem_callback  != nullptr) mgr.addObserver(registered.mem_callback);
-		if (registered.comp_callback != nullptr) mgr.addObserver(registered.comp_callback);
-		if (registered.sync_callback != nullptr) mgr.addObserver(registered.sync_callback);
-		if (registered.cxt_callback  != nullptr) mgr.addObserver(registered.cxt_callback);
-		if (registered.finish != nullptr) mgr.addCleanup(registered.finish);
-		if (registered.parse_args != nullptr) registered.parse_args({arg_group[backend].cbegin()+1,arg_group[backend].cend()});
+		/* Set up the backend */
+		backend_registry[backend_name]();
+		if (backend_parser != nullptr)
+		{
+			Sigil::Args args;
+			if (arg_group[backend].size() > 1)
+			{
+				auto start = arg_group[backend].cbegin()+1;
+				auto end = arg_group[backend].cend();
+				args = {start, end};
+			}
+			backend_parser(args);
+		}
 	}
 	else
 	{

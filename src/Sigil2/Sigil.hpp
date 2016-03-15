@@ -8,59 +8,43 @@
 
 class Sigil
 {
-	struct Backend
-	{
-		/* A backend can process events, process arguments, print a usage,
-		 * or do none of these things */
-		std::function<void(SglMemEv)> mem_callback;
-		std::function<void(SglCompEv)> comp_callback;
-		std::function<void(SglSyncEv)> sync_callback;
-		std::function<void(SglCxtEv)> cxt_callback;
-		std::function<void(void)> finish;
-		
-		/* XXX unimplemented */
-		std::function<void(std::vector<std::string>)> parse_args;
-
-		Backend()
-		{
-			mem_callback = nullptr;
-			comp_callback = nullptr;
-			sync_callback = nullptr;
-			cxt_callback = nullptr;
-			finish = nullptr;
-			parse_args = nullptr;
-		}
-	};
-
 public:
+	using ToolName = std::string;
+	using Args = std::vector<std::string>;
+	using BackendArgparser = std::function<void(Args)>;
+	using BackendRegistration = std::function<void(void)>;
+
 	static Sigil &instance()
 	{
 		static Sigil singleton;
 		return singleton;
 	}
 
-	void registerEventHandler(std::string toolname, std::function<void(SglMemEv)> handler);
-	void registerEventHandler(std::string toolname, std::function<void(SglCompEv)> handler);
-	void registerEventHandler(std::string toolname, std::function<void(SglSyncEv)> handler);
-	void registerEventHandler(std::string toolname, std::function<void(SglCxtEv)> handler);
-	void registerToolFinish(std::string toolname, std::function<void(void)> handler);
-	void registerToolParser(std::string toolname, std::function<void(std::vector<std::string>)> handler);
+	/* main interface */
+	void parseOptions(int argc, char *argv[]);
+	void generateEvents();
 
+	/* event generation interface */
 	template <typename T>
 	void addEvent(const T &ev)
 	{
 		mgr.addEvent(ev);
 	}
 
-	void parseOptions(int argc, char *argv[]);
-	void generateEvents();
+	/* static plugin interface */
+	void registerBackend(ToolName name, BackendRegistration registration);
+	template <typename Func>
+	void registerEventHandler(Func handler) {mgr.addObserver(handler);}
+	void registerToolFinish(std::function<void(void)> handler) {mgr.addCleanup(handler);}
+	void registerToolParser(BackendArgparser parser) {backend_parser = parser;}
 
 private:
 	Sigil();
 
 	sgl::EventManager mgr;
-	std::map<std::string, Backend> backend_registry;
-	std::function<void()> start_frontend;
+	std::map<ToolName, BackendRegistration> backend_registry;
+	BackendArgparser backend_parser;
+	std::function<void(void)> start_frontend;
 };
 
 #endif

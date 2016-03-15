@@ -11,11 +11,6 @@
 
 namespace STGen
 {
-void onSyncEv(SglSyncEv ev);
-void onCompEv(SglCompEv ev);
-void onMemEv(SglMemEv ev);
-void cleanup();
-void parseArgs(std::vector<std::string>);
 
 class EventHandlers
 {
@@ -48,6 +43,10 @@ class EventHandlers
 	std::map<std::string, std::shared_ptr<spdlog::logger>> loggers;
 	std::shared_ptr<spdlog::logger> curr_logger;
 
+	/* Compatibility with SynchroTraceSim parser */
+	const char filebase[32] = "sigil.events.out-";
+	std::string output_directory;
+
 	std::string filename(TId tid)
 	{
 		return output_directory + "/" + filebase +
@@ -60,21 +59,18 @@ public:
 	EventHandlers& operator=(const EventHandlers&) = delete;
 	~EventHandlers();
 
-	/* Compatibility with SynchroTraceSim parser */ 
-	const char filebase[32] = "sigil.events.out-";
-	std::string output_directory;
-
 	void onSyncEv(SglSyncEv ev);
 	void onCompEv(SglCompEv ev);
 	void onMemEv(SglMemEv ev);
 	void cleanup();
+	void parseArgs(std::vector<std::string> args);
 
 	/* SynchroTraceGen makes use of 3 SynchroTrace events,
 	 * i.e. Computation, Communication, and Synchronization.
 	 *
 	 * One of each event is populated and flushed as Sigil
 	 * primitives are processed. Because there might be billions
-	 * or more of SynchroTrace events, dynamic heap allocation of 
+	 * or more of SynchroTrace events, dynamic heap allocation of
 	 * consecutive SynchroTrace events is avoided */
 	STCompEvent st_comp_ev;
 	STCommEvent st_comm_ev;

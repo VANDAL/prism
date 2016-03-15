@@ -350,7 +350,7 @@ void EventHandlers::initThreadLog(TId tid)
 	auto key = filename(tid);
 
 	auto thread_gz = std::make_shared<gzofstream>(key.c_str(), std::ios::trunc|std::ios::out);
-	if (thread_gz->fail() == true)
+	if(thread_gz->fail() == true)
 	{
 		SigiLog::error("Failed to open: " + key);
 		exit(EXIT_FAILURE);
@@ -379,47 +379,18 @@ void EventHandlers::switchThreadLog(TId tid)
 
 
 ////////////////////////////////////////////////////////////
-// Callbacks
+// Option Parsing
 ////////////////////////////////////////////////////////////
-namespace
-{
-EventHandlers handler;
-};
-
-
-void onSyncEv(SglSyncEv ev)
-{
-	handler.onSyncEv(ev);
-}
-
-
-void onCompEv(SglCompEv ev)
-{
-	handler.onCompEv(ev);
-}
-
-
-void onMemEv(SglMemEv ev)
-{
-	handler.onMemEv(ev);
-}
-
-
-void cleanup()
-{
-	handler.cleanup();
-}
-
-
-//TODO clean up, one-off custom parsing
-void parseArgs(std::vector<std::string> args)
+void EventHandlers::parseArgs(std::vector<std::string> args)
 {
 	/* only accept short options */
 	std::set<char> options;
+	std::map<char, std::string> matches;
+
+	/* -o OUTPUT_DIRECTORY */
 	options.insert('o'); 
 
 	int unmatched = 0;
-	std::map<char, std::string> matches;
 
 	for(auto arg=args.cbegin(); arg!=args.cend(); ++arg)
 	{
@@ -455,7 +426,7 @@ void parseArgs(std::vector<std::string> args)
 
 	if(matches['o'].empty() == false)
 	{
-		handler.output_directory = matches['o'];
+		output_directory = matches['o'];
 	}
 }
 

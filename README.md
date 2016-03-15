@@ -33,28 +33,23 @@ Each event has specific attributes that are accessible via the [Sigil2 API](http
   * Valgrind 3.11.0 support - http://valgrind.org/info/platforms.html
 
 ## Example Usage
-* Valgrind frontend generating events
+* Valgrind is the default frontend generating events
 * [SynchroTraceGen](http://ece.drexel.edu/faculty/taskin/wiki/vlsilab/index.php/SynchroTrace) backend processing events into a special event trace  
 
-`$ bin/sigil2 --frontend=valgrind --backend=stgen --executable=./myprogram -with --args`
+`$ bin/sigil2 --backend=stgen --executable=./myprogram -with --args`
 
-Users supply at least 3 arguments to Sigil2:
-* the frontend instrumentation tool used to generate events
+Users supply at least 2 arguments to Sigil2:
 * the backend analysis tool used to process events
 * the application
+
+A third frontend argument can be supplied
+* `--frontend=FRONTEND` however currently only the default `valgrind` is available
 
 ####Multithreaded Support
 The Valgrind frontend has Pthread and OpenMP support for *applications* compiled with the following GCC versions:
 * 4.9.2
 
 This version can be different than the GCC version used to compile Sigil2.  Support for other GCC versions is contingent on whether or not symbols in the relevant libraries change.  Most pthread synchronization events *should* be captured with recent GCC versions, however OpenMP synchronization events may not be captured. 
-
-####Additional Notes
-
-**Make sure** an environment variable **`TMPDIR` is set** to a directory mounted as a tmpfs.  Sigil2 uses this for IPC.  
-For example, on CentOS 7, the user should set `TMPDIR` to `/dev/shm`. By default, Sigil2 will set this to `/tmp`:
-
-`$ TMPDIR="/dev/shm" bin/sigil2 --frontend=valgrind --backend=stgen --executable=./myprogram -with --args`
 
 ## Developing for Sigil2
 See the [wiki](https://github.com/mdlui/Sigil2/wiki)
