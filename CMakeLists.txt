@@ -13,6 +13,8 @@ endif ()
 enable_testing( true )
 include( CTest )
 
+set(FRONTENDS src/Frontends)
+set(BACKENDS src/Backends)
 include_directories(include/whereami/src)
 include_directories(include/optionparser-1.4/src)
 include_directories(include/spdlog/include)
@@ -20,6 +22,8 @@ include_directories(include/spdlog/include/spdlog)
 include_directories(include/elfio-3.1)
 include_directories(include/zlib/contrib/iostream3)
 include_directories(src)
+include_directories(${FRONTENDS})
+include_directories(${BACKENDS})
 
 set(SIGIL2_DIR src/Sigil2)
 
@@ -37,18 +41,15 @@ set_target_properties(sigil2
 	RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
 #Plugin Backends
-set(STGen src/SynchroTraceGen)
-add_subdirectory(${STGen})
+add_subdirectory(${BACKENDS}/SynchroTraceGen)
 target_link_libraries(sigil2 STGen)
 
-set(dummy src/Dummy)
-add_subdirectory(${dummy})
+add_subdirectory(${BACKENDS}/Dummy)
 target_link_libraries(sigil2 dummy)
 
 
 #Frontends
-set(FrontEnds ${SIGIL2_DIR}/FrontEnds)
-add_subdirectory(${FrontEnds}/Sigrind)
+add_subdirectory(${FRONTENDS}/Sigrind)
 target_link_libraries(sigil2 Sigrind)
 
 #All

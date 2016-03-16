@@ -1,6 +1,5 @@
 /* This file is part of Callgrind, a Valgrind tool for call graph profiling programs.
-
-   Copyright (C) 2003-2015, Josef Weidendorfer (Josef.Weidendorfer@gmx.de)
+Copyright (C) 2003-2015, Josef Weidendorfer (Josef.Weidendorfer@gmx.de)
 
    This tool is derived from and contains code from Cachegrind
    Copyright (C) 2002-2015 Nicholas Nethercote (njn@valgrind.org)
@@ -24,7 +23,7 @@
 */
 
 #include "log_events.h"
-#include "Sigil2/FrontEnds/Sigrind/SigrindIPC.h"
+#include "Frontends/Sigrind/SigrindIPC.h"
 
 #include "coregrind/pub_core_libcfile.h"
 
