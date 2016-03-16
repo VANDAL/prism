@@ -1,13 +1,16 @@
 #ifndef STGEN_EVENT_H
 #define STGEN_EVENT_H
 
+#include <memory>
 #include <vector>
+#include <sstream>
 #include <set>
 #include <unordered_map>
-#include <memory>
+
 #include "MemoryPool.h"
-#include "Sigil2/Primitive.h"
 #include "spdlog.h"
+
+#include "Sigil2/Primitive.h"
 #include "ShadowMemory.hpp"
 
 /*******************************************************************************
@@ -43,19 +46,49 @@ public:
 
 
 /**
+ * A SynchroTrace Instruction Event
+ *
+ * SynchroTrace tracks instruction addresses for future work to increase
+ * simulation accuracy. The addresses can be used to simulate an I-cache
+ * and any associated latencies
+ *
+ * The addresses are aggregated to avoid needless writes
+ */
+class STInstrEvent
+{
+	/* all active addresses */
+	std::stringstream instrs;
+
+	bool is_empty;
+	const std::shared_ptr<spdlog::logger> &logger;
+
+public:
+	STInstrEvent(const std::shared_ptr<spdlog::logger> &logger);
+	void append_instr(Addr addr);
+
+	/* Addresses should be flushed whenever
+	 * compute or communication events flush */
+	void flush();
+
+private:
+	void reset();
+};
+
+
+/**
  * A SynchroTrace Compute Event.
  *
  * SynchroTrace compute events comprise of one or more Sigil primitive events.
  * I.e., a ST compute event can be any number of local thread load, store,
- * and compute primitives. However in practice, a 'compute' event is normally 
+ * and compute primitives. However in practice, a 'compute' event is normally
  * cut off at ~100 event primitives.
- * 
- * A SynchroTrace compute event is only valid for a given thread. 
+ *
+ * A SynchroTrace compute event is only valid for a given thread.
  * Usage is to fill up the event, then flush it to storage at a thread swap,
- * a communication edge between threads, or at an arbitrary number 
+ * a communication edge between threads, or at an arbitrary number
  * of iops/flops/reads/writes.
  */
-struct STCompEvent 
+struct STCompEvent
 {
 	UInt iop_cnt;
 	UInt flop_cnt;	
@@ -67,8 +100,10 @@ struct STCompEvent
 	UInt thread_local_load_cnt;
 
 	/* Holds a range for the addresses touched by local stores/loads */
-	AddrSet stores_unique; 
+	AddrSet stores_unique;
 	AddrSet loads_unique;
+
+	STInstrEvent &instr_ev;
 
 	UInt total_events;
 	bool is_empty;
@@ -78,7 +113,8 @@ struct STCompEvent
 	const std::shared_ptr<spdlog::logger> &logger;
 
 public:
-	STCompEvent(TId &tid, EId &eid, const std::shared_ptr<spdlog::logger> &logger);
+	STCompEvent(TId &tid, EId &eid, const std::shared_ptr<spdlog::logger> &logger,
+			STInstrEvent &instr_ev);
 	void flush();
 	void updateWrites(const SglMemEv &ev);
 	void updateWrites(const Addr begin, const Addr size);
@@ -108,9 +144,9 @@ private:
 struct STCommEvent
 {
 	typedef std::vector<std::tuple<TId, EId, AddrSet>> LoadEdges;
-	/**< vector of: 
-	 *     producer thread id, 
-	 *     producer event id, 
+	/**< vector of:
+	 *     producer thread id,
+	 *     producer event id,
 	 *     addr range
 	 * for reads to data written by another thread
 	 */
@@ -118,20 +154,23 @@ struct STCommEvent
 	LoadEdges comms;	
 	bool is_empty;
 
+	STInstrEvent &instr_ev;
+
 	TId &thread_id;
 	EId &event_id;
 	const std::shared_ptr<spdlog::logger> &logger;
 
 public:
-	STCommEvent(TId &tid, EId &eid, const std::shared_ptr<spdlog::logger> &logger);
+	STCommEvent(TId &tid, EId &eid, const std::shared_ptr<spdlog::logger> &logger,
+			STInstrEvent &instr_ev);
 	void flush();
 
-	/** 
+	/**
 	 * Adds communication edges originated from a single load/read primitive.
 	 * Use this function when reading data that was written by a different thread.
 	 *
-	 * Expected to by called byte-by-byte. 
-	 * That is, successive calls to this function imply a continuity 
+	 * Expected to by called byte-by-byte.
+	 * That is, successive calls to this function imply a continuity
 	 * between addresses. If the first call specifies address 0x0000,
 	 * and the next call specifies address 0x0008, then it implies
 	 * addresses 0x0000-0x0008 were all read, instead of non-consecutively read.
@@ -149,7 +188,7 @@ private:
  * A SynchroTrace Synchronization Event.
  *
  * Synchronization events mark thread spawns, joins, barriers, locks, et al.
- * Expected use is to flush immediately; these events do not aggregate like 
+ * Expected use is to flush immediately; these events do not aggregate like
  * SynchroTrace Compute or Communication events.
  *
  * Synchronizatin events are expected to be immediately logged.

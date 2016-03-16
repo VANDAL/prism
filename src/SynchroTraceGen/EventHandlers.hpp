@@ -23,18 +23,16 @@ class EventHandlers
 	TId curr_thread_id;
 	EId curr_event_id;
 
-	/* vector of spawner, address of spawnee thread_t
-	 *
+	/* Vector of spawner, address of spawnee thread_t
 	 * All addresses associated with the same spawner are in
 	 * the order they were inserted */
 	std::vector<std::pair<TId, Addr>> thread_spawns;
 
-	/* each spawned thread's ID, in the order it first seen ('created') */
+	/* Each spawned thread's ID, in the order it first seen ('created') */
 	std::vector<TId> thread_creates;
 
-	/* vecotr of barrier_t addr, participating threads
-	 *
-	 * order matters for SynchroTraceSim */
+	/* Vector of barrier_t addr, participating threads.
+	 * Order matters for SynchroTraceSim */
 	std::vector<std::pair<Addr, std::set<TId>>> barrier_participants;
 
 	/* Output directly to a *.gz stream to save space */
@@ -59,9 +57,11 @@ public:
 	EventHandlers& operator=(const EventHandlers&) = delete;
 	~EventHandlers();
 
+	/* interface to Sigil2 */
 	void onSyncEv(SglSyncEv ev);
 	void onCompEv(SglCompEv ev);
 	void onMemEv(SglMemEv ev);
+	void onCxtEv(SglCxtEv ev);
 	void cleanup();
 	void parseArgs(std::vector<std::string> args);
 
@@ -69,9 +69,14 @@ public:
 	 * i.e. Computation, Communication, and Synchronization.
 	 *
 	 * One of each event is populated and flushed as Sigil
-	 * primitives are processed. Because there might be billions
+	 * primitives are processed. Because there might be trillions
 	 * or more of SynchroTrace events, dynamic heap allocation of
-	 * consecutive SynchroTrace events is avoided */
+	 * consecutive SynchroTrace events is avoided
+	 *
+	 * An additional pseudo-event, an instruction event, represents
+	 * instruction addresses. Whenever any other event is flushed,
+	 * this instruction event should also be flushed. */
+	STInstrEvent st_cxt_ev;
 	STCompEvent st_comp_ev;
 	STCommEvent st_comm_ev;
 	STSyncEvent st_sync_ev;

@@ -1,7 +1,6 @@
 #include "STEvent.hpp"
 
 #include "spdlog.h"
-#include <sstream>
 #include <cassert>
 
 namespace STGen
@@ -10,8 +9,10 @@ namespace STGen
 ////////////////////////////////////////////////////////////
 // SynchroTrace - Compute Event
 ////////////////////////////////////////////////////////////
-STCompEvent::STCompEvent(TId &tid, EId &eid, const std::shared_ptr<spdlog::logger> &logger)
-	: thread_id(tid)
+STCompEvent::STCompEvent(TId &tid, EId &eid, const std::shared_ptr<spdlog::logger> &logger,
+		STInstrEvent &instr_ev)
+	: instr_ev(instr_ev)
+	, thread_id(tid)
 	, event_id(eid)
 	, logger(logger)
 {
@@ -23,9 +24,11 @@ void STCompEvent::flush()
 {
 	if(is_empty == false)
 	{
+		instr_ev.flush();
+
 		std::stringstream logmsg;
 		logmsg << event_id
-			<< "," << thread_id 
+			<< "," << thread_id
 			<< "," << iop_cnt
 			<< "," << flop_cnt
 			<< "," << thread_local_load_cnt
@@ -113,7 +116,7 @@ void STCompEvent::incFLOP()
 }
 
 
-void STCompEvent::reset()
+inline void STCompEvent::reset()
 {
 	iop_cnt = 0;
 	flop_cnt = 0;
@@ -130,8 +133,10 @@ void STCompEvent::reset()
 ////////////////////////////////////////////////////////////
 // SynchroTrace - Communication Event
 ////////////////////////////////////////////////////////////
-STCommEvent::STCommEvent(TId &tid, EId &eid, const std::shared_ptr<spdlog::logger> &logger)
-	: thread_id(tid)
+STCommEvent::STCommEvent(TId &tid, EId &eid, const std::shared_ptr<spdlog::logger> &logger,
+		STInstrEvent &instr_ev)
+	: instr_ev(instr_ev)
+	, thread_id(tid)
 	, event_id(eid)
 	, logger(logger)
 {
@@ -143,6 +148,8 @@ void STCommEvent::flush()
 {
 	if(is_empty == false)
 	{
+		instr_ev.flush();
+
 		std::stringstream logmsg;
 		logmsg << event_id
 			<< "," << thread_id;
@@ -196,9 +203,44 @@ void STCommEvent::addEdge(const TId writer, const EId writer_event, const Addr a
 }
 
 
-void STCommEvent::reset()
+inline void STCommEvent::reset()
 {
 	comms.clear();
+	is_empty = true;
+}
+
+
+////////////////////////////////////////////////////////////
+// SynchroTrace - Communication Event
+////////////////////////////////////////////////////////////
+STInstrEvent::STInstrEvent(const std::shared_ptr<spdlog::logger> &logger)
+	: logger(logger)
+{
+	reset();
+}
+
+
+void STInstrEvent::append_instr(Addr addr)
+{
+	instrs << "! " << addr << " ";
+	is_empty = false;
+}
+
+
+inline void STInstrEvent::flush()
+{
+	if(is_empty == false)
+	{
+		logger->info(instrs.str());
+		reset();
+	}
+}
+
+
+inline void STInstrEvent::reset()
+{
+	instrs.str(std::string());
+	instrs << std::hex << std::showbase;
 	is_empty = true;
 }
 

@@ -69,9 +69,9 @@ struct SglCFEv
 struct SglCxtEv
 {
 	CxtType type;
-	UChar   op; /* meaning changes based on
-				   CxtType */
+	Addr    id;
 
+	/* how to implement efficiently? */
 	char* name;
 	UChar len;
 };

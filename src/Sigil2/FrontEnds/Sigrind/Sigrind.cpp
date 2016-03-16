@@ -193,14 +193,17 @@ void Sigrind::produceFromBuffer(unsigned int idx, unsigned int used)
 	{
 		switch(buf[i].tag)
 		{
-		case SGL_MEM_TAG:
+		case EvTag::SGL_MEM_TAG:
 			SGLnotifyMem(buf[i].mem);
 			break;
-		case SGL_COMP_TAG:
+		case EvTag::SGL_COMP_TAG:
 			SGLnotifyComp(buf[i].comp);
 			break;
-		case SGL_SYNC_TAG:
+		case EvTag::SGL_SYNC_TAG:
 			SGLnotifySync(buf[i].sync);
+			break;
+		case EvTag::SGL_CXT_TAG:
+			SGLnotifyCxt(buf[i].cxt);
 			break;
 		default:
 			SigiLog::fatal("received unhandled event in sigrind");

@@ -278,10 +278,10 @@ void Sigil::parseOptions(int argc, char *argv[])
 		start_frontend = [arg_group]()
 		{
 			Sigil::Args args;
-			if (arg_group[backend].size() > 1)
+			if (arg_group[frontend].size() > 1)
 			{
-				auto start = arg_group[backend].cbegin()+1;
-				auto end = arg_group[backend].cend();
+				auto start = arg_group[frontend].cbegin()+1;
+				auto end = arg_group[frontend].cend();
 				args = {start, end};
 			}
 			sgl::frontendSigrind(arg_group[executable],args);

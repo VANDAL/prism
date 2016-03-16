@@ -129,6 +129,13 @@ void SGL_(finish_IPC)(void)
  */
 void SGL_(log_1I0D)(InstrInfo* ii)
 {
+	update_curr_buf();
+
+	curr_buf[curr_used].tag = SGL_CXT_TAG;
+	curr_buf[curr_used].cxt.type = SGLPRIM_CXT_INSTR;
+	curr_buf[curr_used].cxt.id = ii->instr_addr;
+
+	incr_used();
 }
 void SGL_(log_2I0D)(InstrInfo* ii1, InstrInfo* ii2)
 {
@@ -317,6 +324,7 @@ static SigrindSharedData* open_shmem(const HChar *shmem_path, int flags)
 	return (SigrindSharedData*) addr_shared;
 }
 
+/* wait for an empty buffer notification if current buffer is full */
 static inline void update_curr_buf(void)
 {
 	if ( is_full[curr_idx] )
@@ -334,6 +342,7 @@ static inline void update_curr_buf(void)
 	}
 }
 
+/* inform sigil2 that the current buffer is used, increment to next buffer */
 static inline void incr_used(void)
 {
 	tl_assert( !(curr_used > SIGRIND_BUFSIZE) );

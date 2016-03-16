@@ -14,7 +14,7 @@ namespace STGen
 ////////////////////////////////////////////////////////////
 void EventHandlers::onSyncEv(SglSyncEv ev)
 {
-	/* flush any outstanding ST events */
+	/* Flush any outstanding ST events */
 	st_comm_ev.flush();
 	st_comp_ev.flush();
 
@@ -24,7 +24,7 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 		if/*new thread*/(event_ids.find(ev.id) == event_ids.cend())
 		{
 			thread_creates.push_back(ev.id);
-		} 
+		}
 		setThread(ev.id);
 	}
 	else
@@ -102,7 +102,7 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 			STtype = 9;
 			break;
 		default:
-			/* ignore sync event */
+			/* Ignore sync event */
 			break;
 		}
 
@@ -119,7 +119,7 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 ////////////////////////////////////////////////////////////
 void EventHandlers::onCompEv(SglCompEv ev)
 {
-	/* local compute event, flush most recent comm event */
+	/* Local compute event, flush most recent comm event */
 	st_comm_ev.flush(); 
 
 	switch(ev.type)
@@ -153,7 +153,7 @@ void EventHandlers::onMemEv(SglMemEv ev)
 		break;
 	}
 
-	/* hardcoding STGen to split STEvents at 100 memory events */
+	/* Hardcoding STGen to split STEvents at 100 memory events */
 	if(st_comp_ev.thread_local_store_cnt > 99 || st_comp_ev.thread_local_load_cnt > 99)
 	{
 		st_comp_ev.flush();
@@ -165,7 +165,7 @@ void EventHandlers::onLoad(const SglMemEv& ev)
 {
 	bool is_comm_edge = false;
 
-	/* each byte of the read may have been touched by a different thread */
+	/* Each byte of the read may have been touched by a different thread */
 	for/*each byte*/( UInt i=0; i<ev.size; ++i )
 	{
 		Addr curr_addr = ev.begin_addr+i;
@@ -176,7 +176,7 @@ void EventHandlers::onLoad(const SglMemEv& ev)
 
 		if/*comm edge*/((reader_thread != curr_thread_id) && //TODO support for multiple readers
 				(writer_thread != curr_thread_id) &&
-				(writer_thread != SO_UNDEF )) /* XXX treat a read/write to an address 
+				(writer_thread != SO_UNDEF )) /* XXX treat a read/write to an address
 												   with UNDEF thread as local compute event */
 		{
 			is_comm_edge = true;
@@ -191,7 +191,7 @@ void EventHandlers::onLoad(const SglMemEv& ev)
 
 	}
 
-	/* A situation when a singular memory event is both 
+	/* A situation when a singular memory event is both
 	 * a communication edge and a local thread read is
 	 * rare and not robustly accounted for. A single address
 	 * that is a communication edge counts the whole event as
@@ -210,6 +210,19 @@ void EventHandlers::onStore(const SglMemEv& ev)
 	st_comp_ev.updateWrites(ev);
 
 	shad_mem.updateWriter( ev.begin_addr, ev.size, curr_thread_id, curr_event_id);
+}
+
+
+////////////////////////////////////////////////////////////
+// Context Event Handling (instructions)
+////////////////////////////////////////////////////////////
+void EventHandlers::onCxtEv(SglCxtEv ev)
+{
+	/* Instruction address marker */
+	if (ev.type == CxtType::SGLPRIM_CXT_INSTR)
+	{
+		st_cxt_ev.append_instr(ev.id);
+	}
 }
 
 
@@ -240,7 +253,7 @@ void EventHandlers::cleanup()
 	SigiLog::info("Flushing thread metadata to: " + pthread_metadata);
 
 	/* The order the threads were seen SHOULD match to
-	 * the order of thread_t values of the pthread_create 
+	 * the order of thread_t values of the pthread_create
 	 * calls. For example, with the valgrind frontend,
 	 * the --fair-sched=yes option should make sure each
 	 * thread is switched to in the order they were created */
@@ -254,16 +267,16 @@ void EventHandlers::cleanup()
 		{
 			pthread_logger->info() << "##" << pair.second << "," << thread_creates[create_idx];
 		}
-		++create_idx; //skip past thread spawns that happened in other threads
+		++create_idx; //Skip past thread spawns that happened in other threads
 	}
 
 	/* TODO Confirm with KS and SN how barriers are processed */
-	/* Iterate through each unique barrier_t address and 
+	/* Iterate through each unique barrier_t address and
 	 * aggregate all the associated, participating threads */
 	for(auto &pair : barrier_participants)
 	{
 		std::ostringstream ss;
-		ss << "**" << pair.first; 
+		ss << "**" << pair.first;
 		for(auto &tid : pair.second)
 		{
 			ss << "," << tid;
@@ -280,8 +293,9 @@ void EventHandlers::cleanup()
 // Miscellaneous
 ////////////////////////////////////////////////////////////
 EventHandlers::EventHandlers()
-	: st_comp_ev(curr_thread_id, curr_event_id, curr_logger)
-	, st_comm_ev(curr_thread_id, curr_event_id, curr_logger)
+	: st_cxt_ev(curr_logger)
+	, st_comp_ev(curr_thread_id, curr_event_id, curr_logger, st_cxt_ev)
+	, st_comm_ev(curr_thread_id, curr_event_id, curr_logger, st_cxt_ev)
 	, st_sync_ev(curr_thread_id, curr_event_id, curr_logger)
 {
 	output_directory = ".";
@@ -292,9 +306,9 @@ EventHandlers::EventHandlers()
 
 EventHandlers::~EventHandlers()
 {
-	/* close remaining logs before gzstreams close 
+	/* close remaining logs before gzstreams close
 	 * to prevent nasty race conditions that can
-	 * manifest if asynchronous logging is enabled 
+	 * manifest if asynchronous logging is enabled
 	 *
 	 * the destructors should call a blocking flush */
 	for(auto &p : loggers)

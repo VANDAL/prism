@@ -33,6 +33,7 @@ public:
 
 	/* static plugin interface */
 	void registerBackend(ToolName name, BackendRegistration registration);
+
 	template <typename Func>
 	void registerEventHandler(Func handler) {mgr.addObserver(handler);}
 	void registerToolFinish(std::function<void(void)> handler) {mgr.addCleanup(handler);}

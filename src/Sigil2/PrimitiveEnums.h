@@ -61,9 +61,10 @@ enum CFType
 enum CxtType
 {
 	SGLPRIM_CXT_UNDEF = 0,
-	SGLPRIM_CXT_FUNC = 1,
+	SGLPRIM_CXT_INSTR = 1,
+	SGLPRIM_CXT_BB = 2,
+	SGLPRIM_CXT_FUNC = 3,
 	SGLPRIM_CXT_THREAD = 2 
-	//instr, etc, unimplemented
 };
 
 

@@ -7,7 +7,20 @@
 #include "MySigilBackend.h"
 SIGIL_REGISTER(MyBackEnd)
 {
-	
+	// register optional event handling with sigil2,
+	// triggered on each event
+	EVENT_HANDLER(std::function<void(SglMemEv)>);
+	EVENT_HANDLER(std::function<void(SglCompEv)>);
+	EVENT_HANDLER(std::function<void(SglSyncEv)>);
+	EVENT_HANDLER(std::function<void(SglCxtEv)>);
+
+	// register optional cleanup function,
+	// triggered once the application is complete
+	FINISH(std::function<void(void)>);
+
+	// register optional parser function,
+	// passes list of command line backend options
+	PARSER(std::function<void(std::vector<std::string>)>);
 }
 */
 
@@ -19,6 +32,7 @@ SIGIL_REGISTER(STGen)
 	EVENT_HANDLER([](SglMemEv ev){handler.onMemEv(ev);});
 	EVENT_HANDLER([](SglCompEv ev){handler.onCompEv(ev);});
 	EVENT_HANDLER([](SglSyncEv ev){handler.onSyncEv(ev);});
+	EVENT_HANDLER([](SglCxtEv ev){handler.onCxtEv(ev);});
 	FINISH([](){handler.cleanup();});
 	PARSER([](std::vector<std::string> args){handler.parseArgs(args);});
 }

@@ -7,6 +7,34 @@
 namespace sgl
 {
 
+EventManager::EventManager() :
+	full(0),empty(MAX_BUFFERS),
+	prod_idx(MAX_BUFFERS), cons_idx(MAX_BUFFERS)
+{
+	/* initialize producer-consumer state */
+	empty.P();
+	prod_buf = &bufbuf[prod_idx.increment()];
+	finish_consumer = false;
+
+	/* start consumer */
+	consumer = std::thread(&EventManager::consumeEvents, this);
+}
+
+
+EventManager::~EventManager()
+{
+	/* if consumer never finished,
+	 * then something bad must have interrupted
+	 * normal execution. Detach consumer and warn
+	 * the user */
+	if (consumer.joinable() == true)
+	{
+		SigiLog::warn("unexpected exit: event generation did not complete");
+		consumer.detach();
+	}
+}
+
+
 void EventManager::consumeEvents()
 {
 	assert(prod_buf != nullptr);
@@ -103,58 +131,6 @@ void EventManager::addObserver(std::function<void(SglCxtEv)> obs)
 void EventManager::addCleanup(std::function<void()> obs)
 {
 	cleanup_observers.push_back(obs);
-}
-
-
-void EventManager::produceEvent(const SglMemEv &ev)
-{
-	assert(prod_buf != nullptr);
-
-	UInt& used = prod_buf->used;
-	BufferedSglEv (&buf)[MAX_EVENTS] = prod_buf->events;
-
-	buf[used].tag = EvTag::SGL_MEM_TAG;
-	buf[used].mem = ev;
-	++used;
-}
-
-
-void EventManager::produceEvent(const SglCompEv &ev)
-{
-	assert(prod_buf != nullptr);
-
-	UInt& used = prod_buf->used;
-	BufferedSglEv (&buf)[MAX_EVENTS] = prod_buf->events;
-
-	buf[used].tag = EvTag::SGL_COMP_TAG;
-	buf[used].comp = ev;
-	++used;
-}
-
-
-void EventManager::produceEvent(const SglSyncEv &ev)
-{
-	assert(prod_buf != nullptr);
-
-	UInt& used = prod_buf->used;
-	BufferedSglEv (&buf)[MAX_EVENTS] = prod_buf->events;
-
-	buf[used].tag = EvTag::SGL_SYNC_TAG;
-	buf[used].sync = ev;
-	++used;
-}
-
-
-void EventManager::produceEvent(const SglCxtEv &ev)
-{
-	assert(prod_buf != nullptr);
-
-	UInt& used = prod_buf->used;
-	BufferedSglEv (&buf)[MAX_EVENTS] = prod_buf->events;
-
-	buf[used].tag = EvTag::SGL_CXT_TAG;
-	buf[used].cxt = ev;
-	++used;
 }
 
 }; //end namespace sgl

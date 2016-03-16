@@ -254,6 +254,7 @@ struct _jCC {
 typedef struct _InstrInfo InstrInfo;
 struct _InstrInfo {
   UInt instr_offset;
+  Addr instr_addr;
   UInt instr_size;
   UInt cost_offset;
   EventSet* eventset;

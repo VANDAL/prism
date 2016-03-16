@@ -33,33 +33,13 @@ using CleanupObservers = std::vector<std::function<void()>>;
 class EventManager
 {
 public:
-	EventManager() : 
-		full(0),empty(MAX_BUFFERS),
-		prod_idx(MAX_BUFFERS), cons_idx(MAX_BUFFERS)
-	{ 
-		/* initialize producer-consumer state */
-		empty.P();
-		prod_buf = &bufbuf[prod_idx.increment()];
-		finish_consumer = false;
-
-		/* start consumer */
-		consumer = std::thread(&EventManager::consumeEvents, this);
-	}
+	EventManager();
 	EventManager(const EventManager&) = delete;
 	EventManager& operator=(const EventManager&) = delete;
+	~EventManager();
 
-	~EventManager()
-	{
-		/* if consumer never finished, 
-		 * then something bad must have interrupted
-		 * normal execution. Detach consumer and warn
-		 * the user */
-		if (consumer.joinable() == true)
-		{
-			SigiLog::warn("unexpected exit: event generation did not complete");
-			consumer.detach();
-		}
-	}
+	template<typename T>
+	void addEvent(const T& ev);
 
 	/* Plugins add observers in the form of function callbacks */
 	void addObserver(std::function<void(SglMemEv)> obs);
@@ -70,29 +50,14 @@ public:
 	void finish();
 
 	/* Simple queuing producer->consumer
-	 * 
-	 * Each buffer is a resource that is either produced or consumed. 
+	 *
+	 * Each buffer is a resource that is either produced or consumed.
 	 * That is, a full buffer is 1 resource. Two semaphores are used
 	 * to track access. The 'count' values of each semaphore are used
-	 * to index which buffer the producer(frontend)/consumer(backend) 
-	 * should use. 
+	 * to index which buffer the producer(frontend)/consumer(backend)
+	 * should use.
 	 */
 	//TODO clean up implementation, cohesion is lacking here...
-	template<typename T>
-	void addEvent(const T& ev)
-	{
-		if/*not full*/(prod_buf->used < MAX_EVENTS)
-		{
-			produceEvent(ev);
-		}
-		else
-		{
-			empty.P();
-			prod_buf = &bufbuf[prod_idx.increment()];
-			full.V();
-			produceEvent(ev);
-		}
-	}
 
 private:
 	Observers<SglMemEv> mem_observers;
@@ -102,7 +67,7 @@ private:
 	CleanupObservers cleanup_observers;
 
 	/* Simple semaphore implementation */
-	class Sem 
+	class Sem
 	{
 	public:
 		Sem (int init) : count(count_), count_(init) {}
@@ -133,7 +98,7 @@ private:
 	struct CircularCounter
 	{
 		CircularCounter(int mod_val) : mod_val(mod_val) {val = 0;}
-		int increment() 
+		int increment()
 		{
 			int old_val = val;
 			if (++val == mod_val)
@@ -147,7 +112,7 @@ private:
 		int mod_val;
 	};
 
-	struct EventBuffer 
+	struct EventBuffer
 	{
 		BufferedSglEv events[MAX_EVENTS];
 		UInt used = 0;
@@ -168,6 +133,75 @@ private:
 	void consumeEvents();
 	void flushNotifications(EventBuffer& buf);
 };
+
+
+template<typename T>
+inline void EventManager::addEvent(const T& ev)
+{
+	if/*not full*/(prod_buf->used < MAX_EVENTS)
+	{
+		produceEvent(ev);
+	}
+	else
+	{
+		empty.P();
+		prod_buf = &bufbuf[prod_idx.increment()];
+		full.V();
+		produceEvent(ev);
+	}
+}
+
+
+inline void EventManager::produceEvent(const SglMemEv &ev)
+{
+	assert(prod_buf != nullptr);
+
+	UInt& used = prod_buf->used;
+	BufferedSglEv (&buf)[MAX_EVENTS] = prod_buf->events;
+
+	buf[used].tag = EvTag::SGL_MEM_TAG;
+	buf[used].mem = ev;
+	++used;
+}
+
+
+inline void EventManager::produceEvent(const SglCompEv &ev)
+{
+	assert(prod_buf != nullptr);
+
+	UInt& used = prod_buf->used;
+	BufferedSglEv (&buf)[MAX_EVENTS] = prod_buf->events;
+
+	buf[used].tag = EvTag::SGL_COMP_TAG;
+	buf[used].comp = ev;
+	++used;
+}
+
+
+inline void EventManager::produceEvent(const SglSyncEv &ev)
+{
+	assert(prod_buf != nullptr);
+
+	UInt& used = prod_buf->used;
+	BufferedSglEv (&buf)[MAX_EVENTS] = prod_buf->events;
+
+	buf[used].tag = EvTag::SGL_SYNC_TAG;
+	buf[used].sync = ev;
+	++used;
+}
+
+
+inline void EventManager::produceEvent(const SglCxtEv &ev)
+{
+	assert(prod_buf != nullptr);
+
+	UInt& used = prod_buf->used;
+	BufferedSglEv (&buf)[MAX_EVENTS] = prod_buf->events;
+
+	buf[used].tag = EvTag::SGL_CXT_TAG;
+	buf[used].cxt = ev;
+	++used;
+}
 
 }; //end namespace sigil
 

@@ -192,7 +192,7 @@ static void addEvent_D_guarded ( ClgState* clgs, InstrInfo* inode,
 static void addEvent_Dw ( ClgState* clgs, InstrInfo* inode, Int datasize, IRAtom* ea );
 static void addEvent_Dr ( ClgState* clgs, InstrInfo* inode, Int datasize, IRAtom* ea );
 static void addEvent_Ir ( ClgState* clgs, InstrInfo* inode );
-static InstrInfo* next_InstrInfo ( ClgState* clgs, UInt instr_size );
+static InstrInfo* next_InstrInfo ( ClgState* clgs, Addr instr_addr, UInt instr_size );
 
 /* Inititalization functions */
 static void init_Event ( Event* ev );
@@ -321,7 +321,7 @@ static IRSB* CLG_(instrument)( VgCallbackClosure* closure,
          // Init the inode, record it as the current one.
          // Subsequent Dr/Dw/Dm events from the same instruction will
          // also use it.
-         curr_inode = next_InstrInfo (&clgs, isize);
+         curr_inode = next_InstrInfo (&clgs, cia, isize);
       }
 
       /* Ignore all Sigil event processing when inside a synchronization syscall */
@@ -1082,7 +1082,7 @@ void addEvent_Comp( ClgState* clgs, InstrInfo* inode, IRExprTag arity, IRType op
    queue (when Dm events were determined), cost offsets are determined at
    end of BB instrumentation. */
 static
-InstrInfo* next_InstrInfo ( ClgState* clgs, UInt instr_size )
+InstrInfo* next_InstrInfo ( ClgState* clgs, Addr instr_addr, UInt instr_size )
 {
    InstrInfo* ii;
    tl_assert(clgs->ii_index >= 0);
@@ -1096,6 +1096,7 @@ InstrInfo* next_InstrInfo ( ClgState* clgs, UInt instr_size )
    else {
        ii->instr_offset = clgs->instr_offset;
        ii->instr_size = instr_size;
+	   ii->instr_addr = instr_addr;
        ii->cost_offset = 0;
        ii->eventset = 0;
    }
