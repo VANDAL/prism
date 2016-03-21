@@ -67,6 +67,8 @@ flags = [
 '-isystem',
 '../llvm/tools/clang/include',
 '-I','.',
+'-I','./Backends',
+'-I','./Frontends',
 '-I','../include',
 '-I','../include/spdlog/include/spdlog',
 '-I','../include/spdlog/include',

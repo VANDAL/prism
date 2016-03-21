@@ -16,9 +16,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 
-#include "Sigil2/SigiLog.hpp"
-#include "Sigil2/FrontEnds.hpp"
-#include "Sigil2/EventManager.hpp"
+#include "Sigil2/Sigil.hpp"
 #include "Sigil2/InstrumentationIface.h"
 #include "Sigrind.hpp"
 #include "whereami.h"
@@ -33,11 +31,12 @@ namespace sgl
 ////////////////////////////////////////////////////////////
 // Sigil2 - Valgrind IPC
 ////////////////////////////////////////////////////////////
-Sigrind::Sigrind(std::string tmp_dir)
+Sigrind::Sigrind(int num_threads, std::string tmp_dir)
 	: shmem_file(tmp_dir + "/" + SIGRIND_SHMEM_NAME)
 	, empty_file(tmp_dir + "/" + SIGRIND_EMPTYFIFO_NAME)
 	, full_file(tmp_dir + "/" + SIGRIND_FULLFIFO_NAME)
-
+	, num_threads(num_threads)
+	, be_idx(0)
 {
 	initShMem();
 	makeNewFifo(empty_file.c_str());
@@ -194,16 +193,16 @@ void Sigrind::produceFromBuffer(unsigned int idx, unsigned int used)
 		switch(buf[i].tag)
 		{
 		case EvTag::SGL_MEM_TAG:
-			SGLnotifyMem(buf[i].mem);
+			Sigil::instance().addEvent(buf[i].mem,be_idx);
 			break;
 		case EvTag::SGL_COMP_TAG:
-			SGLnotifyComp(buf[i].comp);
+			Sigil::instance().addEvent(buf[i].comp,be_idx);
 			break;
 		case EvTag::SGL_SYNC_TAG:
-			SGLnotifySync(buf[i].sync);
+			Sigil::instance().addEvent(buf[i].sync,be_idx);
 			break;
 		case EvTag::SGL_CXT_TAG:
-			SGLnotifyCxt(buf[i].cxt);
+			Sigil::instance().addEvent(buf[i].cxt,be_idx);
 			break;
 		default:
 			SigiLog::fatal("received unhandled event in sigrind");
@@ -411,11 +410,17 @@ std::pair<std::string, char *const *> configureValgrind(
 }; //end namespace
 
 
-void frontendSigrind (
+void Sigrind::start(
 		const std::vector<std::string> &user_exec,
-		const std::vector<std::string> &args)
+		const std::vector<std::string> &args,
+		const uint16_t num_threads)
 {
 	assert (user_exec.empty() == false);
+
+	if(num_threads != 1)
+	{
+		SigiLog::fatal("Valgrind frontend attempted with other than 1 thread");
+	}
 
 	/* warn user if gcc version is not fully supported */
 	gccWarn(user_exec);
@@ -435,7 +440,7 @@ void frontendSigrind (
 	}
 
 	/* set up interface to valgrind */
-	Sigrind sigrind_iface(tmp_path);
+	Sigrind sigrind_iface(num_threads,tmp_path);
 
 	/* set up valgrind environment */
 	auto valgrind_args = configureValgrind(user_exec, args, tmp_path);

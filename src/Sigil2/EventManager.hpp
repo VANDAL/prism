@@ -10,197 +10,64 @@
 
 #include "Primitive.h"
 #include "SigiLog.hpp"
+#include "Backends.hpp"
+#include "EventBuffer.hpp"
 
 /**
- * The sigil EventManager receives sigil event primitives from 
+ * The sigil EventManager receives sigil event primitives from
  * a frontend, typically an instrumentation tool. These events
  * are buffered, and full buffers are consumed by the backend
  * in a separate thread.
  *
- * Multiple buffers exist to ensure that the backend is never
- * waiting for data to consume.
+ * The backend is configured during construction via a factory
+ * function to spawn a backend for each thread.
  */
+
 namespace sgl
 {
 
-/* fudge numbers */
-constexpr unsigned int MAX_EVENTS = 100000;
-constexpr unsigned int MAX_BUFFERS = 15; 
-
-template<typename T> using Observers = std::vector<std::function<void(T)>>; 
-using CleanupObservers = std::vector<std::function<void()>>; 
-
 class EventManager
 {
+	using BackendFactory = std::function<std::shared_ptr<Backend>(void)>;
 public:
-	EventManager();
+	/* Create num_threads backends from the BackendFactory 
+	 * in num_threads threads */
+	EventManager(uint32_t num_threads, BackendFactory factory);
 	EventManager(const EventManager&) = delete;
 	EventManager& operator=(const EventManager&) = delete;
 	~EventManager();
 
 	template<typename T>
-	void addEvent(const T& ev);
+	void addEvent(const T& ev, uint16_t buf_idx=0);
 
-	/* Plugins add observers in the form of function callbacks */
-	void addObserver(std::function<void(SglMemEv)> obs);
-	void addObserver(std::function<void(SglCompEv)> obs);
-	void addObserver(std::function<void(SglSyncEv)> obs);
-	void addObserver(std::function<void(SglCxtEv)> obs);
-	void addCleanup(std::function<void()> obs);
 	void finish();
 
-	/* Simple queuing producer->consumer
-	 *
-	 * Each buffer is a resource that is either produced or consumed.
-	 * That is, a full buffer is 1 resource. Two semaphores are used
-	 * to track access. The 'count' values of each semaphore are used
-	 * to index which buffer the producer(frontend)/consumer(backend)
-	 * should use.
-	 */
-	//TODO clean up implementation, cohesion is lacking here...
-
 private:
-	Observers<SglMemEv> mem_observers;
-	Observers<SglCompEv> comp_observers;
-	Observers<SglSyncEv> sync_observers;
-	Observers<SglCxtEv> cxt_observers;
-	CleanupObservers cleanup_observers;
+	const BackendFactory backend_factory;
 
-	/* Simple semaphore implementation */
-	class Sem
-	{
-	public:
-		Sem (int init) : count(count_), count_(init) {}
-		int P()
-		{
-			std::unique_lock<std::mutex> ulock(mut);
-			cond.wait(ulock, [&]{ return count > 0; });
-			--count_;
-			return count_;
-		}
-		int V()
-		{
-			std::unique_lock<std::mutex> ulock(mut);
-			++count_;
-			cond.notify_one();
-			return count_;
-		}
-
-		const unsigned int& count;
-	private:
-		unsigned int count_;
-		std::mutex mut;
-		std::condition_variable cond;
-	};
-
-	/* Circular counter to help indexing if more buffers
-	 * are decided in the future. */
-	struct CircularCounter
-	{
-		CircularCounter(int mod_val) : mod_val(mod_val) {val = 0;}
-		int increment()
-		{
-			int old_val = val;
-			if (++val == mod_val)
-			{
-				val = 0;
-			}
-			return old_val;
-		}
-	private:
-		int val;
-		int mod_val;
-	};
-
-	struct EventBuffer
-	{
-		BufferedSglEv events[MAX_EVENTS];
-		UInt used = 0;
-	};
-
-	Sem full, empty;
-	EventBuffer *prod_buf;
-	EventBuffer bufbuf[MAX_BUFFERS];
-	CircularCounter prod_idx, cons_idx;
-	void produceEvent(const SglMemEv& ev);
-	void produceEvent(const SglCompEv& ev);
-	void produceEvent(const SglSyncEv& ev);
-	void produceEvent(const SglCxtEv& ev);
+	/* The frontends forward events to these buffers.
+	 * If Sigil2 is configured in to process events with
+	 * a N-threaded backend, there will be N EventBuffers;
+	 * each EventBuffer will use the backend callbacks, so
+	 * those callbacks will need to be thread-safe. That
+	 * responsibility is on the backend developer. */
+	std::vector<std::shared_ptr<EventBuffer>> frontend_buffers;
 
 	/* plugins implemented as separate thread */
-	std::thread consumer;
-	bool finish_consumer;
-	void consumeEvents();
-	void flushNotifications(EventBuffer& buf);
+	std::vector<std::thread> consumers;
+	bool finish_consumers;
+
+	/* The backend is created and run in this
+	 * function for each Sigil backend thread */
+	void consumeEvents(EventBuffer &buffer);
 };
 
 
 template<typename T>
-inline void EventManager::addEvent(const T& ev)
+inline void EventManager::addEvent(const T& ev, uint16_t buf_idx)
 {
-	if/*not full*/(prod_buf->used < MAX_EVENTS)
-	{
-		produceEvent(ev);
-	}
-	else
-	{
-		empty.P();
-		prod_buf = &bufbuf[prod_idx.increment()];
-		full.V();
-		produceEvent(ev);
-	}
-}
-
-
-inline void EventManager::produceEvent(const SglMemEv &ev)
-{
-	assert(prod_buf != nullptr);
-
-	UInt& used = prod_buf->used;
-	BufferedSglEv (&buf)[MAX_EVENTS] = prod_buf->events;
-
-	buf[used].tag = EvTag::SGL_MEM_TAG;
-	buf[used].mem = ev;
-	++used;
-}
-
-
-inline void EventManager::produceEvent(const SglCompEv &ev)
-{
-	assert(prod_buf != nullptr);
-
-	UInt& used = prod_buf->used;
-	BufferedSglEv (&buf)[MAX_EVENTS] = prod_buf->events;
-
-	buf[used].tag = EvTag::SGL_COMP_TAG;
-	buf[used].comp = ev;
-	++used;
-}
-
-
-inline void EventManager::produceEvent(const SglSyncEv &ev)
-{
-	assert(prod_buf != nullptr);
-
-	UInt& used = prod_buf->used;
-	BufferedSglEv (&buf)[MAX_EVENTS] = prod_buf->events;
-
-	buf[used].tag = EvTag::SGL_SYNC_TAG;
-	buf[used].sync = ev;
-	++used;
-}
-
-
-inline void EventManager::produceEvent(const SglCxtEv &ev)
-{
-	assert(prod_buf != nullptr);
-
-	UInt& used = prod_buf->used;
-	BufferedSglEv (&buf)[MAX_EVENTS] = prod_buf->events;
-
-	buf[used].tag = EvTag::SGL_CXT_TAG;
-	buf[used].cxt = ev;
-	++used;
+	assert(buf_idx < frontend_buffers.size());
+	frontend_buffers[buf_idx]->addEvent(ev);
 }
 
 }; //end namespace sigil

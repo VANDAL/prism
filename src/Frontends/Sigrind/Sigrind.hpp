@@ -2,6 +2,7 @@
 #define SGL_SIGRIND_H
 
 #include <string>
+#include <vector>
 #include "SigrindIPC.h"
 
 namespace sgl
@@ -19,12 +20,21 @@ class Sigrind
 	int fullfd;
 	int full_data;
 
+	/* multithreaded backend */
+	const int num_threads;
+	int be_idx;
+
 	/* shared mem */
 	SigrindSharedData* shared_mem;
 public:
-	Sigrind(std::string tmp_dir);
+	Sigrind(int num_threads, std::string tmp_dir);
 	~Sigrind();
 	void produceSigrindEvents();
+
+	static void start(
+		const std::vector<std::string> &user_exec,
+		const std::vector<std::string> &args,
+		const uint16_t num_threads);
 
 private:
 	void initShMem();

@@ -7,130 +7,74 @@
 namespace sgl
 {
 
-EventManager::EventManager() :
-	full(0),empty(MAX_BUFFERS),
-	prod_idx(MAX_BUFFERS), cons_idx(MAX_BUFFERS)
+EventManager::EventManager(uint32_t num_threads,
+			BackendFactory factory)
+	: backend_factory(factory)
 {
-	/* initialize producer-consumer state */
-	empty.P();
-	prod_buf = &bufbuf[prod_idx.increment()];
-	finish_consumer = false;
+	assert(factory != nullptr);
 
-	/* start consumer */
-	consumer = std::thread(&EventManager::consumeEvents, this);
+	/* initialize producer-consumer state */
+	finish_consumers = false;
+
+	/* create buffers and start their consumers */
+	frontend_buffers.clear();
+	consumers.clear();
+
+	for(uint32_t i=0; i<num_threads; ++i)
+	{
+		frontend_buffers.push_back(std::make_shared<EventBuffer>());
+		consumers.push_back(std::thread(&EventManager::consumeEvents, this, std::ref(*frontend_buffers[i])));
+	}
 }
 
 
 EventManager::~EventManager()
 {
-	/* if consumer never finished,
-	 * then something bad must have interrupted
-	 * normal execution. Detach consumer and warn
-	 * the user */
-	if (consumer.joinable() == true)
+	bool warn = false;
+
+	for(std::thread &consumer : consumers)
+	{
+		/* if consumer never finished,
+		 * then something bad must have interrupted
+		 * normal execution. Detach consumer and warn
+		 * the user */
+		if (consumer.joinable() == true)
+		{
+			warn = true;
+			consumer.detach();
+		}
+	}
+
+	if(warn == true)
 	{
 		SigiLog::warn("unexpected exit: event generation did not complete");
-		consumer.detach();
 	}
 }
 
 
-void EventManager::consumeEvents()
+void EventManager::consumeEvents(EventBuffer &buffer)
 {
-	assert(prod_buf != nullptr);
-
-	while(finish_consumer == false || empty.count < MAX_BUFFERS)
+	auto backend = backend_factory();
+	while(finish_consumers == false || buffer.isEmpty() == false)
 	{
-		full.P();
-		flushNotifications(bufbuf[cons_idx.increment()]);
-		empty.V();
+		buffer.flush(*backend);
 	}
 }
 
 
 void EventManager::finish()
 {
-	assert(prod_buf != nullptr);
+	finish_consumers = true;
 
-	finish_consumer = true;
-	full.V(); // signal that the partially full buffer can be consumed
-
-	consumer.join();
-
-	for(auto& cleanup : cleanup_observers)
+	for(auto &buffer : frontend_buffers)
 	{
-		cleanup();
+		buffer->complete();
 	}
-}
 
-
-void EventManager::flushNotifications(EventBuffer &buf)
-{
-	for(uint32_t i=0; i<buf.used; ++i)
+	for(std::thread &consumer : consumers)
 	{
-		BufferedSglEv &ev = buf.events[i];
-		switch(ev.tag)
-		{
-		case EvTag::SGL_MEM_TAG:
-			for (auto notify : mem_observers)
-			{
-				notify(ev.mem);
-			}
-			break;
-		case EvTag::SGL_COMP_TAG:
-			for (auto notify : comp_observers)
-			{
-				notify(ev.comp);
-			}
-			break;
-		case EvTag::SGL_SYNC_TAG:
-			for (auto notify : sync_observers)
-			{
-				notify(ev.sync);
-			}
-			break;
-		case EvTag::SGL_CXT_TAG:
-			for (auto notify : cxt_observers)
-			{
-				notify(ev.cxt);
-			}
-			break;
-		default:
-			/* control flow unimplemented */
-			SigiLog::fatal("Received unhandled event in EventManager");
-		}
+		consumer.join();
 	}
-	buf.used = 0;
-}
-
-
-void EventManager::addObserver(std::function<void(SglMemEv)> obs)
-{
-	mem_observers.push_back(obs);
-}
-
-
-void EventManager::addObserver(std::function<void(SglCompEv)> obs)
-{
-	comp_observers.push_back(obs);
-}
-
-
-void EventManager::addObserver(std::function<void(SglSyncEv)> obs)
-{
-	sync_observers.push_back(obs);
-}
-
-
-void EventManager::addObserver(std::function<void(SglCxtEv)> obs)
-{
-	cxt_observers.push_back(obs);
-}
-
-
-void EventManager::addCleanup(std::function<void()> obs)
-{
-	cleanup_observers.push_back(obs);
 }
 
 }; //end namespace sgl

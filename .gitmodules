@@ -10,3 +10,6 @@
 [submodule "include/zlib"]
 	path = include/zlib
 	url = https://github.com/madler/zlib
+[submodule "src/Frontends/DrSigil/dynamorio"]
+	path = src/Frontends/DrSigil/dynamorio
+	url = https://github.com/DynamoRIO/dynamorio

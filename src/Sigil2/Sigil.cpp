@@ -3,7 +3,6 @@
 #include "SigiLog.hpp"
 
 #include "InstrumentationIface.h"
-#include "FrontEnds.hpp"
 #include "Sigil.hpp"
 
 
@@ -61,8 +60,21 @@ void Sigil::generateEvents()
 {
 	assert(start_frontend != nullptr);
 
+	assert(parse_backend != nullptr);
+	assert(create_backend != nullptr);
+	assert(exit_backend != nullptr);
+
+	assert(num_threads > 0);
+
+	/* the event consumers (the backend)
+	 * are started in the event manager */
+	parse_backend();
+	mgr = std::make_shared<sgl::EventManager>(num_threads, create_backend);
+
 	start_frontend();
-	mgr.finish();
+	mgr->finish();
+
+	exit_backend();
 }
 
 
@@ -100,12 +112,60 @@ void SGLnotifySync(SglSyncEv ev)
 
 
 ////////////////////////////////////////////////////////////
-// Event Handler Registration
+// Frontend/Backend Registration
 ////////////////////////////////////////////////////////////
-void Sigil::registerBackend(ToolName toolname, BackendRegistration register_the_tool)
+void Sigil::registerBackend(ToolName toolname, BackendFactory factory)
 {
 	std::transform(toolname.begin(), toolname.end(), toolname.begin(), ::tolower);
-	backend_registry[toolname] = register_the_tool;
+
+	if(backend_registry.find(toolname) == backend_registry.cend())
+	{
+		/* initialize with empty parser and exit */
+		backend_registry[toolname] = std::make_tuple(factory, [](Args){}, [](){});
+	}
+	else
+	{
+		std::get<0>(backend_registry[toolname]) =  factory;
+	}
+}
+
+
+void Sigil::registerParser(ToolName toolname, Parser parser)
+{
+	std::transform(toolname.begin(), toolname.end(), toolname.begin(), ::tolower);
+
+	if(backend_registry.find(toolname) == backend_registry.cend())
+	{
+		/* no way to initialize empty backend */
+		SigiLog::fatal("Cannot register backend parser before registering backend");
+	}
+	else
+	{
+		std::get<1>(backend_registry[toolname]) =  parser;
+	}
+}
+
+
+void Sigil::registerExit(ToolName toolname, Exit exit_routine)
+{
+	std::transform(toolname.begin(), toolname.end(), toolname.begin(), ::tolower);
+
+	if(backend_registry.find(toolname) == backend_registry.cend())
+	{
+		/* no way to initialize empty backend */
+		SigiLog::fatal("Cannot register backend parser before registering backend");
+	}
+	else
+	{
+		std::get<2>(backend_registry[toolname]) =  exit_routine;
+	}
+}
+
+
+void Sigil::registerFrontend(std::string frontend, FrontendStarter start)
+{
+	std::transform(frontend.begin(), frontend.end(), frontend.begin(), ::tolower);
+	frontend_registry[frontend] = start;
 }
 
 
@@ -261,21 +321,25 @@ void Sigil::parseOptions(int argc, char *argv[])
 		parse_error_exit("missing required arguments");
 	}
 
+	/* check number of threads */
+	//FIXME hardcode for testing
+	num_threads = 1;
+
 	/* check frontend */
 	std::string frontend_name;
 	if (arg_group[frontend].empty() == false)
 	{
 		frontend_name = arg_group[frontend][0];
 	}
-	else
+	else /*set default*/
 	{
 		frontend_name = "valgrind"; //default
 	}
-
 	std::transform(frontend_name.begin(), frontend_name.end(), frontend_name.begin(), ::tolower);
-	if (frontend_name.compare("valgrind") == 0)
+
+	if(frontend_registry.find(frontend_name) != frontend_registry.cend())
 	{
-		start_frontend = [arg_group]()
+		start_frontend = [this,arg_group,frontend_name]()
 		{
 			Sigil::Args args;
 			if (arg_group[frontend].size() > 1)
@@ -284,33 +348,48 @@ void Sigil::parseOptions(int argc, char *argv[])
 				auto end = arg_group[frontend].cend();
 				args = {start, end};
 			}
-			sgl::frontendSigrind(arg_group[executable],args);
+			frontend_registry[frontend_name](arg_group[executable],args,num_threads);
 		};
 	}
 	else
 	{
-		parse_error_exit(" invalid frontend");
+		std::string frontend_error(" invalid frontend argument ");
+		frontend_error.append(frontend_name).append("\n");
+
+		frontend_error.append("\tAvailable frontends: ");
+		for(auto p : frontend_registry)
+		{
+			frontend_error.append("\n\t").append(p.first);
+		}
+
+		parse_error_exit(frontend_error);
 	}
 
-	/* check valid backends */
+	/* check backend */
 	std::string backend_name = arg_group[backend][0];
 	std::transform(backend_name.begin(), backend_name.end(), backend_name.begin(), ::tolower);
 
-	if (backend_registry.find(backend_name) != backend_registry.cend())
+	if(backend_registry.find(backend_name) != backend_registry.cend())
 	{
-		/* Set up the backend */
-		backend_registry[backend_name]();
-		if (backend_parser != nullptr)
+		/* send args to backend */
+		Sigil::Args args;
+		if(arg_group[backend].size() > 1)
 		{
-			Sigil::Args args;
-			if (arg_group[backend].size() > 1)
-			{
-				auto start = arg_group[backend].cbegin()+1;
-				auto end = arg_group[backend].cend();
-				args = {start, end};
-			}
-			backend_parser(args);
+			auto start = arg_group[backend].cbegin()+1;
+			auto end = arg_group[backend].cend();
+			args = {start, end};
 		}
+
+		/* Register the backend
+		 *
+		 * Each backend thread creates a new
+		 * backend instance via 'create_backend' */
+		parse_backend = [this,backend_name,args]()
+		{
+			std::get<1>(backend_registry[backend_name])(args);
+		};
+		create_backend = std::get<0>(backend_registry[backend_name]);
+		exit_backend = std::get<2>(backend_registry[backend_name]);
 	}
 	else
 	{
@@ -318,7 +397,7 @@ void Sigil::parseOptions(int argc, char *argv[])
 		backend_error.append(backend_name).append("\n");
 
 		backend_error.append("\tAvailable backends: ");
-		for (auto p : backend_registry)
+		for(auto p : backend_registry)
 		{
 			backend_error.append("\n\t").append(p.first);
 		}

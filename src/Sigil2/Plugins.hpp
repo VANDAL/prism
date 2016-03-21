@@ -8,15 +8,28 @@
 #define SGL_PPCAT(x,y) x##y
 #define SGL_PPCATX(x,y) SGL_PPCAT(x,y)
 
-#define SIGIL_REGISTER(name) static void SGL_PPCATX(init_,name)(); \
-		struct SGL_PPCATX(tool_,name){ SGL_PPCATX(tool_,name)() { \
-			Sigil::instance().registerBackend(SGL_STRINGIFY(name), SGL_PPCATX(init_,name));} \
+#define SIGIL_REGISTER(name) \
+		struct SGL_PPCATX(tool_,name){ \
+			std::string tmp; \
+			void SGL_PPCATX(init_,name)(); \
+			SGL_PPCATX(tool_,name)() { \
+				tmp = SGL_STRINGIFY(name); \
+				SGL_PPCATX(init_,name)(); \
+			} \
 		} SGL_PPCATX(name,_); \
-		static void SGL_PPCATX(init_,name)() \
+		void SGL_PPCATX(tool_,name)::SGL_PPCATX(init_,name)()
 
-#define EVENT_HANDLER(func) Sigil::instance().registerEventHandler(func)
-#define PARSER(func) Sigil::instance().registerToolParser(func)
-#define FINISH(func) Sigil::instance().registerToolFinish(func)
+#define BACKEND(backend) \
+	Sigil::instance().registerBackend(tmp, []()->std::shared_ptr<Backend> { \
+			return std::make_shared<backend>();} );
+
+#define PARSER(parser) \
+	Sigil::instance().registerParser(tmp, parser);
+
+#define EXIT(exit_routine) \
+	Sigil::instance().registerExit(tmp, exit_routine);
+
+
 
 /* XXX unimplemented */
 #define USAGE(func) Sigil::instance().registerToolUsage(func)

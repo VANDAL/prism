@@ -10,9 +10,24 @@ namespace STGen
 {
 
 ////////////////////////////////////////////////////////////
+// Shared state
+////////////////////////////////////////////////////////////
+/* all instances share the same shadow memory state */
+ShadowMemory EventHandlers::shad_mem{};
+
+std::string EventHandlers::output_directory{"."};
+unsigned int EventHandlers::primitives_per_st_comp_ev{100};
+
+
+////////////////////////////////////////////////////////////
 // Synchronization Event Handling
 ////////////////////////////////////////////////////////////
-void EventHandlers::onSyncEv(SglSyncEv ev)
+std::mutex sync_event_mutex;
+std::vector<std::pair<TId, Addr>> thread_spawns;
+std::vector<TId> thread_creates;
+std::vector<std::pair<Addr, std::set<TId>>> barrier_participants;
+
+void EventHandlers::onSyncEv(const SglSyncEv &ev)
 {
 	/* Flush any outstanding ST events */
 	st_comm_ev.flush();
@@ -23,6 +38,7 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 	{
 		if/*new thread*/(event_ids.find(ev.id) == event_ids.cend())
 		{
+			std::lock_guard<std::mutex> lock(sync_event_mutex);
 			thread_creates.push_back(ev.id);
 		}
 		setThread(ev.id);
@@ -61,6 +77,7 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 			break;
 		case SyncType::SGLPRIM_SYNC_CREATE:
 		{
+			std::lock_guard<std::mutex> lock(sync_event_mutex);
 			thread_spawns.push_back(std::make_pair(curr_thread_id, ev.id));
 		}
 			STtype = 3;
@@ -70,6 +87,8 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 			break;
 		case SyncType::SGLPRIM_SYNC_BARRIER:
 		{
+			std::lock_guard<std::mutex> lock(sync_event_mutex);
+
 			unsigned int idx = 0;
 			for(auto &pair : barrier_participants)
 			{
@@ -117,10 +136,10 @@ void EventHandlers::onSyncEv(SglSyncEv ev)
 ////////////////////////////////////////////////////////////
 // Compute Event Handling
 ////////////////////////////////////////////////////////////
-void EventHandlers::onCompEv(SglCompEv ev)
+void EventHandlers::onCompEv(const SglCompEv &ev)
 {
 	/* Local compute event, flush most recent comm event */
-	st_comm_ev.flush(); 
+	st_comm_ev.flush();
 
 	switch(ev.type)
 	{
@@ -139,7 +158,7 @@ void EventHandlers::onCompEv(SglCompEv ev)
 ////////////////////////////////////////////////////////////
 // Memory Access Event Handling
 ////////////////////////////////////////////////////////////
-void EventHandlers::onMemEv(SglMemEv ev)
+void EventHandlers::onMemEv(const SglMemEv &ev)
 {
 	switch(ev.type)
 	{
@@ -153,8 +172,8 @@ void EventHandlers::onMemEv(SglMemEv ev)
 		break;
 	}
 
-	/* Hardcoding STGen to split STEvents at 100 memory events */
-	if(st_comp_ev.thread_local_store_cnt > 99 || st_comp_ev.thread_local_load_cnt > 99)
+	if(st_comp_ev.thread_local_store_cnt > (primitives_per_st_comp_ev-1) ||
+			st_comp_ev.thread_local_load_cnt > (primitives_per_st_comp_ev-1))
 	{
 		st_comp_ev.flush();
 	}
@@ -216,7 +235,7 @@ void EventHandlers::onStore(const SglMemEv& ev)
 ////////////////////////////////////////////////////////////
 // Context Event Handling (instructions)
 ////////////////////////////////////////////////////////////
-void EventHandlers::onCxtEv(SglCxtEv ev)
+void EventHandlers::onCxtEv(const SglCxtEv &ev)
 {
 	/* Instruction address marker */
 	if (ev.type == CxtType::SGLPRIM_CXT_INSTR)
@@ -227,22 +246,16 @@ void EventHandlers::onCxtEv(SglCxtEv ev)
 
 
 ////////////////////////////////////////////////////////////
-// Cleanup any remaining events and logging
+// Flush any pthread data
 ////////////////////////////////////////////////////////////
-void EventHandlers::cleanup()
+void onExit()
 {
-	st_comm_ev.flush();
-	st_comp_ev.flush();
-	// sync events already flush immediately
-
-
-	std::string pthread_metadata(output_directory + "/sigil.pthread.out");
+	std::string pthread_metadata(EventHandlers::output_directory + "/sigil.pthread.out");
 	std::ofstream pthread_file(pthread_metadata, std::ios::trunc|std::ios::out);
 
 	if(pthread_file.fail() == true)
 	{
-		SigiLog::error("Failed to open: " + pthread_metadata);
-		exit(EXIT_FAILURE);
+		SigiLog::fatal("Failed to open: " + pthread_metadata);
 	}
 
 	spdlog::set_sync_mode();
@@ -284,8 +297,10 @@ void EventHandlers::cleanup()
 		pthread_logger->info(ss.str());
 	}
 
+	/* For SynchroTraceSim CPI calculations */
+	pthread_logger->info("Total instructions: " + std::to_string(STInstrEvent::instr_count));
+
 	pthread_logger->flush();
-	if(curr_logger != nullptr) curr_logger->flush();
 }
 
 
@@ -298,7 +313,6 @@ EventHandlers::EventHandlers()
 	, st_comm_ev(curr_thread_id, curr_event_id, curr_logger, st_cxt_ev)
 	, st_sync_ev(curr_thread_id, curr_event_id, curr_logger)
 {
-	output_directory = ".";
 	curr_thread_id = -1;
 	curr_event_id = -1;
 }
@@ -306,6 +320,10 @@ EventHandlers::EventHandlers()
 
 EventHandlers::~EventHandlers()
 {
+	st_comm_ev.flush();
+	st_comp_ev.flush();
+	// sync events already flush immediately
+
 	/* close remaining logs before gzstreams close
 	 * to prevent nasty race conditions that can
 	 * manifest if asynchronous logging is enabled
@@ -366,8 +384,7 @@ void EventHandlers::initThreadLog(TId tid)
 	auto thread_gz = std::make_shared<gzofstream>(key.c_str(), std::ios::trunc|std::ios::out);
 	if(thread_gz->fail() == true)
 	{
-		SigiLog::error("Failed to open: " + key);
-		exit(EXIT_FAILURE);
+		SigiLog::fatal("Failed to open: " + key);
 	}
 	auto ostream_sink = std::make_shared<spdlog::sinks::ostream_sink_st>(*thread_gz);
 
@@ -395,14 +412,14 @@ void EventHandlers::switchThreadLog(TId tid)
 ////////////////////////////////////////////////////////////
 // Option Parsing
 ////////////////////////////////////////////////////////////
-void EventHandlers::parseArgs(std::vector<std::string> args)
+void onParse(Sigil::Args args)
 {
 	/* only accept short options */
 	std::set<char> options;
 	std::map<char, std::string> matches;
 
-	/* -o OUTPUT_DIRECTORY */
-	options.insert('o'); 
+	options.insert('o'); // -o OUTPUT_DIRECTORY
+	options.insert('c'); // -c COMPRESSION_VALUE
 
 	int unmatched = 0;
 
@@ -440,7 +457,27 @@ void EventHandlers::parseArgs(std::vector<std::string> args)
 
 	if(matches['o'].empty() == false)
 	{
-		output_directory = matches['o'];
+		EventHandlers::output_directory = matches['o'];
+	}
+
+	if(matches['c'].empty() == false)
+	{
+		try
+		{
+			EventHandlers::primitives_per_st_comp_ev = std::stoi(matches['c']);
+		}
+		catch(std::invalid_argument &e)
+		{
+			SigiLog::fatal(std::string("SynchroTraceGen compression level: invalid argument"));
+		}
+		catch(std::out_of_range &e)
+		{
+			SigiLog::fatal(std::string("SynchroTraceGen compression level: out_of_range"));
+		}
+		catch(std::exception &e)
+		{
+			SigiLog::fatal(std::string("SynchroTraceGen compression level: ").append(e.what()));
+		}
 	}
 }
 

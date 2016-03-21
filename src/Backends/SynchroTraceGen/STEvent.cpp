@@ -2,6 +2,7 @@
 
 #include "spdlog.h"
 #include <cassert>
+#include <cstring>
 
 namespace STGen
 {
@@ -26,34 +27,34 @@ void STCompEvent::flush()
 	{
 		instr_ev.flush();
 
-		std::stringstream logmsg;
-		logmsg << event_id
-			<< "," << thread_id
-			<< "," << iop_cnt
-			<< "," << flop_cnt
-			<< "," << thread_local_load_cnt
-			<< "," << thread_local_store_cnt
-			<< std::hex << std::showbase;
+		logmsg += std::to_string(event_id).append(",");
+		logmsg += std::to_string(thread_id).append(",");
+		logmsg += std::to_string(iop_cnt).append(",");
+		logmsg += std::to_string(flop_cnt).append(",");
+		logmsg += std::to_string(thread_local_load_cnt).append(",");
+		logmsg += std::to_string(thread_local_store_cnt);
 
 		/* log write addresses */
 		for(auto &addr_pair : stores_unique.get())
 		{
 			assert(addr_pair.first <= addr_pair.second);
-			logmsg << " $ " //unique write delimiter
-				<< addr_pair.first << " "
-				<< addr_pair.second;
+			logmsg += " $ ";
+			logmsg += n2hexstr(addr_pair.first);
+			logmsg += " ";
+			logmsg += n2hexstr(addr_pair.second);
 		}
 
 		/* log read addresses */
 		for(auto &addr_pair : loads_unique.get())
 		{
 			assert(addr_pair.first <= addr_pair.second);
-			logmsg << " * " //unique read delimiter
-				<< addr_pair.first << " "
-				<< addr_pair.second;
+			logmsg += " * ";
+			logmsg += n2hexstr(addr_pair.first);
+			logmsg += " ";
+			logmsg += n2hexstr(addr_pair.second);
 		}
 
-		logger->info(logmsg.str());
+		logger->info(logmsg);
 		++event_id;
 		reset();
 	}
@@ -126,6 +127,7 @@ inline void STCompEvent::reset()
 	stores_unique.clear();
 	loads_unique.clear();
 
+	logmsg.clear();
 	is_empty = true;
 }
 
@@ -150,9 +152,8 @@ void STCommEvent::flush()
 	{
 		instr_ev.flush();
 
-		std::stringstream logmsg;
-		logmsg << event_id
-			<< "," << thread_id;
+		logmsg += std::to_string(event_id).append(",");
+		logmsg += std::to_string(thread_id);
 
 		assert(comms.empty() == false);
 
@@ -162,17 +163,16 @@ void STCommEvent::flush()
 			for(auto& addr_pair : std::get<2>(edge).get())
 			{
 				assert(addr_pair.first <= addr_pair.second);
-				logmsg << " # "/*unique write delimiter*/
-					<< std::get<0>(edge) << " "
-					<< std::get<1>(edge) << " "
-					<< std::hex << std::showbase
-					<< addr_pair.first << " "
-					<< addr_pair.second
-					<< std::dec;
+				logmsg += " # ";
+				logmsg += std::to_string(std::get<0>(edge)).append(" ");
+				logmsg += std::to_string(std::get<1>(edge)).append(" ");
+				logmsg += n2hexstr(addr_pair.first);
+				logmsg += " ";
+				logmsg += n2hexstr(addr_pair.second);
 			}
 		}
 
-		logger->info(logmsg.str());
+		logger->info(logmsg);
 		++event_id;
 		reset();
 	}
@@ -206,13 +206,16 @@ void STCommEvent::addEdge(const TId writer, const EId writer_event, const Addr a
 inline void STCommEvent::reset()
 {
 	comms.clear();
+	logmsg.clear();
 	is_empty = true;
 }
 
 
 ////////////////////////////////////////////////////////////
-// SynchroTrace - Communication Event
+// SynchroTrace - Context Event (Instruction)
 ////////////////////////////////////////////////////////////
+std::atomic<unsigned long long> STInstrEvent::instr_count;
+
 STInstrEvent::STInstrEvent(const std::shared_ptr<spdlog::logger> &logger)
 	: logger(logger)
 {
@@ -222,7 +225,15 @@ STInstrEvent::STInstrEvent(const std::shared_ptr<spdlog::logger> &logger)
 
 void STInstrEvent::append_instr(Addr addr)
 {
-	instrs << "! " << addr << " ";
+	/* Parity with current version of SynchroTraceSim;
+	 * only requires an instruction count */
+	++instr_count;
+	return;
+
+	instrs += "! ";
+	instrs += n2hexstr(addr);
+	instrs += " ";
+	
 	is_empty = false;
 }
 
@@ -231,7 +242,7 @@ inline void STInstrEvent::flush()
 {
 	if(is_empty == false)
 	{
-		logger->info(instrs.str());
+		logger->info(instrs);
 		reset();
 	}
 }
@@ -239,8 +250,7 @@ inline void STInstrEvent::flush()
 
 inline void STInstrEvent::reset()
 {
-	instrs.str(std::string());
-	instrs << std::hex << std::showbase;
+	instrs.clear();
 	is_empty = true;
 }
 
@@ -256,15 +266,12 @@ STSyncEvent::STSyncEvent(TId &tid, EId &eid, const std::shared_ptr<spdlog::logge
 
 void STSyncEvent::flush(const UChar type, const Addr sync_addr)
 {
-	std::stringstream logmsg;
-	logmsg << event_id
-		<< "," << thread_id
-		<< "," << "pth_ty:"
-		<< static_cast<int>(type)
-		<< "^"
-		<< std::hex << std::showbase
-		<< sync_addr;
-	logger->info(logmsg.str());
+	logmsg += std::to_string(event_id).append(",");
+	logmsg += std::to_string(thread_id).append(",pth_ty:");
+	logmsg += std::to_string((int)type).append("^");
+	logmsg += n2hexstr(sync_addr);
+	logger->info(logmsg);
+	logmsg.clear();
 	++event_id;
 }
 

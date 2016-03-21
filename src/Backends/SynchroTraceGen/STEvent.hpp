@@ -25,6 +25,37 @@
 namespace STGen
 {
 
+/* for speed, adapted from http://stackoverflow.com/a/33447587 */
+template <typename I>
+inline const char* n2hexstr(const I &w)
+{
+	static constexpr int hex_len = sizeof(I)*2;
+	static const char* digits = "0123456789abcdef";
+	thread_local static char rc[hex_len+3]; //extra 3 slots are "0x" and null char
+
+	bool hex_MSB_found = false;
+	int hex_MSB = 2;
+	for(size_t i=2, j=(hex_len-1)*4 ; i<hex_len+2; ++i,j-=4)
+	{
+		rc[i] = digits[(w>>j) & 0x0f];
+
+		if(hex_MSB_found == false && rc[i] != '0')
+		{
+			hex_MSB_found = true;
+			hex_MSB = i;
+		}
+	}
+
+	/* TODO if 'w' is 0, then this returns the full size hex string;
+	 * instead it should just return "0x0" */
+
+	rc[hex_MSB-2] = '0';
+	rc[hex_MSB-1] = 'x';
+	rc[hex_len+2] = '\0';
+
+	return rc+(hex_MSB-2);
+}
+
 /* Helper class to track unique ranges of addresses */
 struct AddrSet
 {
@@ -57,10 +88,14 @@ public:
 class STInstrEvent
 {
 	/* all active addresses */
-	std::stringstream instrs;
+	std::string instrs;
 
 	bool is_empty;
 	const std::shared_ptr<spdlog::logger> &logger;
+
+public:
+	/* running count over all threads */
+	static std::atomic<unsigned long long> instr_count;
 
 public:
 	STInstrEvent(const std::shared_ptr<spdlog::logger> &logger);
@@ -110,6 +145,7 @@ struct STCompEvent
 
 	TId &thread_id;
 	EId &event_id;
+	std::string logmsg;
 	const std::shared_ptr<spdlog::logger> &logger;
 
 public:
@@ -138,7 +174,7 @@ private:
  * SynchroTrace communication events comprise of communication edges.
  * I.e., a ST comm event is typically generated from a read to data
  * that was originally created by other threads. Any subsequent reads
- * to that data by the same thread is not considered a communication 
+ * to that data by the same thread is not considered a communication
  * edge. Another thread that writes to the same address resets this process.
  */
 struct STCommEvent
@@ -158,6 +194,7 @@ struct STCommEvent
 
 	TId &thread_id;
 	EId &event_id;
+	std::string logmsg;
 	const std::shared_ptr<spdlog::logger> &logger;
 
 public:
@@ -200,6 +237,7 @@ class STSyncEvent
 
 	TId &thread_id;
 	EId &event_id;
+	std::string logmsg;
 	const std::shared_ptr<spdlog::logger> &logger;
 
 public:

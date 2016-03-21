@@ -24,7 +24,7 @@
  */
 
 //TODO make types more portable
-#include <stdint.h> 
+#include <stdint.h>
 
 #include "PrimitiveEnums.h"
 
@@ -85,7 +85,7 @@ struct SglSyncEv
 struct BufferedSglEv
 {
 	EvTag tag;
-	union 
+	union
 	{
 		SglMemEv  mem;
 		SglCompEv comp;

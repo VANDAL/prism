@@ -1,5 +1,5 @@
-#ifndef SGL_IPC_H
-#define SGL_IPC_H
+#ifndef SGL_VALGRIND_IPC_H
+#define SGL_VALGRIND_IPC_H
 
 /* Used in shared memory IPC between Valgrind and Sigil2 */
 
