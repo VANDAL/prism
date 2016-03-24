@@ -72,7 +72,7 @@ public:
 	~EventHandlers();
 
 	/* Compatibility with SynchroTraceSim parser */
-	const char filebase[32] = "sigil.events.out-";
+	static const std::string filebase;
 	static std::string output_directory;
 
 	/* compression level of events */

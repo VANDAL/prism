@@ -16,6 +16,7 @@ namespace STGen
 ShadowMemory EventHandlers::shad_mem{};
 
 std::string EventHandlers::output_directory{"."};
+const std::string EventHandlers::filebase = "sigil.events.out-";
 unsigned int EventHandlers::primitives_per_st_comp_ev{100};
 
 
