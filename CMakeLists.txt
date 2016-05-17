@@ -1,17 +1,11 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.1)
 project(sigil2)
 
 #C++11 support
-if (CMAKE_VERSION VERSION_LESS "3.1")
-	if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-		set (CMAKE_CXX_FLAGS "--std=gnu++11 ${CMAKE_CXX_FLAGS}")
-	endif ()
-else ()
-	set (CMAKE_CXX_STANDARD 11)
-endif ()
+set(CMAKE_CXX_STANDARD 11)
 
-enable_testing( true )
-include( CTest )
+# enable_testing( true )
+# include( CTest )
 
 set(FRONTENDS src/Frontends)
 set(BACKENDS src/Backends)
@@ -37,22 +31,23 @@ set(SOURCES
 	${SIGIL2_DIR}/main.cpp)
 add_executable(sigil2 ${SOURCES})
 target_link_libraries(sigil2 pthread)
-
 set_target_properties(sigil2
 	PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
-#Plugin Backends
+# Plugin Backends
 add_subdirectory(${BACKENDS}/SynchroTraceGen)
 target_link_libraries(sigil2 STGen)
 
 add_subdirectory(${BACKENDS}/Dummy)
 target_link_libraries(sigil2 dummy)
 
-
-#Frontends
+# Interface to Frontends
 add_subdirectory(${FRONTENDS}/Sigrind)
 target_link_libraries(sigil2 Sigrind)
+
+add_subdirectory(${FRONTENDS}/DrSigil)
+target_link_libraries(sigil2 DrSigil)
 
 #All
 add_custom_target(frontends ALL

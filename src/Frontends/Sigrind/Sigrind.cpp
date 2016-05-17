@@ -22,8 +22,6 @@
 #include "whereami.h"
 #include "elfio/elfio.hpp"
 
-/* Sigil2's Valgrind frontend forks Valgrind off as a separate process;
- * Valgrind sends the frontend dynamic events from the application via shared memory */
 
 namespace sgl
 {
@@ -66,7 +64,7 @@ void Sigrind::initShMem()
 	std::unique_ptr<SigrindSharedData> init(new SigrindSharedData());
 
 	FILE *fd = fopen(shmem_file.c_str(), "wb+");
-	if( fd == nullptr )
+	if(fd == nullptr)
 	{
 		SigiLog::fatal(std::string("sigrind shared memory file open failed -- ").append(strerror(errno)));
 	}

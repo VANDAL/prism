@@ -28,6 +28,7 @@
 
 #include "PrimitiveEnums.h"
 
+/* FIXME only 64-bit compatible right now */
 typedef int64_t SLong;
 typedef uint64_t Addr;
 typedef uint32_t UInt;

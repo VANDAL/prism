@@ -8,7 +8,7 @@ namespace sgl
 {
 
 EventManager::EventManager(uint32_t num_threads,
-			BackendFactory factory)
+			BackendFactory factory) 
 	: backend_factory(factory)
 {
 	assert(factory != nullptr);
@@ -23,7 +23,9 @@ EventManager::EventManager(uint32_t num_threads,
 	for(uint32_t i=0; i<num_threads; ++i)
 	{
 		frontend_buffers.push_back(std::make_shared<EventBuffer>());
-		consumers.push_back(std::thread(&EventManager::consumeEvents, this, std::ref(*frontend_buffers[i])));
+		consumers.push_back(std::thread(&EventManager::consumeEvents,
+										this,
+										std::ref(*frontend_buffers[i])));
 	}
 }
 

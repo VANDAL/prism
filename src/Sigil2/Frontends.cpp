@@ -1,5 +1,6 @@
 #include "Sigil.hpp"
 #include "Frontends/Sigrind/Sigrind.hpp"
+#include "Frontends/DrSigil/DrSigil.hpp"
 
 namespace sgl
 {
@@ -14,7 +15,8 @@ struct Frontend
 
 namespace
 {
-Frontend Sigrind("valgrind", Sigrind::start);
+Frontend valgrind("valgrind", Sigrind::start);
+Frontend dynamorio("dynamorio", DrSigil::start);
 };
 
 };

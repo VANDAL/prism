@@ -13,7 +13,7 @@ namespace STGen
 // Shared state
 ////////////////////////////////////////////////////////////
 /* all instances share the same shadow memory state */
-ShadowMemory EventHandlers::shad_mem{};
+ShadowMemory EventHandlers::shad_mem{47, 25};
 
 std::string EventHandlers::output_directory{"."};
 const std::string EventHandlers::filebase = "sigil.events.out-";

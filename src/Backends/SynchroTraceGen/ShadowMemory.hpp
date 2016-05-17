@@ -9,7 +9,7 @@
 
 /* Shadow Memory tracks 'shadow state' for an address.
  *
- * In SynchroTraceGen, 'shadow state' takes the form of 
+ * In SynchroTraceGen, 'shadow state' takes the form of
  * the most recent thread to read from/write to an address.
  *
  * For further clarification, please read,
@@ -28,9 +28,9 @@ class ShadowMemory
 {
 public:
 	/* XXX: setting max address bits ABOVE 63
-	 * has undefined behavior; 
+	 * has undefined behavior;
 	 *
-	 * XXX: Setting addr/pm bits too large can cause 
+	 * XXX: Setting addr/pm bits too large can cause
 	 * bad_alloc errors */
 	ShadowMemory(Addr addr_bits = 38, Addr pm_bits = 16);
 	ShadowMemory(const ShadowMemory&) = delete;
@@ -60,7 +60,7 @@ private:
 		std::vector<TId>  last_readers; // Last thread to read to addr
 	};
 
-	SecondaryMap* DSM;
+	SecondaryMap *DSM;
 	std::vector<SecondaryMap*> *PM;
 
 	/* Utility Functions */

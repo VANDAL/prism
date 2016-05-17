@@ -1,3 +1,4 @@
+#include "Sigil2/SigiLog.hpp"
 #include "ShadowMemory.hpp"
 #include <cassert>
 #include <iostream>
@@ -38,7 +39,7 @@ TId ShadowMemory::getReaderTID(Addr addr)
 }
 
 
-TId ShadowMemory::getWriterTID(Addr addr) 
+TId ShadowMemory::getWriterTID(Addr addr)
 {
 	return getSMFromAddr(addr).last_writers[getSMidx(addr)];
 }
@@ -83,15 +84,21 @@ ShadowMemory::~ShadowMemory()
 
 
 ///////////////////////////////////////
-// Utility Functions 
+// Utility Functions
 ///////////////////////////////////////
 inline ShadowMemory::SecondaryMap& ShadowMemory::getSMFromAddr(Addr addr)
 {
 	if(addr > max_primary_addr)
 	{
-		//TODO clean up, common fatal macro
-		std::cerr << "ERROR: shadow memory max address limit" << std::endl;
-		exit(1);
+		char s_addr[32];
+		sprintf(s_addr, "0x%lx", addr);
+
+		char s_max[32];
+		sprintf(s_max, "0x%lx", max_primary_addr);
+
+		std::string msg("shadow memory max address limit: ");
+		msg.append(s_addr).append(" > ").append(s_max);
+		SigiLog::fatal(msg);
 	}
 
 	SecondaryMap*& SM = (*PM)[getPMidx(addr)];

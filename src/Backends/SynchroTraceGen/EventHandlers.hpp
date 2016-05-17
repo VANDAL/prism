@@ -41,8 +41,7 @@ extern std::vector<std::pair<Addr, std::set<TId>>> barrier_participants;
 
 class EventHandlers : public Backend
 {
-	/* Default address params 
-	 * Shadow memory is shared amongst all instances,
+	/* Shadow memory is shared amongst all instances,
 	 * with the implication that each instance may be
 	 * a separate thread's stream of events */
 	static ShadowMemory shad_mem;
@@ -61,8 +60,7 @@ class EventHandlers : public Backend
 
 	std::string filename(TId tid)
 	{
-		return output_directory + "/" + filebase +
-			std::to_string(tid) + ".gz";
+		return output_directory + "/" + filebase + std::to_string(tid) + ".gz";
 	}
 
 public:
