@@ -149,6 +149,50 @@ struct STCompEvent
 	const std::shared_ptr<spdlog::logger> &logger;
 
 public:
+	using StatCounter = unsigned long long;
+	/* global count over all threads */
+	static std::atomic<StatCounter> flop_count_global;
+	static std::atomic<StatCounter> iop_count_global;
+
+	/* local to each thread */
+	struct _per_thread_t
+	{
+		TId curr_tid = -1;
+		/* (thread id, <iop, flop>) */
+		std::map<TId, std::pair<StatCounter, StatCounter>> per_thread_counts;
+		StatCounter flop_count{0};
+		StatCounter iop_count{0};
+
+		void setThread(TId tid)
+		{
+			per_thread_counts[curr_tid].first = iop_count;
+			per_thread_counts[curr_tid].second = flop_count;
+
+			if/*new thread*/(per_thread_counts.find(tid) != per_thread_counts.cend())
+			{
+				iop_count = 0;
+				flop_count = 0;
+			}
+			else
+			{
+				iop_count = per_thread_counts[tid].first;
+				flop_count = per_thread_counts[tid].second;
+			}
+		}
+
+		StatCounter getThreadIOPS(TId tid)
+		{
+			return per_thread_counts[tid].first;
+		}
+
+		StatCounter getThreadFLOPS(TId tid)
+		{
+			return per_thread_counts[tid].second;
+		}
+
+	} per_thread_data;
+
+public:
 	STCompEvent(TId &tid, EId &eid, const std::shared_ptr<spdlog::logger> &logger,
 			STInstrEvent &instr_ev);
 	void flush();
@@ -162,7 +206,11 @@ public:
 	void incReads();
 	void incIOP();
 	void incFLOP();
-	
+
+	/* HACK Hotfix requested by KS for IOP/FLOP counts on a per-thread basis,
+	 * and additionally on a per-process basis */
+	void track_thread(TId tid);
+
 private:
 	void reset();
 };

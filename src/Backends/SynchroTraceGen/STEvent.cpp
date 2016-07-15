@@ -10,6 +10,15 @@ namespace STGen
 ////////////////////////////////////////////////////////////
 // SynchroTrace - Compute Event
 ////////////////////////////////////////////////////////////
+std::atomic<unsigned long long> STCompEvent::flop_count_global{0};
+std::atomic<unsigned long long> STCompEvent::iop_count_global{0};
+
+/* HACK Hotfix requested by KS for IOP/FLOP counts on a per-thread basis,
+ * and additionally on a per-process basis */
+void STCompEvent::track_thread(TId tid)
+{
+}
+
 STCompEvent::STCompEvent(TId &tid, EId &eid, const std::shared_ptr<spdlog::logger> &logger,
 		STInstrEvent &instr_ev)
 	: instr_ev(instr_ev)
@@ -106,6 +115,9 @@ void STCompEvent::incIOP()
 	is_empty = false;
 	++iop_cnt;
 	++total_events;
+
+	++per_thread_data.iop_count;
+	++iop_count_global;
 }
 
 
@@ -114,6 +126,9 @@ void STCompEvent::incFLOP()
 	is_empty = false;
 	++flop_cnt;
 	++total_events;
+
+	++per_thread_data.flop_count;
+	++flop_count_global;
 }
 
 
@@ -214,7 +229,7 @@ inline void STCommEvent::reset()
 ////////////////////////////////////////////////////////////
 // SynchroTrace - Context Event (Instruction)
 ////////////////////////////////////////////////////////////
-std::atomic<unsigned long long> STInstrEvent::instr_count;
+std::atomic<unsigned long long> STInstrEvent::instr_count{0};
 
 STInstrEvent::STInstrEvent(const std::shared_ptr<spdlog::logger> &logger)
 	: logger(logger)

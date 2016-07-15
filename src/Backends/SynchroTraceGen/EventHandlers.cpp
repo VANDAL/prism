@@ -300,6 +300,8 @@ void onExit()
 
 	/* For SynchroTraceSim CPI calculations */
 	pthread_logger->info("Total instructions: " + std::to_string(STInstrEvent::instr_count));
+	pthread_logger->info("Total iops: " + std::to_string(STCompEvent::iop_count_global));
+	pthread_logger->info("Total flops: " + std::to_string(STCompEvent::flop_count_global));
 
 	pthread_logger->flush();
 }
@@ -325,6 +327,20 @@ EventHandlers::~EventHandlers()
 	st_comp_ev.flush();
 	// sync events already flush immediately
 
+	/* flush per-thread iop/flop counts */
+	for(auto &p : loggers)
+	{
+		std::string IOP_stats = "IOP_cnt: ";
+		IOP_stats.append(std::to_string(st_comp_ev.per_thread_data.getThreadIOPS(p.first)));
+
+		std::string FLOP_stats = "FLOP_cnt: ";
+		FLOP_stats.append(std::to_string(st_comp_ev.per_thread_data.getThreadFLOPS(p.first)));
+
+		p.second->info(IOP_stats);
+		p.second->info(FLOP_stats);
+
+	}
+
 	/* close remaining logs before gzstreams close
 	 * to prevent nasty race conditions that can
 	 * manifest if asynchronous logging is enabled
@@ -334,7 +350,7 @@ EventHandlers::~EventHandlers()
 	{
 		p.second->flush();
 		p.second.reset();
-		spdlog::drop(p.first);
+		spdlog::drop(std::to_string(p.first));
 	}
 
 	curr_logger.reset();
@@ -371,6 +387,8 @@ void EventHandlers::setThread(TId tid)
 		switchThreadLog(tid);
 	}
 
+	st_comp_ev.per_thread_data.setThread(tid);
+
 	curr_thread_id = tid;
 }
 
@@ -391,9 +409,9 @@ void EventHandlers::initThreadLog(TId tid)
 
 	spdlog::set_async_mode(1 << 20);
 
-	curr_logger = spdlog::create(key, {ostream_sink});
+	curr_logger = spdlog::create(std::to_string(tid), {ostream_sink});
 	curr_logger->set_pattern("%v");
-	loggers[key] = curr_logger;
+	loggers[tid] = curr_logger;
 
 	/* keep ostreams alive */
 	gz_streams.push_back(thread_gz);
@@ -402,11 +420,10 @@ void EventHandlers::initThreadLog(TId tid)
 
 void EventHandlers::switchThreadLog(TId tid)
 {
-	auto key = filename(tid);
-	assert(loggers.find(key) != loggers.cend());
+	assert(loggers.find(tid) != loggers.cend());
 
 	curr_logger->flush();
-	curr_logger = loggers[key];
+	curr_logger = loggers[tid];
 }
 
 

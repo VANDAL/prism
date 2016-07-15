@@ -55,7 +55,7 @@ class EventHandlers : public Backend
 	/* Output directly to a *.gz stream to save space */
 	/* Keep these ostreams open until deconstruction */
 	std::vector<std::shared_ptr<gzofstream>> gz_streams;
-	std::map<std::string, std::shared_ptr<spdlog::logger>> loggers;
+	std::map<TId, std::shared_ptr<spdlog::logger>> loggers;
 	std::shared_ptr<spdlog::logger> curr_logger;
 
 	std::string filename(TId tid)
