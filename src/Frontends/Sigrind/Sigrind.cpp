@@ -22,6 +22,7 @@
 #include "whereami.h"
 #include "elfio/elfio.hpp"
 
+using namespace std::chrono;
 
 namespace sgl
 {
@@ -30,9 +31,10 @@ namespace sgl
 // Sigil2 - Valgrind IPC
 ////////////////////////////////////////////////////////////
 Sigrind::Sigrind(int num_threads, std::string tmp_dir)
-	: shmem_file(tmp_dir + "/" + SIGRIND_SHMEM_NAME)
-	, empty_file(tmp_dir + "/" + SIGRIND_EMPTYFIFO_NAME)
-	, full_file(tmp_dir + "/" + SIGRIND_FULLFIFO_NAME)
+	: timestamp(std::to_string(system_clock::now().time_since_epoch().count()))
+	, shmem_file(tmp_dir + "/" + SIGRIND_SHMEM_NAME + timestamp)
+	, empty_file(tmp_dir + "/" + SIGRIND_EMPTYFIFO_NAME + timestamp)
+	, full_file(tmp_dir + "/" + SIGRIND_FULLFIFO_NAME + timestamp)
 	, num_threads(num_threads)
 	, be_idx(0)
 {
@@ -127,7 +129,7 @@ void Sigrind::connectValgrind()
 
 		if(emptyfd < 0)
 		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+			std::this_thread::sleep_for(milliseconds(500));
 		}
 		else //connected
 		{
@@ -340,13 +342,14 @@ void configureWrapperEnv(std::string sigil2_path)
 char* const* tokenizeOpts (
 		const std::vector<std::string> &user_exec,
 		const std::vector<std::string> &args,
-		const std::string &tmp_dir)
+		const std::string &tmp_dir,
+		const std::string &timestamp)
 {
 	assert(!user_exec.empty() && !tmp_dir.empty());
 
 	/* format valgrind options */
-	//                 program name + valgrind options + tmp_dir + user program options + null
-	int vg_opts_size = 1            + 2+args.size()    + 1       + user_exec.size()        + 1;
+	/*                 program name + valgrind options + tmp_dir + timestamp + user program options + null */
+	int vg_opts_size = 1            + 2+args.size()    + 1       + 1         + user_exec.size()        + 1;
 	char** vg_opts = static_cast<char**>( malloc(vg_opts_size * sizeof(char*)) );
 
 	int i = 0;
@@ -357,6 +360,7 @@ char* const* tokenizeOpts (
 												  thread dominate execution */
 	vg_opts[i++] = strdup("--tool=sigrind");
 	vg_opts[i++] = strdup((std::string("--tmp-dir=").append(tmp_dir)).c_str());
+	vg_opts[i++] = strdup((std::string("--timestamp=").append(timestamp)).c_str());
 	for (auto &arg : args)
 	{
 		vg_opts[i++] = strdup(arg.c_str());
@@ -374,7 +378,8 @@ char* const* tokenizeOpts (
 std::pair<std::string, char *const *> configureValgrind(
 		const std::vector<std::string> &user_exec,
 		const std::vector<std::string> &args,
-		const std::string &tmp_path)
+		const std::string &tmp_path,
+		const std::string &timestamp)
 {
 	int len, dirname_len;
 	len = wai_getExecutablePath(NULL, 0, &dirname_len);
@@ -393,15 +398,15 @@ std::pair<std::string, char *const *> configureValgrind(
 	/* set up valgrind function wrapping to capture synchronization */
 	configureWrapperEnv(path);
 
-	/* HACK if the user decides to move the install folder, valgrind will
-	 * get confused and require that VALGRIND_LIB be set.
-	 * Set this variable for the user to avoid confusion */
+	/* XXX HACK if the user decides to move the install folder, valgrind will
+	 * get confused and require that VALGRIND_LIB be set.  Set this variable for
+	 * the user to avoid confusion */
 	setenv("VALGRIND_LIB", std::string(path).append("/vg/lib/valgrind").c_str(), true);
 
 	std::string vg_exec = std::string(path).append("/vg/bin/valgrind");
 
 	/* execvp() expects a const char* const* */
-	auto vg_opts = tokenizeOpts(user_exec, args, tmp_path);
+	auto vg_opts = tokenizeOpts(user_exec, args, tmp_path, timestamp);
 
 	return std::make_pair(vg_exec, vg_opts);
 }
@@ -441,7 +446,7 @@ void Sigrind::start(
 	Sigrind sigrind_iface(num_threads,tmp_path);
 
 	/* set up valgrind environment */
-	auto valgrind_args = configureValgrind(user_exec, args, tmp_path);
+	auto valgrind_args = configureValgrind(user_exec, args, tmp_path, sigrind_iface.timestamp);
 
 	pid_t pid = fork();
 	if(pid >= 0)

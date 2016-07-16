@@ -63,22 +63,27 @@ void SGL_(init_IPC)()
 	   VG_(fmsg)("No --tmp-dir argument found, shutting down...\n");
 	   VG_(exit)(1);
 	}
+	else if (SGL_(clo).timestamp == NULL)
+	{
+	   VG_(fmsg)("No --timestamp argument found, shutting down...\n");
+	   VG_(exit)(1);
+	}
 
 	Int tmpdir_len = VG_(strlen)(SGL_(clo).tmpdir);
 	Int filename_len;
 
 	//+1 for '/'; len should be strlen + null
-	filename_len = tmpdir_len + VG_(strlen)(SIGRIND_SHMEM_NAME) + 2; 
+	filename_len = tmpdir_len + VG_(strlen)(SIGRIND_SHMEM_NAME) + VG_(strlen)(SGL_(clo).timestamp) + 2;
 	HChar shmem_path[filename_len];
-	VG_(snprintf)(shmem_path, filename_len, "%s/%s", SGL_(clo).tmpdir, SIGRIND_SHMEM_NAME); 
+	VG_(snprintf)(shmem_path, filename_len, "%s/%s%s", SGL_(clo).tmpdir, SIGRIND_SHMEM_NAME, SGL_(clo).timestamp); 
 
-	filename_len = tmpdir_len + VG_(strlen)(SIGRIND_EMPTYFIFO_NAME) + 2; 
+	filename_len = tmpdir_len + VG_(strlen)(SIGRIND_EMPTYFIFO_NAME) + VG_(strlen)(SGL_(clo).timestamp) + 2; 
 	HChar emptyfifo_path[filename_len];
-	VG_(snprintf)(emptyfifo_path, filename_len, "%s/%s", SGL_(clo).tmpdir, SIGRIND_EMPTYFIFO_NAME); 
+	VG_(snprintf)(emptyfifo_path, filename_len, "%s/%s%s", SGL_(clo).tmpdir, SIGRIND_EMPTYFIFO_NAME, SGL_(clo).timestamp); 
 
-	filename_len = tmpdir_len + VG_(strlen)(SIGRIND_FULLFIFO_NAME) + 2; 
+	filename_len = tmpdir_len + VG_(strlen)(SIGRIND_FULLFIFO_NAME) + VG_(strlen)(SGL_(clo).timestamp) + 2; 
 	HChar fullfifo_path[filename_len];
-	VG_(snprintf)(fullfifo_path, filename_len, "%s/%s", SGL_(clo).tmpdir, SIGRIND_FULLFIFO_NAME); 
+	VG_(snprintf)(fullfifo_path, filename_len, "%s/%s%s", SGL_(clo).tmpdir, SIGRIND_FULLFIFO_NAME, SGL_(clo).timestamp); 
 
 	///////////////////
 	// init values 

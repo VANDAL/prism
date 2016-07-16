@@ -28,9 +28,11 @@ namespace sgl
 
 class Sigrind
 {
+	const std::string timestamp;
 	const std::string shmem_file;
 	const std::string empty_file;
 	const std::string full_file;
+
 	bool finished = false;
 
 	/* fifos */

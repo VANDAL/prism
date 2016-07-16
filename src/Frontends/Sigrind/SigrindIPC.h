@@ -8,6 +8,9 @@
 #define SIGRIND_BUFSIZE (1 << 24)
 #define SIGRIND_BUFNUM (4)
 
+/* A timestamp should be appended to these names
+ * to avoid conflicts when multiple instances
+ * are run concurrently */
 #define SIGRIND_SHMEM_NAME ("sgl2-vg-shmem")
 #define SIGRIND_EMPTYFIFO_NAME ("sgl2-vg-empty")
 #define SIGRIND_FULLFIFO_NAME ("sgl2-vg-full")
