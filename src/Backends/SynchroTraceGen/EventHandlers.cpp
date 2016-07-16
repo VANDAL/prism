@@ -328,6 +328,7 @@ EventHandlers::~EventHandlers()
 	// sync events already flush immediately
 
 	/* flush per-thread iop/flop counts */
+	st_comp_ev.per_thread_data.sync();
 	for(auto &p : loggers)
 	{
 		std::string IOP_stats = "IOP_cnt: ";
@@ -338,7 +339,6 @@ EventHandlers::~EventHandlers()
 
 		p.second->info(IOP_stats);
 		p.second->info(FLOP_stats);
-
 	}
 
 	/* close remaining logs before gzstreams close
@@ -387,6 +387,7 @@ void EventHandlers::setThread(TId tid)
 		switchThreadLog(tid);
 	}
 
+	/* XXX pacohotfix: for tracking per-thread iop/flop totals */
 	st_comp_ev.per_thread_data.setThread(tid);
 
 	curr_thread_id = tid;

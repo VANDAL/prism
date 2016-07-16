@@ -158,17 +158,23 @@ public:
 	struct _per_thread_t
 	{
 		TId curr_tid = -1;
+
 		/* (thread id, <iop, flop>) */
 		std::map<TId, std::pair<StatCounter, StatCounter>> per_thread_counts;
 		StatCounter flop_count{0};
 		StatCounter iop_count{0};
 
-		void setThread(TId tid)
+		void sync()
 		{
 			per_thread_counts[curr_tid].first = iop_count;
 			per_thread_counts[curr_tid].second = flop_count;
+		}
 
-			if/*new thread*/(per_thread_counts.find(tid) != per_thread_counts.cend())
+		void setThread(TId tid)
+		{
+			sync();
+
+			if/*new thread*/(per_thread_counts.find(tid) == per_thread_counts.cend())
 			{
 				iop_count = 0;
 				flop_count = 0;
@@ -178,13 +184,17 @@ public:
 				iop_count = per_thread_counts[tid].first;
 				flop_count = per_thread_counts[tid].second;
 			}
+
+			curr_tid = tid;
 		}
 
+		/* sync() MUST be called first */
 		StatCounter getThreadIOPS(TId tid)
 		{
 			return per_thread_counts[tid].first;
 		}
 
+		/* sync() MUST be called first */
 		StatCounter getThreadFLOPS(TId tid)
 		{
 			return per_thread_counts[tid].second;
