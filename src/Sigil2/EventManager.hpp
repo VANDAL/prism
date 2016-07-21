@@ -1,5 +1,5 @@
 #ifndef SGL_EVENTMANAGER_H
-#define SGL_EVENTMANAGER_H 
+#define SGL_EVENTMANAGER_H
 
 #include <functional>
 #include <vector>
@@ -28,46 +28,47 @@ namespace sgl
 
 class EventManager
 {
-	using BackendFactory = std::function<std::shared_ptr<Backend>(void)>;
-public:
-	/* Create num_threads backends from the BackendFactory 
-	 * in num_threads threads */
-	EventManager(uint32_t num_threads, BackendFactory factory);
-	EventManager(const EventManager&) = delete;
-	EventManager& operator=(const EventManager&) = delete;
-	~EventManager();
+    using BackendFactory = std::function<std::shared_ptr<Backend>(void)>;
 
-	template<typename T>
-	void addEvent(const T& ev, uint16_t buf_idx=0);
+  public:
+    /* Create num_threads backends from the BackendFactory
+     * in num_threads threads */
+    EventManager(uint32_t num_threads, BackendFactory factory);
+    EventManager(const EventManager &) = delete;
+    EventManager &operator=(const EventManager &) = delete;
+    ~EventManager();
 
-	void finish();
+    template<typename T>
+    void addEvent(const T &ev, uint16_t buf_idx = 0);
 
-private:
-	const BackendFactory backend_factory;
+    void finish();
 
-	/* The frontends forward events to these buffers.
-	 * If Sigil2 is configured in to process events with
-	 * a N-threaded backend, there will be N EventBuffers;
-	 * each EventBuffer will use the backend callbacks, so
-	 * those callbacks will need to be thread-safe. That
-	 * responsibility is on the backend developer. */
-	std::vector<std::shared_ptr<EventBuffer>> frontend_buffers;
+  private:
+    const BackendFactory backend_factory;
 
-	/* plugins implemented as separate thread */
-	std::vector<std::thread> consumers;
-	bool finish_consumers;
+    /* The frontends forward events to these buffers.
+     * If Sigil2 is configured in to process events with
+     * a N-threaded backend, there will be N EventBuffers;
+     * each EventBuffer will use the backend callbacks, so
+     * those callbacks will need to be thread-safe. That
+     * responsibility is on the backend developer. */
+    std::vector<std::shared_ptr<EventBuffer>> frontend_buffers;
 
-	/* The backend is created and run in this
-	 * function for each Sigil backend thread */
-	void consumeEvents(EventBuffer &buffer);
+    /* plugins implemented as separate thread */
+    std::vector<std::thread> consumers;
+    bool finish_consumers;
+
+    /* The backend is created and run in this
+     * function for each Sigil backend thread */
+    void consumeEvents(EventBuffer &buffer);
 };
 
 
 template<typename T>
-inline void EventManager::addEvent(const T& ev, uint16_t buf_idx)
+inline void EventManager::addEvent(const T &ev, uint16_t buf_idx)
 {
-	assert(buf_idx < frontend_buffers.size());
-	frontend_buffers[buf_idx]->addEvent(ev);
+    assert(buf_idx < frontend_buffers.size());
+    frontend_buffers[buf_idx]->addEvent(ev);
 }
 
 }; //end namespace sigil

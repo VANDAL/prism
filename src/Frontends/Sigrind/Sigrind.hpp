@@ -28,71 +28,70 @@ namespace sgl
 
 class Sigrind
 {
-	const std::string timestamp;
-	const std::string shmem_file;
-	const std::string empty_file;
-	const std::string full_file;
+    const std::string timestamp;
+    const std::string shmem_file;
+    const std::string empty_file;
+    const std::string full_file;
 
-	bool finished = false;
+    bool finished = false;
 
-	/* fifos */
-	int emptyfd;
-	int fullfd;
-	int full_data;
+    /* fifos */
+    int emptyfd;
+    int fullfd;
+    int full_data;
 
-	/* multithreaded backend */
-	const int num_threads;
-	int be_idx;
+    /* multithreaded backend */
+    const int num_threads;
+    int be_idx;
 
-	/* shared mem */
-	SigrindSharedData* shared_mem;
+    /* shared mem */
+    SigrindSharedData *shared_mem;
 
-public:
-	Sigrind(int num_threads, std::string tmp_dir);
-	~Sigrind();
-	void produceSigrindEvents();
+  public:
+    Sigrind(int num_threads, std::string tmp_dir);
+    ~Sigrind();
+    void produceSigrindEvents();
 
-	/* The start routine run by Sigil2 to begin event generation.
-	 * Each frontend requires this function signature.
-	 *
-	 * Valgrind will be forked off as a separate process and begin
-	 * generating events to send to Sigil2.
-	 */
-	static void start(
-		const std::vector<std::string> &user_exec,
-		const std::vector<std::string> &args,
-		const uint16_t num_threads);
+    /* The start routine run by Sigil2 to begin event generation.
+     * Each frontend requires this function signature.
+     *
+     * Valgrind will be forked off as a separate process and begin
+     * generating events to send to Sigil2.
+     */
+    static void start(const std::vector<std::string> &user_exec,
+                      const std::vector<std::string> &args,
+                      const uint16_t num_threads);
 
-private:
-	/* Initialize IPC between Sigil2 and Valgrind */
+  private:
+    /* Initialize IPC between Sigil2 and Valgrind */
 
-	void initShMem();
-	void makeNewFifo(const char* path) const;
-	void connectValgrind();
+    void initShMem();
+    void makeNewFifo(const char *path) const;
+    void connectValgrind();
 
-	/* Read an int from 'full' fifo and return the data
-	 *
-	 * This is an index to the buffer array in the shared memory.
-	 * It informs Sigil2 that buffer[idx] has been filled with
-	 * events and can be passed to the Sigil2 event manager/buffers.
-	 */
-	int readFullFifo();
+    /* Read an int from 'full' fifo and return the data
+     *
+     * This is an index to the buffer array in the shared memory.
+     * It informs Sigil2 that buffer[idx] has been filled with
+     * events and can be passed to the Sigil2 event manager/buffers.
+     */
+    int readFullFifo();
 
 
-	/* Write 'idx' to 'empty' fifo.
-	 *
-	 * This is the index to the buffer array in the shared memory.
-	 * It informs valgrind that buffer[idx] has been emptied by
-	 * Sigil2. Valgrind can then take ownership of that buffer and fill
-	 * it with events
-	 */
-	void writeEmptyFifo(unsigned int idx);
+    /* Write 'idx' to 'empty' fifo.
+     *
+     * This is the index to the buffer array in the shared memory.
+     * It informs valgrind that buffer[idx] has been emptied by
+     * Sigil2. Valgrind can then take ownership of that buffer and fill
+     * it with events
+     */
+    void writeEmptyFifo(unsigned int idx);
 
-	/* Implicitly take ownership of buffer[idx] in the shared memory,
-	 * and read events from (0 to used-1).
-	 * Those events are sequentially passed up the chain to the backend.
-	 */
-	void produceFromBuffer(unsigned int idx, unsigned int used);
+    /* Implicitly take ownership of buffer[idx] in the shared memory,
+     * and read events from (0 to used-1).
+     * Those events are sequentially passed up the chain to the backend.
+     */
+    void produceFromBuffer(unsigned int idx, unsigned int used);
 };
 
 };

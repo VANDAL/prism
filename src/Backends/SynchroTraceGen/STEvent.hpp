@@ -27,52 +27,64 @@ namespace STGen
 
 /* for speed, adapted from http://stackoverflow.com/a/33447587 */
 template <typename I>
-inline const char* n2hexstr(const I &w)
+inline const char *n2hexstr(const I &w)
 {
-	static constexpr int hex_len = sizeof(I)*2;
-	static const char* digits = "0123456789abcdef";
-	thread_local static char rc[hex_len+3]; //extra 3 slots are "0x" and null char
+    static constexpr int hex_len = sizeof(I) * 2;
+    static const char *digits = "0123456789abcdef";
+    thread_local static char rc[hex_len + 3]; //extra 3 slots are "0x" and null char
 
-	bool hex_MSB_found = false;
-	int hex_MSB = 2;
-	for(size_t i=2, j=(hex_len-1)*4 ; i<hex_len+2; ++i,j-=4)
-	{
-		rc[i] = digits[(w>>j) & 0x0f];
+    bool hex_MSB_found = false;
+    int hex_MSB = 2;
 
-		if(hex_MSB_found == false && rc[i] != '0')
-		{
-			hex_MSB_found = true;
-			hex_MSB = i;
-		}
-	}
+    for (size_t i = 2, j = (hex_len - 1) * 4 ; i < hex_len + 2; ++i, j -= 4)
+    {
+        rc[i] = digits[(w >> j) & 0x0f];
 
-	/* TODO if 'w' is 0, then this returns the full size hex string;
-	 * instead it should just return "0x0" */
+        if (hex_MSB_found == false && rc[i] != '0')
+        {
+            hex_MSB_found = true;
+            hex_MSB = i;
+        }
+    }
 
-	rc[hex_MSB-2] = '0';
-	rc[hex_MSB-1] = 'x';
-	rc[hex_len+2] = '\0';
+    /* TODO if 'w' is 0, then this returns the full size hex string;
+     * instead it should just return "0x0" */
 
-	return rc+(hex_MSB-2);
+    rc[hex_MSB - 2] = '0';
+    rc[hex_MSB - 1] = 'x';
+    rc[hex_len + 2] = '\0';
+
+    return rc + (hex_MSB - 2);
 }
 
 /* Helper class to track unique ranges of addresses */
 struct AddrSet
 {
-	using AddrRange = std::pair<Addr,Addr>;
-	AddrSet(){ }
-	AddrSet(const AddrRange &range) { ms.insert(range); }
-	AddrSet(const AddrSet &other) { ms = other.ms; }
-	AddrSet& operator=(const AddrSet&) = delete;
-private:
-	std::multiset<AddrRange, std::less<AddrRange>, MemoryPool<AddrRange>> ms;
-public:
-	/* A range of addresses is specified by the pair.
-	 * This call inserts that range and merges existing ranges
-	 * in order to keep the set of addresses unique */
-	void insert(const AddrRange &range);
-	void clear();
-	const decltype(ms)& get(){ return ms; }
+    using AddrRange = std::pair<Addr, Addr>;
+    AddrSet() { }
+    AddrSet(const AddrRange &range)
+    {
+        ms.insert(range);
+    }
+    AddrSet(const AddrSet &other)
+    {
+        ms = other.ms;
+    }
+    AddrSet &operator=(const AddrSet &) = delete;
+
+  private:
+    std::multiset<AddrRange, std::less<AddrRange>, MemoryPool<AddrRange>> ms;
+
+  public:
+    /* A range of addresses is specified by the pair.
+     * This call inserts that range and merges existing ranges
+     * in order to keep the set of addresses unique */
+    void insert(const AddrRange &range);
+    void clear();
+    const decltype(ms) &get()
+    {
+        return ms;
+    }
 };
 
 
@@ -87,26 +99,26 @@ public:
  */
 class STInstrEvent
 {
-	/* all active addresses */
-	std::string instrs;
+    /* all active addresses */
+    std::string instrs;
 
-	bool is_empty;
-	const std::shared_ptr<spdlog::logger> &logger;
+    bool is_empty;
+    const std::shared_ptr<spdlog::logger> &logger;
 
-public:
-	/* running count over all threads */
-	static std::atomic<unsigned long long> instr_count;
+  public:
+    /* running count over all threads */
+    static std::atomic<unsigned long long> instr_count;
 
-public:
-	STInstrEvent(const std::shared_ptr<spdlog::logger> &logger);
-	void append_instr(Addr addr);
+  public:
+    STInstrEvent(const std::shared_ptr<spdlog::logger> &logger);
+    void append_instr(Addr addr);
 
-	/* Addresses should be flushed whenever
-	 * compute or communication events flush */
-	void flush();
+    /* Addresses should be flushed whenever
+     * compute or communication events flush */
+    void flush();
 
-private:
-	void reset();
+  private:
+    void reset();
 };
 
 
@@ -125,104 +137,104 @@ private:
  */
 struct STCompEvent
 {
-	UInt iop_cnt;
-	UInt flop_cnt;	
+    UInt iop_cnt;
+    UInt flop_cnt;
 
-	/* Stores and Loads originating from the current thread
-	 * I.e. non-edge mem events. These are the count for 'events',
-	 * not a count for bytes stored/loaded */
-	UInt thread_local_store_cnt;
-	UInt thread_local_load_cnt;
+    /* Stores and Loads originating from the current thread
+     * I.e. non-edge mem events. These are the count for 'events',
+     * not a count for bytes stored/loaded */
+    UInt thread_local_store_cnt;
+    UInt thread_local_load_cnt;
 
-	/* Holds a range for the addresses touched by local stores/loads */
-	AddrSet stores_unique;
-	AddrSet loads_unique;
+    /* Holds a range for the addresses touched by local stores/loads */
+    AddrSet stores_unique;
+    AddrSet loads_unique;
 
-	STInstrEvent &instr_ev;
+    STInstrEvent &instr_ev;
 
-	UInt total_events;
-	bool is_empty;
+    UInt total_events;
+    bool is_empty;
 
-	TId &thread_id;
-	EId &event_id;
-	std::string logmsg;
-	const std::shared_ptr<spdlog::logger> &logger;
+    TID &thread_id;
+    EID &event_id;
+    std::string logmsg;
+    const std::shared_ptr<spdlog::logger> &logger;
 
-public:
-	using StatCounter = unsigned long long;
-	/* global count over all threads */
-	static std::atomic<StatCounter> flop_count_global;
-	static std::atomic<StatCounter> iop_count_global;
+  public:
+    using StatCounter = unsigned long long;
+    /* global count over all threads */
+    static std::atomic<StatCounter> flop_count_global;
+    static std::atomic<StatCounter> iop_count_global;
 
-	/* local to each thread */
-	struct _per_thread_t
-	{
-		TId curr_tid = -1;
+    /* local to each thread */
+    struct _per_thread_t
+    {
+        TID curr_tid = -1;
 
-		/* (thread id, <iop, flop>) */
-		std::map<TId, std::pair<StatCounter, StatCounter>> per_thread_counts;
-		StatCounter flop_count{0};
-		StatCounter iop_count{0};
+        /* (thread id, <iop, flop>) */
+        std::map<TID, std::pair<StatCounter, StatCounter>> per_thread_counts;
+        StatCounter flop_count{0};
+        StatCounter iop_count{0};
 
-		void sync()
-		{
-			per_thread_counts[curr_tid].first = iop_count;
-			per_thread_counts[curr_tid].second = flop_count;
-		}
+        void sync()
+        {
+            per_thread_counts[curr_tid].first = iop_count;
+            per_thread_counts[curr_tid].second = flop_count;
+        }
 
-		void setThread(TId tid)
-		{
-			sync();
+        void setThread(TID tid)
+        {
+            sync();
 
-			if/*new thread*/(per_thread_counts.find(tid) == per_thread_counts.cend())
-			{
-				iop_count = 0;
-				flop_count = 0;
-			}
-			else
-			{
-				iop_count = per_thread_counts[tid].first;
-				flop_count = per_thread_counts[tid].second;
-			}
+            if /*new thread*/(per_thread_counts.find(tid) == per_thread_counts.cend())
+            {
+                iop_count = 0;
+                flop_count = 0;
+            }
+            else
+            {
+                iop_count = per_thread_counts[tid].first;
+                flop_count = per_thread_counts[tid].second;
+            }
 
-			curr_tid = tid;
-		}
+            curr_tid = tid;
+        }
 
-		/* sync() MUST be called first */
-		StatCounter getThreadIOPS(TId tid)
-		{
-			return per_thread_counts[tid].first;
-		}
+        /* sync() MUST be called first */
+        StatCounter getThreadIOPS(TID tid)
+        {
+            return per_thread_counts[tid].first;
+        }
 
-		/* sync() MUST be called first */
-		StatCounter getThreadFLOPS(TId tid)
-		{
-			return per_thread_counts[tid].second;
-		}
+        /* sync() MUST be called first */
+        StatCounter getThreadFLOPS(TID tid)
+        {
+            return per_thread_counts[tid].second;
+        }
 
-	} per_thread_data;
+    } per_thread_data;
 
-public:
-	STCompEvent(TId &tid, EId &eid, const std::shared_ptr<spdlog::logger> &logger,
-			STInstrEvent &instr_ev);
-	void flush();
-	void updateWrites(const SglMemEv &ev);
-	void updateWrites(const Addr begin, const Addr size);
-	void updateReads(const SglMemEv &ev);
-	void updateReads(const Addr begin, const Addr size);
+  public:
+    STCompEvent(TID &tid, EID &eid, const std::shared_ptr<spdlog::logger> &logger,
+                STInstrEvent &instr_ev);
+    void flush();
+    void updateWrites(const SglMemEv &ev);
+    void updateWrites(const Addr begin, const Addr size);
+    void updateReads(const SglMemEv &ev);
+    void updateReads(const Addr begin, const Addr size);
 
-	/* Compute Event metadata */
-	void incWrites();
-	void incReads();
-	void incIOP();
-	void incFLOP();
+    /* Compute Event metadata */
+    void incWrites();
+    void incReads();
+    void incIOP();
+    void incFLOP();
 
-	/* HACK Hotfix requested by KS for IOP/FLOP counts on a per-thread basis,
-	 * and additionally on a per-process basis */
-	void track_thread(TId tid);
+    /* HACK Hotfix requested by KS for IOP/FLOP counts on a per-thread basis,
+     * and additionally on a per-process basis */
+    void track_thread(TID tid);
 
-private:
-	void reset();
+  private:
+    void reset();
 };
 
 
@@ -237,45 +249,45 @@ private:
  */
 struct STCommEvent
 {
-	typedef std::vector<std::tuple<TId, EId, AddrSet>> LoadEdges;
-	/**< vector of:
-	 *     producer thread id,
-	 *     producer event id,
-	 *     addr range
-	 * for reads to data written by another thread
-	 */
+    typedef std::vector<std::tuple<TID, EID, AddrSet>> LoadEdges;
+    /**< vector of:
+     *     producer thread id,
+     *     producer event id,
+     *     addr range
+     * for reads to data written by another thread
+     */
 
-	LoadEdges comms;	
-	bool is_empty;
+    LoadEdges comms;
+    bool is_empty;
 
-	STInstrEvent &instr_ev;
+    STInstrEvent &instr_ev;
 
-	TId &thread_id;
-	EId &event_id;
-	std::string logmsg;
-	const std::shared_ptr<spdlog::logger> &logger;
+    TID &thread_id;
+    EID &event_id;
+    std::string logmsg;
+    const std::shared_ptr<spdlog::logger> &logger;
 
-public:
-	STCommEvent(TId &tid, EId &eid, const std::shared_ptr<spdlog::logger> &logger,
-			STInstrEvent &instr_ev);
-	void flush();
+  public:
+    STCommEvent(TID &tid, EID &eid, const std::shared_ptr<spdlog::logger> &logger,
+                STInstrEvent &instr_ev);
+    void flush();
 
-	/**
-	 * Adds communication edges originated from a single load/read primitive.
-	 * Use this function when reading data that was written by a different thread.
-	 *
-	 * Expected to by called byte-by-byte.
-	 * That is, successive calls to this function imply a continuity
-	 * between addresses. If the first call specifies address 0x0000,
-	 * and the next call specifies address 0x0008, then it implies
-	 * addresses 0x0000-0x0008 were all read, instead of non-consecutively read.
-	 *
-	 * Use STEvent::flush() between different read primitives.
-	 */
-	void addEdge(const TId writer, const EId writer_event, const Addr addr);
+    /**
+     * Adds communication edges originated from a single load/read primitive.
+     * Use this function when reading data that was written by a different thread.
+     *
+     * Expected to by called byte-by-byte.
+     * That is, successive calls to this function imply a continuity
+     * between addresses. If the first call specifies address 0x0000,
+     * and the next call specifies address 0x0008, then it implies
+     * addresses 0x0000-0x0008 were all read, instead of non-consecutively read.
+     *
+     * Use STEvent::flush() between different read primitives.
+     */
+    void addEdge(const TID writer, const EID writer_event, const Addr addr);
 
-private:
-	void reset();
+  private:
+    void reset();
 };
 
 
@@ -290,19 +302,19 @@ private:
  */
 class STSyncEvent
 {
-	UChar type = 0;
-	Addr sync_addr = 0;
+    UChar type = 0;
+    Addr sync_addr = 0;
 
-	TId &thread_id;
-	EId &event_id;
-	std::string logmsg;
-	const std::shared_ptr<spdlog::logger> &logger;
+    TID &thread_id;
+    EID &event_id;
+    std::string logmsg;
+    const std::shared_ptr<spdlog::logger> &logger;
 
-public:
-	STSyncEvent(TId &tid, EId &eid, const std::shared_ptr<spdlog::logger> &logger);
+  public:
+    STSyncEvent(TID &tid, EID &eid, const std::shared_ptr<spdlog::logger> &logger);
 
-	/* only behavior is immediate flush */
-	void flush(const UChar type, const Addr sync_addr);
+    /* only behavior is immediate flush */
+    void flush(const UChar type, const Addr sync_addr);
 };
 
 }; //end namespace STGen

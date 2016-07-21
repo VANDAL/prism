@@ -11,9 +11,9 @@ SIGIL_REGISTER(MyBackEnd)
 #include "SynchroTraceGen/EventHandlers.hpp"
 SIGIL_REGISTER(stgen)
 {
-	BACKEND(STGen::EventHandlers)
-	PARSER(STGen::onParse)
-	EXIT(STGen::onExit);
+    BACKEND(STGen::EventHandlers)
+    PARSER(STGen::onParse)
+    EXIT(STGen::onExit);
 }
 
 //#include "Dummy/Dummy.hpp"

@@ -4,10 +4,10 @@
 /*
  * All Sigil primitives
  *
- * SglMemEv  -- a memory access event, 
+ * SglMemEv  -- a memory access event,
  *              e.g. simple loads/stores, ...
  *
- * SglCompEv -- a compute event, 
+ * SglCompEv -- a compute event,
  *              e.g. adds, floating points, SIMD, ...
  *
  * SglCFEv   -- a control flow event, //useful for microarchitecture studies, GPGPU, ...
@@ -19,7 +19,7 @@
  * SglSyncEv -- a synchronization event,
  *              e.g. create, join, sync, barrier, ...
  *
- * These primitives are created in the event generation front end, 
+ * These primitives are created in the event generation front end,
  * and passed to Sigil's event manager for further processing
  */
 
@@ -45,56 +45,56 @@ typedef struct SglSyncEv SglSyncEv;
 typedef struct BufferedSglEv BufferedSglEv;
 #endif
 
-struct SglMemEv
-{
-	MemType type;
-	Addr    begin_addr;
-	UInt    size; //bytes
-	UChar   alignment; //TODO useful? Can calculate from address+size
-};
+    struct SglMemEv
+    {
+        MemType type;
+        Addr    begin_addr;
+        UInt    size; //bytes
+        UChar   alignment; //TODO useful? Can calculate from address+size
+    };
 
-struct SglCompEv
-{
-	CompCostType type;
-	CompArity    arity;
-	CompCostOp   op;
-	UChar        size; //TODO rename?
-};
+    struct SglCompEv
+    {
+        CompCostType type;
+        CompArity    arity;
+        CompCostOp   op;
+        UChar        size; //TODO rename?
+    };
 
-//TODO unimplemented
-struct SglCFEv
-{
-	CFType type;
-};
+    //TODO unimplemented
+    struct SglCFEv
+    {
+        CFType type;
+    };
 
-struct SglCxtEv
-{
-	CxtType type;
-	Addr    id;
+    struct SglCxtEv
+    {
+        CxtType type;
+        Addr    id;
 
-	/* how to implement efficiently? */
-	char* name;
-	UChar len;
-};
+        /* how to implement efficiently? */
+        char *name;
+        UChar len;
+    };
 
-struct SglSyncEv
-{
-	SyncType type;
-	SLong id;
-};
+    struct SglSyncEv
+    {
+        SyncType type;
+        SLong id;
+    };
 
-struct BufferedSglEv
-{
-	EvTag tag;
-	union
-	{
-		SglMemEv  mem;
-		SglCompEv comp;
-		SglCFEv   cf;
-		SglCxtEv  cxt;
-		SglSyncEv sync;
-	};
-};
+    struct BufferedSglEv
+    {
+        EvTag tag;
+        union
+        {
+            SglMemEv  mem;
+            SglCompEv comp;
+            SglCFEv   cf;
+            SglCxtEv  cxt;
+            SglSyncEv sync;
+        };
+    };
 
 #ifdef __cpluscplus
 }

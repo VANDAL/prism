@@ -22,10 +22,10 @@ extern "C" {
 typedef struct SigrindSharedData SigrindSharedData;
 #endif
 
-struct SigrindSharedData
-{
-	BufferedSglEv buf[SIGRIND_BUFNUM][SIGRIND_BUFSIZE];
-};
+    struct SigrindSharedData
+    {
+        BufferedSglEv buf[SIGRIND_BUFNUM][SIGRIND_BUFSIZE];
+    };
 
 #ifdef __cpluscplus
 }

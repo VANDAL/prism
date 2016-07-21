@@ -20,16 +20,16 @@ typedef struct DrSigilEvent DrSigilEvent;
 typedef struct DrSigilSharedData DrSigilSharedData;
 #endif
 
-struct DrSigilEvent
-{
-	uint16_t thread_id;
-	BufferedSglEv ev;
-};
+    struct DrSigilEvent
+    {
+        uint16_t thread_id;
+        BufferedSglEv ev;
+    };
 
-struct DrSigilSharedData
-{
-	DrSigilEvent buf[DRSIGIL_BUFNUM][DRSIGIL_BUFSIZE];
-};
+    struct DrSigilSharedData
+    {
+        DrSigilEvent buf[DRSIGIL_BUFNUM][DRSIGIL_BUFSIZE];
+    };
 
 #ifdef __cpluscplus
 }

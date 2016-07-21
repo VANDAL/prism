@@ -10,7 +10,7 @@ insert_final_newline = true
 
 # 4 space indentation
 [*.{c,cc,cpp,cxx,h,hh,hpp,hxx}]
-indent_style = tab
+indent_style = space
 indent_size = 4
 
 # Tab indentation (no size specified)

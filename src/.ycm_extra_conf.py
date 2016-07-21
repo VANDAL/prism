@@ -38,7 +38,7 @@ flags = [
 '-Wall',
 '-Wextra',
 '-Wno-unused-variable',
-'-Werror',
+# '-Werror',
 #'-Wc++98-compat',
 #'-Wno-long-long',
 #'-Wno-variadic-macros',

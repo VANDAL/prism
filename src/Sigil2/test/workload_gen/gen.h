@@ -5,21 +5,21 @@
 
 class WorkloadGenerator
 {
-	public:
-	WorkloadGenerator();
+  public:
+    WorkloadGenerator();
 
-	SglMemEv     getRandMemEvent();
-	SglCompEv    getRandCompEvent();
-	SglCFEv      getRandCFEvent();
-	SglCxtEv     getRandCxtEvent();
-	SglSyncEv    getRandSyncEvent();
+    SglMemEv     getRandMemEvent();
+    SglCompEv    getRandCompEvent();
+    SglCFEv      getRandCFEvent();
+    SglCxtEv     getRandCxtEvent();
+    SglSyncEv    getRandSyncEvent();
 
-	private:
-	void onMemEvent(SglMemEv ev);
-	void onCompEvent(SglCompEv ev);
-	void onCFEvent(SglCFEv ev);
-	void onCxtEvent(SglCxtEv ev);
-	void onSyncEvent(SglSyncEv ev);
+  private:
+    void onMemEvent(SglMemEv ev);
+    void onCompEvent(SglCompEv ev);
+    void onCFEvent(SglCFEv ev);
+    void onCxtEvent(SglCxtEv ev);
+    void onSyncEvent(SglSyncEv ev);
 };
 
 #endif
