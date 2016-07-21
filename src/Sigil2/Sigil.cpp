@@ -12,6 +12,7 @@
 std::shared_ptr<spdlog::logger> SigiLog::info_ = nullptr;
 std::shared_ptr<spdlog::logger> SigiLog::warn_ = nullptr;
 std::shared_ptr<spdlog::logger> SigiLog::error_ = nullptr;
+std::shared_ptr<spdlog::logger> SigiLog::debug_ = nullptr;
 
 Sigil::Sigil()
 {
@@ -31,7 +32,10 @@ Sigil::Sigil()
 	auto color = [&ANSIcolors_fg](const char* text, const char* color)
 	{
 		std::string ret(text);
-		if (isatty(fileno(stdout))) ret = std::string(ANSIcolors_fg[color]).append(text).append(ANSIcolors_fg["end"]);
+		if (isatty(fileno(stdout)))
+		{
+			ret = std::string(ANSIcolors_fg[color]).append(text).append(ANSIcolors_fg["end"]);
+		}
 		return ret;
 	};
 
@@ -39,6 +43,7 @@ Sigil::Sigil()
 	std::string info = "[" + color("INFO", "blue") + "]";
 	std::string warn = "[" + color("WARN", "yellow") + "]";
 	std::string error = "[" + color("ERROR", "red") + "]";
+	std::string debug = "[" + color("DEBUG", "magenta") + "]";
 
 	spdlog::set_sync_mode();
 
@@ -50,6 +55,10 @@ Sigil::Sigil()
 
 	SigiLog::error_ = spdlog::stderr_logger_st("sigil2-err");
 	SigiLog::error_->set_pattern(header+error+" %v");
+
+	SigiLog::debug_ = spdlog::stderr_logger_st("sigil2-debug");
+	SigiLog::debug_->set_pattern(header+debug+" %v");
+	SigiLog::debug_->set_level(spdlog::level::debug);
 }
 
 

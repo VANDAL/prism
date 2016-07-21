@@ -97,7 +97,7 @@ public:
 	STCompEvent st_comp_ev;
 	STCommEvent st_comm_ev;
 	STSyncEvent st_sync_ev;
-	
+
 private:
 	void onLoad(const SglMemEv& ev_data);
 	void onStore(const SglMemEv& ev_data);

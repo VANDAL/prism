@@ -13,7 +13,7 @@ namespace STGen
 // Shared state
 ////////////////////////////////////////////////////////////
 /* all instances share the same shadow memory state */
-ShadowMemory EventHandlers::shad_mem{47, 25};
+ShadowMemory EventHandlers::shad_mem{47, 25, 32768};
 
 std::string EventHandlers::output_directory{"."};
 const std::string EventHandlers::filebase = "sigil.events.out-";
@@ -408,7 +408,7 @@ void EventHandlers::initThreadLog(TId tid)
 	}
 	auto ostream_sink = std::make_shared<spdlog::sinks::ostream_sink_st>(*thread_gz);
 
-	spdlog::set_async_mode(1 << 20);
+	spdlog::set_async_mode(1 << 10);
 
 	curr_logger = spdlog::create(std::to_string(tid), {ostream_sink});
 	curr_logger->set_pattern("%v");

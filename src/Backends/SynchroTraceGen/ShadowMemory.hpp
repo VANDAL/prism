@@ -32,7 +32,7 @@ public:
 	 *
 	 * XXX: Setting addr/pm bits too large can cause
 	 * bad_alloc errors */
-	ShadowMemory(Addr addr_bits = 38, Addr pm_bits = 16);
+	ShadowMemory(Addr addr_bits = 38, Addr pm_bits = 16, Addr max_shad_mem_size = 4096/*MB*/);
 	ShadowMemory(const ShadowMemory&) = delete;
 	ShadowMemory& operator=(const ShadowMemory&) = delete;
 	~ShadowMemory();
@@ -49,7 +49,16 @@ public:
 	const Addr sm_bits;
 	const Addr pm_size;
 	const Addr sm_size;
-	const Addr max_primary_addr;
+
+	/* In MB
+	 * Not an exact count, but good enough to know when
+	 * shadow memory grows too large, assuming SMs are
+	 * sufficiently large */
+	const Addr max_shad_mem_size;
+	Addr curr_shad_mem_size;
+	Addr curr_sm_count;
+	Addr pm_Mbytes;
+	Addr sm_Mbytes;
 
 private:
 	/* Secondary/Primary Maps */
@@ -68,6 +77,7 @@ private:
 	void initSM(SecondaryMap*& SM);
 	uint64_t getSMidx(Addr addr) const;
 	uint64_t getPMidx(Addr addr) const;
+	void addSMsize();
 };
 
 }; //end namespace STGen
