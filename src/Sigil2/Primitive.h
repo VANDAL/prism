@@ -23,16 +23,13 @@
  * and passed to Sigil's event manager for further processing
  */
 
-//TODO make types more portable
 #include <stdint.h>
 
 #include "PrimitiveEnums.h"
 
-/* FIXME only 64-bit compatible right now */
-typedef int64_t SLong;
-typedef uint64_t Addr;
-typedef uint32_t UInt;
-typedef uint8_t UChar;
+typedef intptr_t  SyncID;
+typedef uintptr_t Addr;
+typedef uint32_t  ByteCount;
 
 #ifdef __cpluscplus
 extern "C" {
@@ -47,24 +44,24 @@ typedef struct BufferedSglEv BufferedSglEv;
 
     struct SglMemEv
     {
-        MemType type;
-        Addr    begin_addr;
-        UInt    size; //bytes
-        UChar   alignment; //TODO useful? Can calculate from address+size
+        MemType       type;
+        Addr          begin_addr;
+        ByteCount     size;
+        unsigned char alignment; // TODO Is this useful? Can calculate from address+size
     };
 
     struct SglCompEv
     {
-        CompCostType type;
-        CompArity    arity;
-        CompCostOp   op;
-        UChar        size; //TODO rename?
+        CompCostType  type;
+        CompArity     arity;
+        CompCostOp    op;
+        unsigned char size; // TODO rename?
     };
 
-    //TODO unimplemented
+    /* XXX unimplemented */
     struct SglCFEv
     {
-        CFType type;
+        CFType        type;
     };
 
     struct SglCxtEv
@@ -73,14 +70,14 @@ typedef struct BufferedSglEv BufferedSglEv;
         Addr    id;
 
         /* how to implement efficiently? */
-        char *name;
-        UChar len;
+        char         *name;
+        unsigned char len;
     };
 
     struct SglSyncEv
     {
-        SyncType type;
-        SLong id;
+        SyncType      type;
+        SyncID        id;
     };
 
     struct BufferedSglEv

@@ -33,7 +33,7 @@ class EventManager
   public:
     /* Create num_threads backends from the BackendFactory
      * in num_threads threads */
-    EventManager(uint32_t num_threads, BackendFactory factory);
+    EventManager(int num_threads, BackendFactory factory);
     EventManager(const EventManager &) = delete;
     EventManager &operator=(const EventManager &) = delete;
     ~EventManager();

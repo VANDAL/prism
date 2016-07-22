@@ -10,8 +10,8 @@ namespace STGen
 ////////////////////////////////////////////////////////////
 // SynchroTrace - Compute Event
 ////////////////////////////////////////////////////////////
-std::atomic<unsigned long long> STCompEvent::flop_count_global{0};
-std::atomic<unsigned long long> STCompEvent::iop_count_global{0};
+decltype(STCompEvent::flop_count_global) STCompEvent::flop_count_global{0};
+decltype(STCompEvent::iop_count_global) STCompEvent::iop_count_global{0};
 
 STCompEvent::STCompEvent(TID &tid, EID &eid, const std::shared_ptr<spdlog::logger> &logger,
                          STInstrEvent &instr_ev)
@@ -273,11 +273,11 @@ STSyncEvent::STSyncEvent(TID &tid, EID &eid, const std::shared_ptr<spdlog::logge
     , logger(logger) { }
 
 
-void STSyncEvent::flush(const UChar type, const Addr sync_addr)
+void STSyncEvent::flush(const STSyncType type, const Addr sync_addr)
 {
     logmsg += std::to_string(event_id).append(",");
     logmsg += std::to_string(thread_id).append(",pth_ty:");
-    logmsg += std::to_string((int)type).append("^");
+    logmsg += std::to_string(type).append("^");
     logmsg += n2hexstr(sync_addr);
     logger->info(logmsg);
     logmsg.clear();
@@ -290,7 +290,7 @@ void STSyncEvent::flush(const UChar type, const Addr sync_addr)
 ////////////////////////////////////////////////////////////
 void AddrSet::insert(const AddrRange &range)
 {
-    /* TODO clean up flow control */
+    /* TODO Someone please clean up flow control */
 
     assert(range.first <= range.second);
 

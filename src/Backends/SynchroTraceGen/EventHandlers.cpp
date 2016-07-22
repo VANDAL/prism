@@ -47,7 +47,7 @@ void EventHandlers::onSyncEv(const SglSyncEv &ev)
     }
     else
     {
-        UChar STtype = 0;
+        STSyncType type = 0;
 
         switch (ev.type)
         {
@@ -73,11 +73,11 @@ void EventHandlers::onSyncEv(const SglSyncEv &ev)
          */
 
         case SyncType::SGLPRIM_SYNC_LOCK:
-            STtype = 1;
+            type = 1;
             break;
 
         case SyncType::SGLPRIM_SYNC_UNLOCK:
-            STtype = 2;
+            type = 2;
             break;
 
         case SyncType::SGLPRIM_SYNC_CREATE:
@@ -86,11 +86,11 @@ void EventHandlers::onSyncEv(const SglSyncEv &ev)
             thread_spawns.push_back(std::make_pair(curr_thread_id, ev.id));
         }
 
-        STtype = 3;
+        type = 3;
         break;
 
         case SyncType::SGLPRIM_SYNC_JOIN:
-            STtype = 4;
+            type = 4;
             break;
 
         case SyncType::SGLPRIM_SYNC_BARRIER:
@@ -119,23 +119,23 @@ void EventHandlers::onSyncEv(const SglSyncEv &ev)
             }
         }
 
-        STtype = 5;
+        type = 5;
         break;
 
         case SyncType::SGLPRIM_SYNC_CONDWAIT:
-            STtype = 6;
+            type = 6;
             break;
 
         case SyncType::SGLPRIM_SYNC_CONDSIG:
-            STtype = 7;
+            type = 7;
             break;
 
         case SyncType::SGLPRIM_SYNC_SPINLOCK:
-            STtype = 8;
+            type = 8;
             break;
 
         case SyncType::SGLPRIM_SYNC_SPINUNLOCK:
-            STtype = 9;
+            type = 9;
             break;
 
         default:
@@ -143,9 +143,9 @@ void EventHandlers::onSyncEv(const SglSyncEv &ev)
             break;
         }
 
-        if /*valid sync event*/(STtype > 0)
+        if /*valid sync event*/(type > 0)
         {
-            st_sync_ev.flush(STtype, ev.id);
+            st_sync_ev.flush(type, ev.id);
         }
     }
 }
@@ -207,7 +207,7 @@ void EventHandlers::onLoad(const SglMemEv &ev)
     bool is_comm_edge = false;
 
     /* Each byte of the read may have been touched by a different thread */
-    for /*each byte*/(UInt i = 0; i < ev.size; ++i)
+    for /*each byte*/(decltype(ev.size) i = 0; i < ev.size; ++i)
     {
         Addr curr_addr = ev.begin_addr + i;
         TID writer_thread = shad_mem.getWriterTID(curr_addr);
@@ -355,9 +355,6 @@ EventHandlers::~EventHandlers()
     st_comm_ev.flush();
     st_comp_ev.flush();
     // sync events already flush immediately
-
-    /* flush per-thread iop/flop counts */
-    st_comp_ev.per_thread_data.sync();
 
     for (auto &p : loggers)
     {

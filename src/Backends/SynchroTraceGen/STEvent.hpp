@@ -137,14 +137,15 @@ class STInstrEvent
  */
 struct STCompEvent
 {
-    UInt iop_cnt;
-    UInt flop_cnt;
+    using StatCounter = unsigned long long;
+    StatCounter iop_cnt;
+    StatCounter flop_cnt;
 
     /* Stores and Loads originating from the current thread
      * I.e. non-edge mem events. These are the count for 'events',
      * not a count for bytes stored/loaded */
-    UInt thread_local_store_cnt;
-    UInt thread_local_load_cnt;
+    StatCounter thread_local_store_cnt;
+    StatCounter thread_local_load_cnt;
 
     /* Holds a range for the addresses touched by local stores/loads */
     AddrSet stores_unique;
@@ -152,7 +153,7 @@ struct STCompEvent
 
     STInstrEvent &instr_ev;
 
-    UInt total_events;
+    StatCounter total_events;
     bool is_empty;
 
     TID &thread_id;
@@ -161,7 +162,6 @@ struct STCompEvent
     const std::shared_ptr<spdlog::logger> &logger;
 
   public:
-    using StatCounter = unsigned long long;
     /* global count over all threads */
     static std::atomic<StatCounter> flop_count_global;
     static std::atomic<StatCounter> iop_count_global;
@@ -200,15 +200,17 @@ struct STCompEvent
             curr_tid = tid;
         }
 
-        /* sync() MUST be called first */
         StatCounter getThreadIOPS(TID tid)
         {
+            sync();
+
             return per_thread_counts[tid].first;
         }
 
-        /* sync() MUST be called first */
         StatCounter getThreadFLOPS(TID tid)
         {
+            sync();
+
             return per_thread_counts[tid].second;
         }
 
@@ -249,7 +251,7 @@ struct STCompEvent
  */
 struct STCommEvent
 {
-    typedef std::vector<std::tuple<TID, EID, AddrSet>> LoadEdges;
+    using LoadEdges = std::vector<std::tuple<TID, EID, AddrSet>>;
     /**< vector of:
      *     producer thread id,
      *     producer event id,
@@ -300,9 +302,10 @@ struct STCommEvent
  *
  * Synchronizatin events are expected to be immediately logged.
  */
+using STSyncType = unsigned char;
 class STSyncEvent
 {
-    UChar type = 0;
+    STSyncType type = 0;
     Addr sync_addr = 0;
 
     TID &thread_id;
@@ -314,7 +317,7 @@ class STSyncEvent
     STSyncEvent(TID &tid, EID &eid, const std::shared_ptr<spdlog::logger> &logger);
 
     /* only behavior is immediate flush */
-    void flush(const UChar type, const Addr sync_addr);
+    void flush(const STSyncType type, const Addr sync_addr);
 };
 
 }; //end namespace STGen

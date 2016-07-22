@@ -26,7 +26,7 @@ void EventBuffer::flush(Backend &backend)
 
     Buffer &buf = bufbuf[cons_idx.increment()];
 
-    for (uint32_t i = 0; i < buf.used; ++i)
+    for (decltype(buf.used) i = 0; i < buf.used; ++i)
     {
         BufferedSglEv &ev = buf.events[i];
 

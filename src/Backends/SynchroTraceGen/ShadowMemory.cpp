@@ -5,9 +5,9 @@
 namespace STGen
 {
 
-void ShadowMemory::updateWriter(Addr addr, UInt bytes, TID tid, EID eid)
+void ShadowMemory::updateWriter(Addr addr, ByteCount bytes, TID tid, EID eid)
 {
-    for (UInt i = 0; i < bytes; ++i)
+    for (ByteCount i = 0; i < bytes; ++i)
     {
         Addr curr_addr = addr + i;
         SecondaryMap &sm = getSMFromAddr(curr_addr);
@@ -21,9 +21,9 @@ void ShadowMemory::updateWriter(Addr addr, UInt bytes, TID tid, EID eid)
 }
 
 
-void ShadowMemory::updateReader(Addr addr, UInt bytes, TID tid)
+void ShadowMemory::updateReader(Addr addr, ByteCount bytes, TID tid)
 {
-    for (UInt i = 0; i < bytes; ++i)
+    for (ByteCount i = 0; i < bytes; ++i)
     {
         Addr curr_addr = addr + i;
         SecondaryMap &sm = getSMFromAddr(curr_addr);

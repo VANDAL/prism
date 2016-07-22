@@ -7,11 +7,16 @@
 namespace sgl
 {
 
-EventManager::EventManager(uint32_t num_threads,
+EventManager::EventManager(int num_threads,
                            BackendFactory factory)
     : backend_factory(factory)
 {
     assert(factory != nullptr);
+
+    if (num_threads < 1)
+    {
+        SigiLog::fatal("Invalid number of backend threads");
+    }
 
     /* initialize producer-consumer state */
     finish_consumers = false;
@@ -20,7 +25,7 @@ EventManager::EventManager(uint32_t num_threads,
     frontend_buffers.clear();
     consumers.clear();
 
-    for (uint32_t i = 0; i < num_threads; ++i)
+    for (decltype(num_threads) i = 0; i < num_threads; ++i)
     {
         frontend_buffers.push_back(std::make_shared<EventBuffer>());
         consumers.push_back(std::thread(&EventManager::consumeEvents,

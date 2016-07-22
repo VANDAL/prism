@@ -30,7 +30,7 @@ class EventBuffer
     struct Buffer
     {
         BufferedSglEv events[MAX_EVENTS];
-        UInt used = 0;
+        size_t used = 0;
     };
 
     /* Flush the next available sub-buffer with backend */
@@ -141,7 +141,7 @@ inline void EventBuffer::produceEvent(const SglMemEv &ev)
 {
     assert(prod_buf != nullptr);
 
-    UInt &used = prod_buf->used;
+    auto &used = prod_buf->used;
     BufferedSglEv(&buf)[MAX_EVENTS] = prod_buf->events;
 
     buf[used].tag = EvTag::SGL_MEM_TAG;
@@ -154,7 +154,7 @@ inline void EventBuffer::produceEvent(const SglCompEv &ev)
 {
     assert(prod_buf != nullptr);
 
-    UInt &used = prod_buf->used;
+    auto &used = prod_buf->used;
     BufferedSglEv(&buf)[MAX_EVENTS] = prod_buf->events;
 
     buf[used].tag = EvTag::SGL_COMP_TAG;
@@ -167,7 +167,7 @@ inline void EventBuffer::produceEvent(const SglSyncEv &ev)
 {
     assert(prod_buf != nullptr);
 
-    UInt &used = prod_buf->used;
+    auto &used = prod_buf->used;
     BufferedSglEv(&buf)[MAX_EVENTS] = prod_buf->events;
 
     buf[used].tag = EvTag::SGL_SYNC_TAG;
@@ -180,7 +180,7 @@ inline void EventBuffer::produceEvent(const SglCxtEv &ev)
 {
     assert(prod_buf != nullptr);
 
-    UInt &used = prod_buf->used;
+    auto &used = prod_buf->used;
     BufferedSglEv(&buf)[MAX_EVENTS] = prod_buf->events;
 
     buf[used].tag = EvTag::SGL_CXT_TAG;

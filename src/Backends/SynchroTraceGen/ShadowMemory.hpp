@@ -1,7 +1,7 @@
 #ifndef STGEN_SHADOWMEMORY_H
 #define STGEN_SHADOWMEMORY_H
 
-#include "Sigil2/Primitive.h"
+#include "Sigil2/Primitive.h" // Addr type
 
 #include <cstdint>
 #include <vector>
@@ -40,8 +40,8 @@ class ShadowMemory
     ShadowMemory &operator=(const ShadowMemory &) = delete;
     ~ShadowMemory();
 
-    void updateWriter(Addr addr, UInt bytes, TID tid, EID event_id);
-    void updateReader(Addr addr, UInt bytes, TID tid);
+    void updateWriter(Addr addr, ByteCount bytes, TID tid, EID event_id);
+    void updateReader(Addr addr, ByteCount bytes, TID tid);
     TID getWriterTID(Addr addr);
     EID getWriterEID(Addr addr);
     TID getReaderTID(Addr addr);
@@ -78,8 +78,8 @@ class ShadowMemory
     /* Utility Functions */
     SecondaryMap &getSMFromAddr(Addr addr);
     void initSM(SecondaryMap *&SM);
-    uint64_t getSMidx(Addr addr) const;
-    uint64_t getPMidx(Addr addr) const;
+    size_t getSMidx(Addr addr) const;
+    size_t getPMidx(Addr addr) const;
     void addSMsize();
 };
 
