@@ -7,64 +7,6 @@
 
 
 ////////////////////////////////////////////////////////////
-// initialize logging
-////////////////////////////////////////////////////////////
-std::shared_ptr<spdlog::logger> SigiLog::info_ = nullptr;
-std::shared_ptr<spdlog::logger> SigiLog::warn_ = nullptr;
-std::shared_ptr<spdlog::logger> SigiLog::error_ = nullptr;
-std::shared_ptr<spdlog::logger> SigiLog::debug_ = nullptr;
-
-Sigil::Sigil()
-{
-    std::map<std::string, std::string> ANSIcolors_fg =
-    {
-        {"black", "\033[30m"},
-        {"red", "\033[31m"},
-        {"green", "\033[32m"},
-        {"yellow", "\033[33m"},
-        {"blue", "\033[34m"},
-        {"magenta", "\033[35m"},
-        {"cyan", "\033[36m"},
-        {"white", "\033[37m"},
-        {"end", "\033[0m"}
-    };
-
-    auto color = [&ANSIcolors_fg](const char *text, const char *color)
-    {
-        std::string ret(text);
-
-        if (isatty(fileno(stdout)))
-        {
-            ret = std::string(ANSIcolors_fg[color]).append(text).append(ANSIcolors_fg["end"]);
-        }
-
-        return ret;
-    };
-
-    std::string header = "[Sigil2]";
-    std::string info = "[" + color("INFO", "blue") + "]";
-    std::string warn = "[" + color("WARN", "yellow") + "]";
-    std::string error = "[" + color("ERROR", "red") + "]";
-    std::string debug = "[" + color("DEBUG", "magenta") + "]";
-
-    spdlog::set_sync_mode();
-
-    SigiLog::info_ = spdlog::stderr_logger_st("sigil2-console");
-    SigiLog::info_->set_pattern(header + info + "  %v");
-
-    SigiLog::warn_ = spdlog::stderr_logger_st("sigil2-warn");
-    SigiLog::warn_->set_pattern(header + warn + "  %v");
-
-    SigiLog::error_ = spdlog::stderr_logger_st("sigil2-err");
-    SigiLog::error_->set_pattern(header + error + " %v");
-
-    SigiLog::debug_ = spdlog::stderr_logger_st("sigil2-debug");
-    SigiLog::debug_->set_pattern(header + debug + " %v");
-    SigiLog::debug_->set_level(spdlog::level::debug);
-}
-
-
-////////////////////////////////////////////////////////////
 // event generation loop
 ////////////////////////////////////////////////////////////
 void Sigil::generateEvents()

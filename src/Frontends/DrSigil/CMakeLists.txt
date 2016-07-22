@@ -20,16 +20,17 @@ ExternalProject_Add(dynamorio
 	-DDEBUG=OFF
 	-DBUILD_DOCS=OFF
 	-DBUILD_DRSTATS=OFF
-	-DBUILD_SAMPLES=ON
+	-DBUILD_SAMPLES=OFF
 	-DBUILD_TESTS=OFF
 	CONFIGURE_ALWAYS 0
 	
 	# BUILD STEP
-	BUILD_ALWAYS 1)
+	BUILD_ALWAYS 0) # change 'STEP_ALWAYS 1' when testing DynamoRIO changes
 
 # HACK to silence 32+64-bit install check warnings:
 #   https://github.com/DynamoRIO/dynamorio/issues/1758
-# We assume Sigil2 is being run for the native platform
+# We assume Sigil2 is being run for the native platform,
+# otherwise unsupported
 ExternalProject_Add_Step(dynamorio post_install
 	COMMAND touch CMakeCache.txt
 	WORKING_DIRECTORY ${INSTALL_PREFIX}

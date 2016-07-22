@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 2.8)
 project(sigil2)
 
-# C++11 support
-# from http://stackoverflow.com/a/31010221/1371191
+####################################################
+# C++11 support                                    #
+# from http://stackoverflow.com/a/31010221/1371191 #
+####################################################
 macro(use_cxx11)
   if (CMAKE_VERSION VERSION_LESS "3.1")
     if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -15,11 +17,24 @@ endmacro(use_cxx11)
 
 use_cxx11()
 
-# enable_testing( true )
-# include( CTest )
+################################
+# Testing Framework uses Catch #
+################################
+enable_testing(true)
+include(CTest)
 
-set(FRONTENDS src/Frontends)
-set(BACKENDS src/Backends)
+# http://stackoverflow.com/a/34900012/1371191
+add_library(Catch INTERFACE)
+target_include_directories(Catch INTERFACE include/Catch/include)
+
+###########################################
+# Include everything                      #
+# ...probably a cleaner way to do this... #
+###########################################
+get_filename_component(SRC_SIGIL2 src/Sigil2 ABSOLUTE)
+get_filename_component(SRC_FRONTENDS src/Frontends ABSOLUTE)
+get_filename_component(SRC_BACKENDS src/Backends ABSOLUTE)
+
 include_directories(include/whereami/src)
 include_directories(include/optionparser-1.4/src)
 include_directories(include/spdlog/include)
@@ -27,40 +42,40 @@ include_directories(include/spdlog/include/spdlog)
 include_directories(include/elfio-3.1)
 include_directories(include/zlib/contrib/iostream3)
 include_directories(src)
-include_directories(${FRONTENDS})
-include_directories(${BACKENDS})
+include_directories(${SRC_FRONTENDS})
+include_directories(${SRC_BACKENDS})
 
-set(SIGIL2_DIR src/Sigil2)
-
+################
+# Build Sigil2 #
+################
 set(SOURCES
 	include/whereami/src/whereami.c
-	${SIGIL2_DIR}/Sigil.cpp
-	${SIGIL2_DIR}/Plugins.cpp
-	${SIGIL2_DIR}/Frontends.cpp
-	${SIGIL2_DIR}/EventBuffer.cpp
-	${SIGIL2_DIR}/EventManager.cpp
-	${SIGIL2_DIR}/main.cpp)
+	${SRC_SIGIL2}/Sigil.cpp
+	${SRC_SIGIL2}/Plugins.cpp
+	${SRC_SIGIL2}/Frontends.cpp
+	${SRC_SIGIL2}/EventBuffer.cpp
+	${SRC_SIGIL2}/EventManager.cpp
+	${SRC_SIGIL2}/main.cpp)
 add_executable(sigil2 ${SOURCES})
 target_link_libraries(sigil2 pthread)
 set_target_properties(sigil2
 	PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
-# Plugin Backends
-add_subdirectory(${BACKENDS}/SynchroTraceGen)
+###################
+# Plugin Backends #
+###################
+add_subdirectory(${SRC_BACKENDS}/SynchroTraceGen)
 target_link_libraries(sigil2 STGen)
 
-add_subdirectory(${BACKENDS}/Dummy)
+add_subdirectory(${SRC_BACKENDS}/Dummy)
 target_link_libraries(sigil2 dummy)
 
-# Interface to Frontends
-add_subdirectory(${FRONTENDS}/Sigrind)
+##########################
+# Interface to Frontends #
+##########################
+add_subdirectory(${SRC_FRONTENDS}/Sigrind)
 target_link_libraries(sigil2 Sigrind)
 
-add_subdirectory(${FRONTENDS}/DrSigil)
+add_subdirectory(${SRC_FRONTENDS}/DrSigil)
 target_link_libraries(sigil2 DrSigil)
-
-#All
-add_custom_target(frontends ALL
-	DEPENDS sigil2 valgrind
-	COMMENT "Building Sigil2 and all frontends")

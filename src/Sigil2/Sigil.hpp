@@ -53,7 +53,8 @@ class Sigil
     void registerExit(ToolName name, Exit exit_routine);;
 
   private:
-    Sigil();
+    Sigil(){};
+
     int num_threads;
 
     std::shared_ptr<sgl::EventManager> mgr;

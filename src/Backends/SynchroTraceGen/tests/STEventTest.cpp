@@ -2,7 +2,6 @@
 #include "catch.hpp"
 #include "SynchroTraceGen/STEvent.hpp"
 #include "SynchroTraceGen/EventHandlers.hpp"
-#include "SynchroTraceGen/LogHelpers.hpp"
 
 using STGen::STCompEvent;
 using STGen::STCommEvent;

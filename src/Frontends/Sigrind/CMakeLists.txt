@@ -46,4 +46,3 @@ ExternalProject_Add_Step(valgrind autogen
 	DEPENDERS configure)
 
 add_dependencies(Sigrind valgrind)
-set(valgrind PARENT_SCOPE)
