@@ -211,14 +211,14 @@ void EventHandlers::onLoad(const SglMemEv &ev)
     {
         Addr curr_addr = ev.begin_addr + i;
         TID writer_thread = shad_mem.getWriterTID(curr_addr);
-        TID reader_thread = shad_mem.getReaderTID(curr_addr);
+        bool is_reader_thread = shad_mem.isReaderTID(curr_addr, curr_thread_id);
 
-        if (reader_thread != curr_thread_id)
+        if (is_reader_thread == false)
         {
             shad_mem.updateReader(curr_addr, 1, curr_thread_id);
         }
 
-        if /*comm edge*/((reader_thread != curr_thread_id) && //TODO support for multiple readers
+        if /*comm edge*/((is_reader_thread == false) &&
                          (writer_thread != curr_thread_id) &&
                          (writer_thread != SO_UNDEF)) /* XXX treat a read/write
                                                        * to an address with UNDEF thread

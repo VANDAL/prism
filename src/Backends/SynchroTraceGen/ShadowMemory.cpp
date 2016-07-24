@@ -5,7 +5,7 @@
 namespace STGen
 {
 
-void ShadowMemory::updateWriter(Addr addr, ByteCount bytes, TID tid, EID eid)
+auto ShadowMemory::updateWriter(Addr addr, ByteCount bytes, TID tid, EID eid) -> void
 {
     for (ByteCount i = 0; i < bytes; ++i)
     {
@@ -15,36 +15,44 @@ void ShadowMemory::updateWriter(Addr addr, ByteCount bytes, TID tid, EID eid)
         sm.last_writers[getSMidx(curr_addr)] = tid;
         sm.last_writers_event[getSMidx(curr_addr)] = eid;
 
-        //reset readers on new write
-        sm.last_readers[getSMidx(curr_addr)] = SO_UNDEF;
+        /* Reset readers on new write */
+        sm.last_readers[getSMidx(curr_addr)].assign({SO_UNDEF});
     }
 }
 
 
-void ShadowMemory::updateReader(Addr addr, ByteCount bytes, TID tid)
+auto ShadowMemory::updateReader(Addr addr, ByteCount bytes, TID tid) -> void
 {
     for (ByteCount i = 0; i < bytes; ++i)
     {
         Addr curr_addr = addr + i;
         SecondaryMap &sm = getSMFromAddr(curr_addr);
-        sm.last_readers[getSMidx(curr_addr)] = tid;
+        sm.last_readers[getSMidx(curr_addr)].push_back(tid);
     }
 }
 
 
-TID ShadowMemory::getReaderTID(Addr addr)
+auto ShadowMemory::isReaderTID(Addr addr, TID tid) -> bool
 {
-    return getSMFromAddr(addr).last_readers[getSMidx(addr)];
+    for /*each reader*/(TID reader : getSMFromAddr(addr).last_readers[getSMidx(addr)])
+    {
+        if (reader == tid)
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 
-TID ShadowMemory::getWriterTID(Addr addr)
+auto ShadowMemory::getWriterTID(Addr addr) -> TID
 {
     return getSMFromAddr(addr).last_writers[getSMidx(addr)];
 }
 
 
-EID ShadowMemory::getWriterEID(Addr addr)
+auto ShadowMemory::getWriterEID(Addr addr) -> EID
 {
     return getSMFromAddr(addr).last_writers_event[getSMidx(addr)];
 }
@@ -74,16 +82,11 @@ ShadowMemory::ShadowMemory(Addr addr_bits, Addr pm_bits, Addr max_shad_mem_size)
     SigiLog::debug("Shadow Memory PM size: " + std::to_string(pm_Mbytes) + " MB");
     SigiLog::debug("Shadow Memory SM size: " + std::to_string(sm_Mbytes) + " MB");
 
-    DSM = new SecondaryMap;
-    DSM->last_readers.resize(sm_size, SO_UNDEF);
-    DSM->last_writers.resize(sm_size, SO_UNDEF);
-    DSM->last_writers_event.resize(sm_size, SO_UNDEF);
-
     curr_shad_mem_size += pm_Mbytes;
     curr_shad_mem_size += sm_Mbytes;
 
-    PM = new std::vector<SecondaryMap *>;
-    PM->resize(pm_size, nullptr);
+    /* initialize primary map */
+    PM.assign(pm_size, nullptr);
 }
 
 
@@ -92,26 +95,19 @@ ShadowMemory::~ShadowMemory()
     SigiLog::debug("Shadow Memory approximate size: " + std::to_string(curr_shad_mem_size) + " MB");
     SigiLog::debug("Shadow Memory Secondary Maps used: " + std::to_string(curr_sm_count));
 
-    delete DSM;
-
-    for (auto SM : *PM)
+    for (auto SM : PM)
     {
-        if (SM != nullptr)
-        {
-            delete SM;
-        }
+        delete SM;
     }
-
-    delete PM;
 }
 
 
 ///////////////////////////////////////
 // Utility Functions
 ///////////////////////////////////////
-inline ShadowMemory::SecondaryMap &ShadowMemory::getSMFromAddr(Addr addr)
+inline auto ShadowMemory::getSMFromAddr(Addr addr) -> SecondaryMap&
 {
-    if ((addr >> addr_bits) > 0)
+    if /*out of range*/((addr >> addr_bits) > 0)
     {
         char s_addr[32];
         sprintf(s_addr, "0x%lx", addr);
@@ -122,31 +118,31 @@ inline ShadowMemory::SecondaryMap &ShadowMemory::getSMFromAddr(Addr addr)
         SigiLog::fatal(msg);
     }
 
-    SecondaryMap *&SM = (*PM)[getPMidx(addr)];
+    SecondaryMap *&SM = PM[getPMidx(addr)];
 
-    if (SM == nullptr)
+    if /*uninitialized*/(SM == nullptr)
     {
-        addSMsize();
-        SM = new SecondaryMap(*DSM);
+        SM = new SecondaryMap(sm_size);
+        addSMsize(); // stat tracking
     }
 
     return *SM;
 }
 
 
-inline size_t ShadowMemory::getSMidx(Addr addr) const
+inline auto ShadowMemory::getSMidx(Addr addr) const -> size_t
 {
     return addr & ((1ULL << sm_bits) - 1);
 }
 
 
-inline size_t ShadowMemory::getPMidx(Addr addr) const
+inline auto ShadowMemory::getPMidx(Addr addr) const -> size_t
 {
     return addr >> sm_bits;
 }
 
 
-inline void ShadowMemory::addSMsize()
+inline auto ShadowMemory::addSMsize() -> void
 {
     ++curr_sm_count;
     curr_shad_mem_size += sm_Mbytes;

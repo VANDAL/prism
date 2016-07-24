@@ -17,7 +17,7 @@ TEST_CASE("shadow memory inits readers/writers", "[ShadowMemoryInit]")
         ShadowMemory sm;
         REQUIRE(sm.getWriterTID(0) == STGen::SO_UNDEF);
         REQUIRE(sm.getWriterEID(0) == STGen::SO_UNDEF);
-        REQUIRE(sm.getReaderTID(0) == STGen::SO_UNDEF);
+        REQUIRE(sm.isReaderTID(0, STGen::SO_UNDEF) == true);
     }
 }
 
@@ -41,13 +41,13 @@ TEST_CASE("shadow memory tracks readers/writers", "[ShadowMemorySetGet]")
         SglMemEv ev2 = {SGLPRIM_MEM_LOAD, addr2, bytes, 0};
         sm.updateReader(ev2.begin_addr, ev2.size, tid2);
 
-        REQUIRE(sm.getReaderTID(addr1) == tid1);
+        REQUIRE(sm.isReaderTID(addr1, tid1) == true);
 
         //This should cross SM boundaries
-        REQUIRE(sm.getReaderTID(addr2) == tid2);
-        REQUIRE(sm.getReaderTID(addr2 + bytes - 1) == tid2);
+        REQUIRE(sm.isReaderTID(addr2, tid2) == true);
+        REQUIRE(sm.isReaderTID(addr2 + bytes - 1, tid2) == true);
 
-        REQUIRE(sm.getReaderTID(addr2 + bytes) == STGen::SO_UNDEF);
+        REQUIRE(sm.isReaderTID(addr2 + bytes, STGen::SO_UNDEF) == true);
     }
 
     SECTION("setting WRITERS across SM boundaries")
@@ -77,8 +77,8 @@ TEST_CASE("shadow memory tracks readers/writers", "[ShadowMemorySetGet]")
         REQUIRE(sm.getWriterEID(addr2 + bytes - 1) == eid2);
 
         //Sanity check
-        REQUIRE(sm.getReaderTID(addr2) != tid2);
-        REQUIRE(sm.getReaderTID(addr2) == STGen::SO_UNDEF);
+        REQUIRE(sm.isReaderTID(addr2, tid2) == false);
+        REQUIRE(sm.isReaderTID(addr2, STGen::SO_UNDEF) == true);
     }
 
     SECTION("setting writer clears out reader")
@@ -92,16 +92,21 @@ TEST_CASE("shadow memory tracks readers/writers", "[ShadowMemorySetGet]")
         SglMemEv store = {SGLPRIM_MEM_STORE, addr1, 4, 0};
 
         sm.updateReader(load.begin_addr, load.size, tid1);
-        REQUIRE(sm.getReaderTID(addr1) == tid1);
+        REQUIRE(sm.isReaderTID(addr1, tid1) == true);
         REQUIRE(sm.getWriterTID(addr1) == STGen::SO_UNDEF);
 
         sm.updateWriter(store.begin_addr, store.size, tid1, eid1);
-        REQUIRE(sm.getReaderTID(addr1) == STGen::SO_UNDEF);
+        REQUIRE(sm.isReaderTID(addr1, STGen::SO_UNDEF) == true);
         REQUIRE(sm.getWriterTID(addr1) == tid1);
         REQUIRE(sm.getWriterEID(addr1) == eid1);
     }
 
     SECTION("setting multiple readers")
+    {
+        //TODO
+    }
+
+    SECTION("thread safety of setting/resetting multiple readers")
     {
         //TODO
     }
