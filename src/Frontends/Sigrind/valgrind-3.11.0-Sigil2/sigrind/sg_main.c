@@ -1483,6 +1483,17 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       }
       break;
 
+   case VG_USERREQ__SIGIL_PTHREAD_CONDBROAD_ENTER:
+      SGL_(thread_in_synccall)[SGL_(active_tid)] = True;
+      break;
+   case VG_USERREQ__SIGIL_PTHREAD_CONDBROAD_LEAVE:
+      SGL_(thread_in_synccall)[SGL_(active_tid)] = False;
+      if ( EVENT_GENERATION_ENABLED )
+      {
+         SGL_(log_sync)((UChar)SGLPRIM_SYNC_CONDBROAD, args[1]);
+      }
+      break;
+
    case VG_USERREQ__SIGIL_PTHREAD_SPINLOCK_ENTER:
       SGL_(thread_in_synccall)[SGL_(active_tid)] = True;
       break;

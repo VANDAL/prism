@@ -61,13 +61,14 @@ void EventHandlers::onSyncEv(const SglSyncEv &ev)
          * #define P_BARRIER_WT            5
          * #define P_COND_WT               6
          * #define P_COND_SG               7
-         * #define P_SPIN_LK               8
-         * #define P_SPIN_ULK              9
-         * #define P_SEM_INIT              10
-         * #define P_SEM_WAIT              11
-         * #define P_SEM_POST              12
-         * #define P_SEM_GETV              13
-         * #define P_SEM_DEST              14
+		 * #define P_COND_BROAD            8
+         * #define P_SPIN_LK               9 
+         * #define P_SPIN_ULK              10
+         * #define P_SEM_INIT              11
+         * #define P_SEM_WAIT              12
+         * #define P_SEM_POST              13
+         * #define P_SEM_GETV              14
+         * #define P_SEM_DEST              15
          *
          * NOTE: semaphores are not supported in SynchroTraceGen
          */
@@ -130,12 +131,16 @@ void EventHandlers::onSyncEv(const SglSyncEv &ev)
             type = 7;
             break;
 
+        case SyncType::SGLPRIM_SYNC_CONDBROAD:
+			type = 8;
+			break;
+
         case SyncType::SGLPRIM_SYNC_SPINLOCK:
-            type = 8;
+            type = 9;
             break;
 
         case SyncType::SGLPRIM_SYNC_SPINUNLOCK:
-            type = 9;
+            type = 10;
             break;
 
         default:

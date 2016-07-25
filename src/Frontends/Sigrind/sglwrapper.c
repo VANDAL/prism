@@ -217,6 +217,33 @@ int I_WRAP_SONAME_FNNAME_ZZ(libpthreadZdsoZd0, pthreadZucondZusignalZa)(pthread_
 
 
 ////////////////////////////////////////////
+// PTHREAD CONDITIONAL Broadcast
+////////////////////////////////////////////
+int I_WRAP_SONAME_FNNAME_ZZ(NONE,pthreadZucondZubroadcast)(pthread_cond_t *cond){
+  int ret;
+  OrigFn fn;
+  VALGRIND_GET_ORIG_FN(fn);
+
+  SIGIL_PTHREAD_CONDBROAD_ENTER( cond );
+  CALL_FN_W_W(ret, fn, cond);
+  SIGIL_PTHREAD_CONDBROAD_LEAVE( cond );
+
+  return ret;
+}
+int I_WRAP_SONAME_FNNAME_ZZ(libpthreadZdsoZd0,pthreadZucondZubroadcast)(pthread_cond_t *cond){
+  int ret;
+  OrigFn fn;
+  VALGRIND_GET_ORIG_FN(fn);
+
+  SIGIL_PTHREAD_CONDBROAD_ENTER( cond );
+  CALL_FN_W_W(ret, fn, cond);
+  SIGIL_PTHREAD_CONDBROAD_LEAVE( cond );
+
+  return ret;
+}
+
+
+////////////////////////////////////////////
 // PTHREAD SPIN LOCK
 ////////////////////////////////////////////
 int I_WRAP_SONAME_FNNAME_ZZ(NONE, pthreadZuspinZulockZa)(pthread_spinlock_t *lock)
