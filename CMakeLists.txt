@@ -24,8 +24,9 @@ enable_testing(true)
 include(CTest)
 
 # http://stackoverflow.com/a/34900012/1371191
-add_library(Catch INTERFACE)
-target_include_directories(Catch INTERFACE include/Catch/include)
+# NOT COMPATIBLE WITH version <2.8.12
+# add_library(Catch INTERFACE)
+# target_include_directories(Catch INTERFACE include/Catch/include)
 
 ###########################################
 # Include everything                      #
@@ -35,6 +36,7 @@ get_filename_component(SRC_SIGIL2 src/Sigil2 ABSOLUTE)
 get_filename_component(SRC_FRONTENDS src/Frontends ABSOLUTE)
 get_filename_component(SRC_BACKENDS src/Backends ABSOLUTE)
 
+include_directories(include/Catch/include)
 include_directories(include/whereami/src)
 include_directories(include/optionparser-1.4/src)
 include_directories(include/spdlog/include)
@@ -57,7 +59,7 @@ set(SOURCES
 	${SRC_SIGIL2}/EventManager.cpp
 	${SRC_SIGIL2}/main.cpp)
 add_executable(sigil2 ${SOURCES})
-target_link_libraries(sigil2 pthread)
+target_link_libraries(sigil2 pthread rt)
 set_target_properties(sigil2
 	PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)

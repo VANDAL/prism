@@ -1,5 +1,6 @@
 # [SIGIL2](https://github.com/mdlui/Sigil2/wiki)
 [![BSD licensed](https://img.shields.io/badge/license-BSD-blue.svg)](./COPYING)
+[![Build Status](https://travis-ci.org/mdlui/Sigil2.svg?branch=travis-ci)](https://travis-ci.org/mdlui/Sigil2)
 
 Provides an extensible interface to  **architecture-agnostic** application events.
 
@@ -29,7 +30,7 @@ Each event has specific attributes that are accessible via the [Sigil2 API](http
 
 ## Platform support
 * Linux
-  * Tested
+  * Additionally tested
     * 64-bit **CentOS 7** (7.2.1511) on **x86\_64**
     * 64-bit **ArchLinux** (as of July 22, 2016) on **x86\_64**
   * In progress
@@ -40,8 +41,8 @@ Each event has specific attributes that are accessible via the [Sigil2 API](http
 * Windows
   * not supported
 * Requirements
-  * C++11 compiler support (g++ 4.8.5 and 6.1.1 tested)
-  * CMake 2.8+
+  * C++11 compiler support
+  * CMake 2.8.11+
   * dependencies for frontends
     * Valgrind 3.11.0 support - http://valgrind.org/info/platforms.html
     * DynamoRIO support - https://github.com/DynamoRIO/dynamorio

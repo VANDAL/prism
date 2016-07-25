@@ -3,13 +3,15 @@ get_target_property(SIGIL2_BIN sigil2 RUNTIME_OUTPUT_DIRECTORY)
 set(VGINST_DIR ${SIGIL2_BIN}/vg)
 set(VGSRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/valgrind-3.11.0-Sigil2)
 
+include_directories(
+	gcc-4.9.2
+	valgrind-3.11.0-Sigil2
+	valgrind-3.11.0-Sigil2/include
+	valgrind-3.11.0-Sigil2/VEX/pub)
+
 # Function wrapper for intercepting multithreading libs
 # (pthread and openmp function calls)
 add_library(sglwrapper SHARED sglwrapper.c)
-target_include_directories(sglwrapper PUBLIC
-	gcc-4.9.2
-	valgrind-3.11.0-Sigil2
-	valgrind-3.11.0-Sigil2/include)
 target_compile_definitions(sglwrapper PUBLIC
 	-DVGO_linux=1)
 set_target_properties(sglwrapper
@@ -19,9 +21,6 @@ set_target_properties(sglwrapper
 set(SOURCES
 	Sigrind.cpp)
 add_library(Sigrind STATIC ${SOURCES})
-target_include_directories(Sigrind PUBLIC
-	valgrind-3.11.0-Sigil2/include
-	valgrind-3.11.0-Sigil2/VEX/pub)
 add_dependencies(Sigrind sglwrapper)
 
 # valgrind build

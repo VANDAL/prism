@@ -16,47 +16,53 @@ matrix:
   include:
 
     # Test gcc-4.8: C++11, Build=Debug/Release, ASAN=Off
-    - env: GCC_VERSION=4.8 BUILD_TYPE=Debug CPP=11 ASAN=Off LIBCXX=Off
+    - env: GCC_VERSION=4.8 BUILD_TYPE=Debug CPP_VERSION=11 ASAN=Off LIBCXX=Off
       os: linux
       addons: &gcc48
         apt:
           packages:
             - g++-4.8
             - valgrind
+            - cmake
           sources:
             - ubuntu-toolchain-r-test
+            - kalakris-cmake
 
-    - env: GCC_VERSION=4.8 BUILD_TYPE=Release CPP=11 ASAN=Off LIBCXX=Off
+    - env: GCC_VERSION=4.8 BUILD_TYPE=Release CPP_VERSION=11 ASAN=Off LIBCXX=Off
       os: linux
       addons: *gcc48
 
     # Test gcc-5: C++11, Build=Debug/Release, ASAN=Off
-    - env: GCC_VERSION=5 BUILD_TYPE=Debug CPP=11 ASAN=Off LIBCXX=Off
+    - env: GCC_VERSION=5 BUILD_TYPE=Debug CPP_VERSION=11 ASAN=Off LIBCXX=Off
       os: linux
       addons: &gcc5
         apt:
           packages:
             - g++-5
             - valgrind
+            - cmake
           sources:
             - ubuntu-toolchain-r-test
+            - kalakris-cmake
 
-    - env: GCC_VERSION=5 BUILD_TYPE=Release CPP=11 ASAN=Off LIBCXX=Off
+    - env: GCC_VERSION=5 BUILD_TYPE=Release CPP_VERSION=11 ASAN=Off LIBCXX=Off
       os: linux
       addons: *gcc5
 
     # Test gcc-6: C++11, Build=Debug/Release, ASAN=Off
-    - env: GCC_VERSION=6 BUILD_TYPE=Debug CPP=11 ASAN=Off LIBCXX=Off
+    - env: GCC_VERSION=6 BUILD_TYPE=Debug CPP_VERSION=11 ASAN=Off LIBCXX=Off
       os: linux
       addons: &gcc6
         apt:
           packages:
             - g++-6
             - valgrind
+            - cmake
           sources:
             - ubuntu-toolchain-r-test
+            - kalakris-cmake
 
-    - env: GCC_VERSION=5 BUILD_TYPE=Release CPP=11 ASAN=Off LIBCXX=Off
+    - env: GCC_VERSION=6 BUILD_TYPE=Release CPP_VERSION=11 ASAN=Off LIBCXX=Off
       os: linux
       addons: *gcc6
 
@@ -88,11 +94,12 @@ install:
   - if [ -n "$CLANG_VERSION" ]; then CXX_FLAGS="${CXX_FLAGS} -D__extern_always_inline=inline"; fi
   - if [ "$LIBCXX" == "On" ]; then CXX_FLAGS="${CXX_FLAGS} -stdlib=libc++ -I/usr/include/c++/v1/"; fi
   - if [ "$LIBCXX" == "On" ]; then CXX_LINKER_FLAGS="${CXX_FLAGS} -L/usr/lib/ -lc++"; fi
-  - CXX_FLAGS="${CXX_FLAGS} -std=c++${CPP}"
+  - CXX_FLAGS="${CXX_FLAGS} -std=c++${CPP_VERSION}"
 
   # Build
+  - cmake --version
   - cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_FLAGS="${CXX_FLAGS}" -DCMAKE_EXE_LINKER_FLAGS="${CXX_LINKER_FLAGS}"
-  - make VERBOSE=1
+  - make
 
 script:
   - ctest -VV
