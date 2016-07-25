@@ -1,4 +1,11 @@
-# [SIGIL2](https://github.com/mdlui/Sigil2/wiki)
+<p align="center">
+  <a href="https://github.com/mdlui/Sigil2/wiki">
+  <img src="https://cdn.rawgit.com/mdlui/Sigil2/master/docs/sigil2-torus.png" alt="mmmmmm">
+  </a>
+</p>
+<p align="center"> <i>mmmmm...Sigil...</i>  </p>
+
+
 [![BSD licensed](https://img.shields.io/badge/license-BSD-blue.svg)](./COPYING)
 [![Build Status](https://travis-ci.org/mdlui/Sigil2.svg?branch=travis-ci)](https://travis-ci.org/mdlui/Sigil2)
 
