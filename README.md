@@ -1,8 +1,9 @@
 # [SIGIL2](https://github.com/mdlui/Sigil2/wiki)
+[![BSD licensed](https://img.shields.io/badge/license-BSD-blue.svg)](./COPYING)
 
 Provides an extensible interface to  **architecture-agnostic** application events.
 
-<br><br>
+<br>
 
 ## Install
 ```
