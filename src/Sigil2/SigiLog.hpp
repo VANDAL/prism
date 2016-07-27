@@ -38,6 +38,8 @@ std::string color(const char *text, const char *color)
 
 struct SigiLog
 {
+    SigiLog() = delete;
+
     static void info(const std::string &msg)
     {
         static std::mutex mutex_;

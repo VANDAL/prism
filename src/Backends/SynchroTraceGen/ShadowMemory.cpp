@@ -1,6 +1,5 @@
 #include "Sigil2/SigiLog.hpp"
 #include "ShadowMemory.hpp"
-#include <sstream> // for printing hex vals
 
 namespace STGen
 {
@@ -9,14 +8,13 @@ auto ShadowMemory::updateWriter(Addr addr, ByteCount bytes, TID tid, EID eid) ->
 {
     for (ByteCount i = 0; i < bytes; ++i)
     {
-        Addr curr_addr = addr + i;
-        SecondaryMap &sm = getSMFromAddr(curr_addr);
+        ShadowObject& so = shadow_objects[addr + i];
 
-        sm.last_writers[getSMidx(curr_addr)] = tid;
-        sm.last_writers_event[getSMidx(curr_addr)] = eid;
+        so.last_writer = tid;
+        so.last_writer_event = eid;
 
         /* Reset readers on new write */
-        sm.last_readers[getSMidx(curr_addr)].assign({SO_UNDEF});
+        so.last_readers.assign({SO_UNDEF});
     }
 }
 
@@ -25,16 +23,14 @@ auto ShadowMemory::updateReader(Addr addr, ByteCount bytes, TID tid) -> void
 {
     for (ByteCount i = 0; i < bytes; ++i)
     {
-        Addr curr_addr = addr + i;
-        SecondaryMap &sm = getSMFromAddr(curr_addr);
-        sm.last_readers[getSMidx(curr_addr)].push_back(tid);
+        shadow_objects[addr+i].last_readers.push_back(tid);
     }
 }
 
 
 auto ShadowMemory::isReaderTID(Addr addr, TID tid) -> bool
 {
-    for /*each reader*/(TID reader : getSMFromAddr(addr).last_readers[getSMidx(addr)])
+    for (TID reader : shadow_objects[addr].last_readers)
     {
         if (reader == tid)
         {
@@ -48,13 +44,13 @@ auto ShadowMemory::isReaderTID(Addr addr, TID tid) -> bool
 
 auto ShadowMemory::getWriterTID(Addr addr) -> TID
 {
-    return getSMFromAddr(addr).last_writers[getSMidx(addr)];
+    return shadow_objects[addr].last_writer;
 }
 
 
 auto ShadowMemory::getWriterEID(Addr addr) -> EID
 {
-    return getSMFromAddr(addr).last_writers_event[getSMidx(addr)];
+    return shadow_objects[addr].last_writer_event;
 }
 
 
@@ -65,13 +61,14 @@ ShadowMemory::ShadowMemory(Addr addr_bits, Addr pm_bits, Addr max_shad_mem_size)
     , pm_size(1ULL << pm_bits)
     , sm_size(1ULL << sm_bits)
     , max_shad_mem_size(max_shad_mem_size)
-    , curr_shad_mem_size(0)   /* includes DSM */
-    , curr_sm_count(0)   /* excludes DSM */
+    , curr_shad_mem_size(0)
+    , curr_sm_count(0)
+    , shadow_objects(*this) /* initialize primary map */
 {
     assert(addr_bits > 0);
     assert(pm_bits > 0);
 
-    pm_Mbytes = pm_size * sizeof(char *) / (1 << 20);
+    pm_Mbytes = pm_size * sizeof(ShadowMemoryImpl::SecondaryMapPtr) / (1 << 20);
     sm_Mbytes = sm_size * (sizeof(TID) * 2 + sizeof(EID)) / (1 << 20);
 
     if (sm_Mbytes < 1)
@@ -83,10 +80,6 @@ ShadowMemory::ShadowMemory(Addr addr_bits, Addr pm_bits, Addr max_shad_mem_size)
     SigiLog::debug("Shadow Memory SM size: " + std::to_string(sm_Mbytes) + " MB");
 
     curr_shad_mem_size += pm_Mbytes;
-    curr_shad_mem_size += sm_Mbytes;
-
-    /* initialize primary map */
-    PM.assign(pm_size, nullptr);
 }
 
 
@@ -94,54 +87,12 @@ ShadowMemory::~ShadowMemory()
 {
     SigiLog::debug("Shadow Memory approximate size: " + std::to_string(curr_shad_mem_size) + " MB");
     SigiLog::debug("Shadow Memory Secondary Maps used: " + std::to_string(curr_sm_count));
-
-    for (auto SM : PM)
-    {
-        delete SM;
-    }
 }
 
 
 ///////////////////////////////////////
 // Utility Functions
 ///////////////////////////////////////
-inline auto ShadowMemory::getSMFromAddr(Addr addr) -> SecondaryMap&
-{
-    if /*out of range*/((addr >> addr_bits) > 0)
-    {
-        char s_addr[32];
-        sprintf(s_addr, "0x%lx", addr);
-
-        std::string msg("shadow memory max address limit: ");
-        msg.append(s_addr);
-
-        SigiLog::fatal(msg);
-    }
-
-    SecondaryMap *&SM = PM[getPMidx(addr)];
-
-    if /*uninitialized*/(SM == nullptr)
-    {
-        SM = new SecondaryMap(sm_size);
-        addSMsize(); // stat tracking
-    }
-
-    return *SM;
-}
-
-
-inline auto ShadowMemory::getSMidx(Addr addr) const -> size_t
-{
-    return addr & ((1ULL << sm_bits) - 1);
-}
-
-
-inline auto ShadowMemory::getPMidx(Addr addr) const -> size_t
-{
-    return addr >> sm_bits;
-}
-
-
 inline auto ShadowMemory::addSMsize() -> void
 {
     ++curr_sm_count;
@@ -152,5 +103,51 @@ inline auto ShadowMemory::addSMsize() -> void
         SigiLog::fatal("shadow memory size limits exceeded");
     }
 }
+
+
+///////////////////////////////////////
+// Implementation
+///////////////////////////////////////
+namespace { [[noreturn]] auto out_of_range_fatal(Addr addr) -> void; };
+
+inline auto ShadowMemory::ShadowMemoryImpl::operator[](Addr addr) -> ShadowObject&
+{
+    if ((addr >> sm.addr_bits) > 0)
+    {
+        out_of_range_fatal(addr);
+    }
+
+    /* primary map and secondary map offsets */
+    return PM[addr >> sm.sm_bits][addr & ((1ULL << sm.sm_bits) - 1)];
+}
+
+
+inline auto ShadowMemory::ShadowMemoryImpl::PrimaryMap::operator[](Addr pm_offset) -> SecondaryMap&
+{
+    SecondaryMapPtr &ptr = primary_map_[pm_offset];
+
+    if (ptr == nullptr)
+    {
+        ptr = SecondaryMapPtr(new SecondaryMap(sm.sm_size));
+        sm.addSMsize(); // stat tracking
+    }
+
+    return *ptr;
+}
+
+
+namespace
+{
+[[noreturn]] auto out_of_range_fatal(Addr addr) -> void
+{
+    char s_addr[32];
+    sprintf(s_addr, "0x%lx", addr);
+
+    std::string msg("shadow memory max address limit [");
+    msg.append(s_addr).append("]");
+
+    SigiLog::fatal(msg);
+}
+};
 
 }; //end namespace STGen

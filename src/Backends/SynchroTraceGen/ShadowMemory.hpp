@@ -2,7 +2,6 @@
 #define STGEN_SHADOWMEMORY_H
 
 #include "Sigil2/Primitive.h" // Addr type
-#include "MemoryPool.h"
 
 #include <cstdint>
 #include <vector>
@@ -65,31 +64,44 @@ class ShadowMemory
     Addr sm_Mbytes;
 
   private:
-    /* Secondary/Primary Maps */
-    MemoryPool<TID> pool;
-    struct SecondaryMap
-    {
-        SecondaryMap(size_t sm_size) : last_writers(sm_size, SO_UNDEF)
-                                     , last_writers_event(sm_size, SO_UNDEF)
-                                     , last_readers(sm_size, {SO_UNDEF}){}
 
-        /* Last thread/event to read/write to addr */
-        std::vector<TID> last_writers;
-        std::vector<EID> last_writers_event;
-        /* A vector of vectors -- each address can have multiple readers */
-        std::vector<std::vector<TID>> last_readers;
+    struct ShadowMemoryImpl
+    {
+        struct ShadowObject
+        {
+            /* Last thread/event to read/write to addr */
+            TID last_writer{SO_UNDEF};
+            EID last_writer_event{SO_UNDEF};
+            /* A vector -- each address can have multiple readers */
+            std::vector<TID> last_readers{SO_UNDEF};
+        };
+
+        using SecondaryMap = std::vector<ShadowObject>;
+        using SecondaryMapPtr = std::unique_ptr<SecondaryMap>;
+        struct PrimaryMap
+        {
+            /* for accessing shadow memory configuration */
+            PrimaryMap(ShadowMemory &sm) : sm(sm), primary_map_(sm.pm_size) {}
+            ShadowMemory &sm;
+
+            /* Primary Map is a sparse vector.
+             * Pointers are used because that implementation
+             * is more memory efficient for a sparse vector. */
+            std::vector<SecondaryMapPtr> primary_map_;
+
+            auto operator[](Addr pm_offset) -> SecondaryMap&;
+        } PM;
+
+        ShadowMemoryImpl(ShadowMemory &sm) : PM(sm), sm(sm) {}
+        ShadowMemory &sm;
+
+        auto operator[](Addr addr) -> ShadowObject&;
     };
 
-    /* Primary Map is a sparse vector.
-     * Pointers are used because that implementation
-     * is more memory efficient for a sparse vector. */
-    std::vector<SecondaryMap *> PM;
+    ShadowMemoryImpl shadow_objects;
+    using ShadowObject = ShadowMemoryImpl::ShadowObject;
 
     /* Utility Functions */
-    auto getSMFromAddr(Addr addr) -> SecondaryMap&;
-    auto initSM(SecondaryMap *&SM) -> void;
-    auto getSMidx(Addr addr) const -> size_t;
-    auto getPMidx(Addr addr) const -> size_t;
     auto addSMsize() -> void;
 };
 

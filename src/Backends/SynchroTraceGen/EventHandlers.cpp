@@ -61,8 +61,8 @@ void EventHandlers::onSyncEv(const SglSyncEv &ev)
          * #define P_BARRIER_WT            5
          * #define P_COND_WT               6
          * #define P_COND_SG               7
-		 * #define P_COND_BROAD            8
-         * #define P_SPIN_LK               9 
+         * #define P_COND_BROAD            8
+         * #define P_SPIN_LK               9
          * #define P_SPIN_ULK              10
          * #define P_SEM_INIT              11
          * #define P_SEM_WAIT              12
@@ -132,8 +132,8 @@ void EventHandlers::onSyncEv(const SglSyncEv &ev)
             break;
 
         case SyncType::SGLPRIM_SYNC_CONDBROAD:
-			type = 8;
-			break;
+            type = 8;
+            break;
 
         case SyncType::SGLPRIM_SYNC_SPINLOCK:
             type = 9;

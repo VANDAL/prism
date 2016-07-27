@@ -179,63 +179,63 @@ typedef
 /*------------------------------------------------------------*/
 #define SIGIL_PTHREAD_CREATE_ENTER(thr) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_PTHREAD_CREATE_ENTER,     \
-                                  thr, 0, 0, 0, 0) 
+                                  thr, 0, 0, 0, 0)
 #define SIGIL_PTHREAD_CREATE_LEAVE(thr) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_PTHREAD_CREATE_LEAVE,     \
-                                  thr, 0, 0, 0, 0) 
+                                  thr, 0, 0, 0, 0)
 
 
 #define SIGIL_PTHREAD_JOIN_ENTER(thr) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_PTHREAD_JOIN_ENTER,     \
-                                  thr, 0, 0, 0, 0) 
+                                  thr, 0, 0, 0, 0)
 #define SIGIL_PTHREAD_JOIN_LEAVE(thr) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_PTHREAD_JOIN_LEAVE,     \
-                                  thr, 0, 0, 0, 0) 
+                                  thr, 0, 0, 0, 0)
 
 
 #define SIGIL_PTHREAD_LOCK_ENTER(mut) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_PTHREAD_LOCK_ENTER,     \
-                                  mut, 0, 0, 0, 0) 
+                                  mut, 0, 0, 0, 0)
 #define SIGIL_PTHREAD_LOCK_LEAVE(mut) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_PTHREAD_LOCK_LEAVE,     \
-                                  mut, 0, 0, 0, 0) 
+                                  mut, 0, 0, 0, 0)
 
 
 #define SIGIL_PTHREAD_UNLOCK_ENTER(mut) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_PTHREAD_UNLOCK_ENTER,     \
-                                  mut, 0, 0, 0, 0) 
+                                  mut, 0, 0, 0, 0)
 #define SIGIL_PTHREAD_UNLOCK_LEAVE(mut) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_PTHREAD_UNLOCK_LEAVE,     \
-                                  mut, 0, 0, 0, 0) 
+                                  mut, 0, 0, 0, 0)
 
 
 #define SIGIL_PTHREAD_BARRIER_ENTER(bar) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_PTHREAD_BARRIER_ENTER,     \
-                                  bar, 0, 0, 0, 0) 
+                                  bar, 0, 0, 0, 0)
 #define SIGIL_PTHREAD_BARRIER_LEAVE(bar) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_PTHREAD_BARRIER_LEAVE,     \
-                                  bar, 0, 0, 0, 0) 
+                                  bar, 0, 0, 0, 0)
 
 
 #define SIGIL_PTHREAD_CONDWAIT_ENTER(cond) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_PTHREAD_CONDWAIT_ENTER,     \
-                                  cond, 0, 0, 0, 0) 
+                                  cond, 0, 0, 0, 0)
 #define SIGIL_PTHREAD_CONDWAIT_LEAVE(cond) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_PTHREAD_CONDWAIT_LEAVE,     \
-                                  cond, 0, 0, 0, 0) 
+                                  cond, 0, 0, 0, 0)
 
 
 #define SIGIL_PTHREAD_CONDSIG_ENTER(cond) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_PTHREAD_CONDSIG_ENTER,     \
-                                  cond, 0, 0, 0, 0) 
+                                  cond, 0, 0, 0, 0)
 #define SIGIL_PTHREAD_CONDSIG_LEAVE(cond) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_PTHREAD_CONDSIG_LEAVE,     \
-                                  cond, 0, 0, 0, 0) 
+                                  cond, 0, 0, 0, 0)
 
 
 #define SIGIL_PTHREAD_CONDBROAD_ENTER(cond) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_PTHREAD_CONDBROAD_ENTER,     \
-                                  cond, 0, 0, 0, 0) 
+                                  cond, 0, 0, 0, 0)
 #define SIGIL_PTHREAD_CONDBROAD_LEAVE(cond) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_PTHREAD_CONDBROAD_LEAVE,     \
                                   cond, 0, 0, 0, 0)
@@ -243,121 +243,121 @@ typedef
 
 #define SIGIL_PTHREAD_SPINLOCK_ENTER(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_PTHREAD_SPINLOCK_ENTER,     \
-                                  lock, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0)
 #define SIGIL_PTHREAD_SPINLOCK_LEAVE(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_PTHREAD_SPINLOCK_LEAVE,     \
-                                  lock, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0)
 
 
 #define SIGIL_PTHREAD_SPINUNLOCK_ENTER(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_PTHREAD_SPINUNLOCK_ENTER,     \
-                                  lock, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0)
 #define SIGIL_PTHREAD_SPINUNLOCK_LEAVE(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_PTHREAD_SPINUNLOCK_LEAVE,     \
-                                  lock, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0)
 
 
 #define SIGIL_GOMP_LOCK_ENTER(mutex) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_LOCK_ENTER,     \
-                                  mutex, 0, 0, 0, 0) 
+                                  mutex, 0, 0, 0, 0)
 #define SIGIL_GOMP_LOCK_LEAVE(mutex) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_LOCK_LEAVE,     \
-                                  mutex, 0, 0, 0, 0) 
+                                  mutex, 0, 0, 0, 0)
 
 
 #define SIGIL_GOMP_UNLOCK_ENTER(mutex) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_UNLOCK_ENTER,     \
-                                  mutex, 0, 0, 0, 0) 
+                                  mutex, 0, 0, 0, 0)
 #define SIGIL_GOMP_UNLOCK_LEAVE(mutex) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_UNLOCK_LEAVE,     \
-                                  mutex, 0, 0, 0, 0) 
+                                  mutex, 0, 0, 0, 0)
 
 
 #define SIGIL_GOMP_BARRIER_ENTER(bar) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_BARRIER_ENTER,     \
-                                  bar, 0, 0, 0, 0) 
+                                  bar, 0, 0, 0, 0)
 #define SIGIL_GOMP_BARRIER_LEAVE(bar) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_BARRIER_LEAVE,     \
-                                  bar, 0, 0, 0, 0) 
+                                  bar, 0, 0, 0, 0)
 
 
 #define SIGIL_GOMP_ATOMICSTART_ENTER(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_ATOMICSTART_ENTER,     \
-                                  lock, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0)
 #define SIGIL_GOMP_ATOMICSTART_LEAVE(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_ATOMICSTART_LEAVE,     \
-                                  lock, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0)
 
 
 #define SIGIL_GOMP_ATOMICEND_ENTER(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_ATOMICEND_ENTER,     \
-                                  lock, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0)
 #define SIGIL_GOMP_ATOMICEND_LEAVE(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_ATOMICEND_LEAVE,     \
-                                  lock, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0)
 
 
 #define SIGIL_GOMP_CRITSTART_ENTER(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_CRITSTART_ENTER,     \
-                                  lock, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0)
 #define SIGIL_GOMP_CRITSTART_LEAVE(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_CRITSTART_LEAVE,     \
-                                  lock, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0)
 
 
 #define SIGIL_GOMP_CRITEND_ENTER(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_CRITEND_ENTER,     \
-                                  lock, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0)
 #define SIGIL_GOMP_CRITEND_LEAVE(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_CRITEND_LEAVE,     \
-                                  lock, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0)
 
 
 #define SIGIL_GOMP_CRITNAMESTART_ENTER(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_CRITNAMESTART_ENTER,     \
-                                  lock, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0)
 #define SIGIL_GOMP_CRITNAMESTART_LEAVE(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_CRITNAMESTART_LEAVE,     \
-                                  lock, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0)
 
 
 #define SIGIL_GOMP_CRITNAMEEND_ENTER(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_CRITNAMEEND_ENTER,     \
-                                  lock, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0)
 #define SIGIL_GOMP_CRITNAMEEND_LEAVE(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_CRITNAMEEND_LEAVE,     \
-                                  lock, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0)
 
 
 #define SIGIL_GOMP_SETLOCK_ENTER(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_SETLOCK_ENTER,     \
-                                  lock, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0)
 #define SIGIL_GOMP_SETLOCK_LEAVE(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_SETLOCK_LEAVE,     \
-                                  lock, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0)
 
 
 #define SIGIL_GOMP_UNSETLOCK_ENTER(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_UNSETLOCK_ENTER,     \
-                                  lock, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0)
 #define SIGIL_GOMP_UNSETLOCK_LEAVE(lock) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_UNSETLOCK_LEAVE,     \
-                                  lock, 0, 0, 0, 0) 
+                                  lock, 0, 0, 0, 0)
 
 
 #define SIGIL_GOMP_TEAMBARRIERWAIT_ENTER(bar) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_TEAMBARRIERWAIT_ENTER,     \
-                                  bar, 0, 0, 0, 0) 
+                                  bar, 0, 0, 0, 0)
 #define SIGIL_GOMP_TEAMBARRIERWAIT_LEAVE(bar) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_TEAMBARRIERWAIT_LEAVE,     \
-                                  bar, 0, 0, 0, 0) 
+                                  bar, 0, 0, 0, 0)
 
 
 #define SIGIL_GOMP_TEAMBARRIERWAITFINAL_ENTER(bar) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_TEAMBARRIERWAITFINAL_ENTER,     \
-                                  bar, 0, 0, 0, 0) 
+                                  bar, 0, 0, 0, 0)
 #define SIGIL_GOMP_TEAMBARRIERWAITFINAL_LEAVE(bar) \
   VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__SIGIL_GOMP_TEAMBARRIERWAITFINAL_LEAVE,     \
-                                  bar, 0, 0, 0, 0) 
+                                  bar, 0, 0, 0, 0)
 
 #endif /* __CALLGRIND_H */
