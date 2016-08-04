@@ -414,6 +414,8 @@ Bool CLG_(process_cmd_line_option)(const HChar* arg)
    if      VG_STR_CLO(arg, "--tmp-dir", SGL_(clo).tmpdir) {}
    else if VG_STR_CLO(arg, "--timestamp", SGL_(clo).timestamp) {}
    else if VG_STR_CLO(arg, "--at-func", SGL_(clo).collect_func) {}
+   else if VG_STR_CLO(arg, "--start-func", SGL_(clo).start_collect_func) {}
+   else if VG_STR_CLO(arg, "--stop-func", SGL_(clo).stop_collect_func) {}
 
    /* XXX
     * ML: leftover from Callgrind. Most of these should be left at defaults
@@ -622,6 +624,8 @@ void SGL_(set_clo_defaults)(void)
   SGL_(clo).tmpdir       = NULL;
   SGL_(clo).timestamp    = NULL;
   SGL_(clo).collect_func = NULL;
+  SGL_(clo).start_collect_func = NULL;
+  SGL_(clo).stop_collect_func = NULL;
 }
 
 void CLG_(set_clo_defaults)(void)

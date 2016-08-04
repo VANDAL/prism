@@ -2,6 +2,7 @@
 #define SIGIL_H
 
 #include <map>
+#include <chrono>
 
 #include "Primitive.h"
 #include "Backends.hpp"
@@ -10,6 +11,7 @@
 class Sigil
 {
   public:
+    std::string instance_id;
 
     using ToolName = std::string;
     using Args = std::vector<std::string>;
@@ -21,8 +23,9 @@ class Sigil
     /* Frontend gets:
      * - the executable and its args
      * - args specifically for the frontend
-     * - number of threads in the system */
-    using FrontendStarter = std::function<void(Args, Args, uint16_t)>;
+     * - number of threads in the system 
+     * - a unique timestamp to help uniquify files */
+    using FrontendStarter = std::function<void(Args, Args, uint16_t, const std::string&)>;
 
     static Sigil &instance()
     {
@@ -53,7 +56,7 @@ class Sigil
     void registerExit(ToolName name, Exit exit_routine);;
 
   private:
-    Sigil(){};
+    Sigil() : instance_id(std::to_string(std::chrono::system_clock::now().time_since_epoch().count())) {};
 
     int num_threads;
 

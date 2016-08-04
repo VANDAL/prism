@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <vector>
 #include <memory>
+#include <mutex>
 
 /* Shadow Memory tracks 'shadow state' for an address.
  *
@@ -74,6 +75,7 @@ class ShadowMemory
             EID last_writer_event{SO_UNDEF};
             /* A vector -- each address can have multiple readers */
             std::vector<TID> last_readers{SO_UNDEF};
+            std::mutex mut;
         };
 
         using SecondaryMap = std::vector<ShadowObject>;

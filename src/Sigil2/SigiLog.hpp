@@ -38,23 +38,11 @@ std::string color(const char *text, const char *color)
 
 struct SigiLog
 {
-    SigiLog() = delete;
-
     static void info(const std::string &msg)
     {
         static std::mutex mutex_;
         std::lock_guard<std::mutex> lock(mutex_);
-
-        static std::shared_ptr<spdlog::logger> info_ = nullptr;
-        if (info_ == nullptr)
-        {
-            spdlog::set_sync_mode();
-            info_ = spdlog::stderr_logger_st("sigil2-console");
-            auto info = "[" + color("INFO", "blue") + "]";
-            info_->set_pattern(header + info + "  %v");
-        }
-    
-        info_->info(msg);
+        instance()->info_->info(msg);
     }
     
     
@@ -62,17 +50,7 @@ struct SigiLog
     {
         static std::mutex mutex_;
         std::lock_guard<std::mutex> lock(mutex_);
-
-        static std::shared_ptr<spdlog::logger> warn_ = nullptr;
-        if (warn_ == nullptr)
-        {
-            spdlog::set_sync_mode();
-            warn_ = spdlog::stderr_logger_st("sigil2-warn");
-            auto warn = "[" + color("WARN", "yellow") + "]";
-            warn_->set_pattern(header + warn + "  %v");
-        }
-    
-        warn_->warn(msg);
+        instance()->warn_->warn(msg);
     }
     
     
@@ -80,17 +58,7 @@ struct SigiLog
     {
         static std::mutex mutex_;
         std::lock_guard<std::mutex> lock(mutex_);
-
-        static std::shared_ptr<spdlog::logger> error_ = nullptr;
-        if (error_ == nullptr)
-        {
-            spdlog::set_sync_mode();
-            error_ = spdlog::stderr_logger_st("sigil2-error");
-            auto error = "[" + color("ERROR", "red") + "]";
-            error_->set_pattern(header + error + "  %v");
-        }
-    
-        error_->error(msg);
+        instance()->error_->error(msg);
     }
     
     
@@ -99,26 +67,52 @@ struct SigiLog
     #ifdef SGL_DEBUG
         static std::mutex mutex_;
         std::lock_guard<std::mutex> lock(mutex_);
-
-        static std::shared_ptr<spdlog::logger> debug_ = nullptr;
-        if (debug_ == nullptr)
-        {
-            spdlog::set_sync_mode();
-            debug_ = spdlog::stderr_logger_st("sigil2-debug");
-            auto debug = "[" + color("DEBUG", "magenta") + "]";
-            debug_->set_pattern(header + debug + "  %v");
-            debug_->set_level(spdlog::level::debug);
-        }
-    
-        debug_->debug(msg);
+        instance()->debug_->debug(msg);
     #endif
     }
     
     [[noreturn]] static void fatal(const std::string &msg)
     {
+        /* TODO thread safe?  */
         error(std::string("Fatal: ").append(msg));
         std::exit(EXIT_FAILURE);
     }
+
+  private:
+    SigiLog()
+    {
+        spdlog::set_sync_mode();
+
+        info_ = spdlog::stderr_logger_st("sigil2-info");
+        auto info = "[" + color("INFO", "blue") + "]";
+        info_->set_pattern(header + info + "  %v");
+
+        warn_ = spdlog::stderr_logger_st("sigil2-warn");
+        auto warn = "[" + color("WARN", "yellow") + "]";
+        warn_->set_pattern(header + warn + "  %v");
+
+        error_ = spdlog::stderr_logger_st("sigil2-error");
+        auto error = "[" + color("ERROR", "red") + "]";
+        error_->set_pattern(header + error + "  %v");
+
+        debug_ = spdlog::stderr_logger_st("sigil2-debug");
+        auto debug = "[" + color("DEBUG", "magenta") + "]";
+        debug_->set_pattern(header + debug + "  %v");
+        debug_->set_level(spdlog::level::debug);
+    }
+
+
+    static SigiLog* instance()
+    {
+        static SigiLog *inst = new SigiLog();
+        return inst;
+    }
+
+
+    std::shared_ptr<spdlog::logger> info_  = nullptr;
+    std::shared_ptr<spdlog::logger> warn_  = nullptr;
+    std::shared_ptr<spdlog::logger> error_ = nullptr;
+    std::shared_ptr<spdlog::logger> debug_ = nullptr;
 };
 
 #endif

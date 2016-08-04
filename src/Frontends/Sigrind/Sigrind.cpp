@@ -9,7 +9,9 @@
 #include <chrono>
 #include <stdexcept>
 #include <cerrno>
-#include <string.h>
+#include <cstring>
+#include <csignal>
+#include <cstdlib>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -22,22 +24,33 @@
 #include "whereami.h"
 #include "elfio/elfio.hpp"
 
-using namespace std::chrono;
-
 namespace sgl
 {
+
+namespace
+{
+/* signal handler needs this to know which files to clean up */
+std::string shadow_shmem_file;
+std::string shadow_empty_file;
+std::string shadow_full_file;
+};
 
 ////////////////////////////////////////////////////////////
 // Sigil2 - Valgrind IPC
 ////////////////////////////////////////////////////////////
-Sigrind::Sigrind(int num_threads, std::string tmp_dir)
-    : timestamp(std::to_string(system_clock::now().time_since_epoch().count()))
+Sigrind::Sigrind(int num_threads, const std::string &tmp_dir, const std::string &instance_id)
+    : timestamp(instance_id)
     , shmem_file(tmp_dir + "/" + SIGRIND_SHMEM_NAME + timestamp)
     , empty_file(tmp_dir + "/" + SIGRIND_EMPTYFIFO_NAME + timestamp)
     , full_file(tmp_dir + "/" + SIGRIND_FULLFIFO_NAME + timestamp)
     , num_threads(num_threads)
     , be_idx(0)
 {
+    shadow_shmem_file = shmem_file;
+    shadow_full_file  = full_file;
+    shadow_empty_file = empty_file;
+
+    setInterruptOrTermHandler();
     initShMem();
     makeNewFifo(empty_file.c_str());
     makeNewFifo(full_file.c_str());
@@ -59,7 +72,6 @@ Sigrind::~Sigrind()
         SigiLog::warn(std::string("deleting IPC files -- ").append(strerror(errno)));
     }
 }
-
 
 void Sigrind::initShMem()
 {
@@ -135,7 +147,7 @@ void Sigrind::connectValgrind()
 
         if (emptyfd < 0)
         {
-            std::this_thread::sleep_for(milliseconds(500));
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
         else //connected
         {
@@ -379,9 +391,8 @@ ExecArgs tokenizeOpts(const std::vector<std::string> &user_exec,
     assert(!user_exec.empty() && !tmp_dir.empty());
 
     /* format valgrind options */
-    /*                 program name + valgrind options + tmp_dir + timestamp + user program options + null */
-    int vg_opts_size = 1            + 2 + args.size()    + 1       + 1         + user_exec.size()
-                       + 1;
+    /*                 program name + valgrind options + tmp_dir + timestamp + start/stop_func + user program options + null */
+    int vg_opts_size = 1            + 2 + args.size()    + 1       + 1       + 2               + user_exec.size()     + 1;
     char **vg_opts = static_cast<char **>(malloc(vg_opts_size * sizeof(char *)));
 
     int i = 0;
@@ -449,7 +460,8 @@ Exec configureValgrind(const std::vector<std::string> &user_exec,
 
 void Sigrind::start(const std::vector<std::string> &user_exec,
                     const std::vector<std::string> &args,
-                    const uint16_t num_threads)
+                    const uint16_t num_threads,
+                    const std::string &instance_id)
 {
     assert(user_exec.empty() == false);
 
@@ -480,10 +492,10 @@ void Sigrind::start(const std::vector<std::string> &user_exec,
     }
 
     /* set up interface to valgrind */
-    Sigrind sigrind_iface(num_threads, tmp_path);
+    Sigrind sigrind_iface(num_threads, tmp_path, instance_id);
 
     /* set up valgrind environment */
-    auto valgrind_args = configureValgrind(user_exec, args, tmp_path, sigrind_iface.timestamp);
+    auto valgrind_args = configureValgrind(user_exec, args, tmp_path, instance_id);
 
     pid_t pid = fork();
 
@@ -508,6 +520,31 @@ void Sigrind::start(const std::vector<std::string> &user_exec,
     {
         SigiLog::fatal(std::string("sigrind fork failed -- ").append(strerror(errno)));
     }
+}
+
+namespace
+{
+void sigrindHandler(int s)
+{
+    /* file cleanup */
+    remove(shadow_shmem_file.c_str());
+    remove(shadow_empty_file.c_str());
+    remove(shadow_full_file.c_str());
+
+    /* set default and re-raise */
+    signal(s, SIG_DFL);
+    raise(s);
+}
+};
+
+void Sigrind::setInterruptOrTermHandler()
+{
+    struct sigaction sig_handler;
+    sig_handler.sa_handler = sigrindHandler;
+    sigemptyset(&sig_handler.sa_mask);
+    sig_handler.sa_flags = 0;
+    sigaction(SIGINT, &sig_handler, NULL);
+    sigaction(SIGTERM, &sig_handler, NULL);
 }
 
 }; //end namespace sgl

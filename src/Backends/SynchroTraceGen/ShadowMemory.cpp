@@ -9,6 +9,7 @@ auto ShadowMemory::updateWriter(Addr addr, ByteCount bytes, TID tid, EID eid) ->
     for (ByteCount i = 0; i < bytes; ++i)
     {
         ShadowObject& so = shadow_objects[addr + i];
+        std::lock_guard<std::mutex> lock(so.mut);
 
         so.last_writer = tid;
         so.last_writer_event = eid;
@@ -23,14 +24,20 @@ auto ShadowMemory::updateReader(Addr addr, ByteCount bytes, TID tid) -> void
 {
     for (ByteCount i = 0; i < bytes; ++i)
     {
-        shadow_objects[addr+i].last_readers.push_back(tid);
+        ShadowObject& so = shadow_objects[addr + i];
+        std::lock_guard<std::mutex> lock(so.mut);
+
+        so.last_readers.push_back(tid);
     }
 }
 
 
 auto ShadowMemory::isReaderTID(Addr addr, TID tid) -> bool
 {
-    for (TID reader : shadow_objects[addr].last_readers)
+    ShadowObject& so = shadow_objects[addr];
+    std::lock_guard<std::mutex> lock(so.mut);
+
+    for (TID reader : so.last_readers)
     {
         if (reader == tid)
         {
@@ -76,17 +83,37 @@ ShadowMemory::ShadowMemory(Addr addr_bits, Addr pm_bits, Addr max_shad_mem_size)
         SigiLog::fatal("SM size too small - adjust shadow memory configs in source code");
     }
 
-    SigiLog::debug("Shadow Memory PM size: " + std::to_string(pm_Mbytes) + " MB");
-    SigiLog::debug("Shadow Memory SM size: " + std::to_string(sm_Mbytes) + " MB");
-
     curr_shad_mem_size += pm_Mbytes;
 }
 
 
+/* debug calculations */
 ShadowMemory::~ShadowMemory()
 {
-    SigiLog::debug("Shadow Memory approximate size: " + std::to_string(curr_shad_mem_size) + " MB");
-    SigiLog::debug("Shadow Memory Secondary Maps used: " + std::to_string(curr_sm_count));
+    size_t pm_theoretical = sizeof(void*)*pm_size;
+    size_t pm_actual = shadow_objects.PM.primary_map_.capacity()*sizeof(ShadowMemoryImpl::SecondaryMapPtr);
+    SigiLog::debug(std::string("PM theoretical: ").append(std::to_string(pm_theoretical)));
+    SigiLog::debug(std::string("PM actual:      ").append(std::to_string(pm_actual)));
+
+    size_t sm_theoretical = (sizeof(TID) * 2 + sizeof(EID))*sm_size;
+    SigiLog::debug(std::string("SM theoretical: ").append(std::to_string(sm_theoretical*curr_sm_count)));
+
+    size_t sm_actual = 0;
+    for (auto &sm: shadow_objects.PM.primary_map_)
+    {
+        if (sm != nullptr)
+        {
+            sm_actual += sizeof(ShadowMemoryImpl::SecondaryMap);
+            sm_actual += sm->capacity()*sizeof(ShadowMemoryImpl::ShadowObject);
+            for (auto &so : *sm)
+            {
+                sm_actual += so.last_readers.capacity()*sizeof(TID);
+            }
+        }
+    }
+
+    SigiLog::debug(std::string("SM actual:      ").append(std::to_string(sm_actual)));
+    SigiLog::debug("Secondary Maps used: " + std::to_string(curr_sm_count));
 }
 
 

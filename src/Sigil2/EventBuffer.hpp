@@ -22,7 +22,7 @@ class EventBuffer
     template<typename T> using EventAction = std::function<void(T)>;
 
     EventBuffer();
-    ~EventBuffer() = default;
+    ~EventBuffer();
 
     template<typename T>
     void addEvent(const T &ev);

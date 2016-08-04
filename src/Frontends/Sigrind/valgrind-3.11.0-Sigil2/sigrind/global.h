@@ -78,6 +78,8 @@ struct _SglCommandLineOptions {
   const HChar* tmpdir;
   const HChar* timestamp;
   const HChar* collect_func;
+  const HChar* start_collect_func;
+  const HChar* stop_collect_func;
 };
 
 typedef struct _CommandLineOptions CommandLineOptions;
@@ -794,7 +796,7 @@ extern Bool* SGL_(thread_in_synccall);
 extern ThreadId SGL_(active_tid);
 
 #define EVENT_GENERATION_ENABLED  \
-   !SGL_(thread_in_synccall)[SGL_(active_tid)] && ( (SGL_(clo).collect_func == NULL) || SGL_(is_in_event_collect_func) )
+   !SGL_(thread_in_synccall)[SGL_(active_tid)] && (SGL_(is_in_event_collect_func))
 
 extern CommandLineOptions CLG_(clo);
 extern Statistics CLG_(stat);

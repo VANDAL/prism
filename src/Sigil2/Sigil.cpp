@@ -313,7 +313,10 @@ void Sigil::parseOptions(int argc, char *argv[])
                 args = {start, end};
             }
 
-            frontend_registry[frontend_name](arg_group[executable], args, num_threads);
+            frontend_registry[frontend_name](arg_group[executable],
+                                             args,
+                                             num_threads,
+                                             instance_id);
         };
     }
     else

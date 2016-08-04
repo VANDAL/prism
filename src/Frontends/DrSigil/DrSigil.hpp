@@ -32,6 +32,7 @@ class DrSigil
      * frontend manager, not in DynamoRIO */
     SglSyncEv thread_swap_event;
 
+    const std::string timestamp;
     const std::string shmem_file;
     const std::string empty_file;
     const std::string full_file;
@@ -45,7 +46,7 @@ class DrSigil
     DrSigilSharedData *shared_mem;
 
   public:
-    DrSigil(int ipc_idx, std::string tmp_dir);
+    DrSigil(int ipc_idx, const std::string &tmp_dir, const std::string &instance_id);
     ~DrSigil();
     void produceDynamoRIOEvents();
 
@@ -56,9 +57,14 @@ class DrSigil
     static int num_threads;
     static void start(const std::vector<std::string> &user_exec,
                       const std::vector<std::string> &args,
-                      const uint16_t num_threads);
+                      const uint16_t num_threads,
+                      const std::string &instance_id);
 
   private:
+    /* Clean up actions if an unexpected quit happens */
+    /* TODO thread-safe/thread-correct signal handler */
+    void setInterruptOrTermHandler();
+
     void initShMem();
     void makeNewFifo(const char *path) const;
     void connectDynamoRIO();

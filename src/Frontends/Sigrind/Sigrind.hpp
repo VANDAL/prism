@@ -48,7 +48,7 @@ class Sigrind
     SigrindSharedData *shared_mem;
 
   public:
-    Sigrind(int num_threads, std::string tmp_dir);
+    Sigrind(int num_threads, const std::string &tmp_dir, const std::string &instance_id);
     ~Sigrind();
     void produceSigrindEvents();
 
@@ -60,9 +60,13 @@ class Sigrind
      */
     static void start(const std::vector<std::string> &user_exec,
                       const std::vector<std::string> &args,
-                      const uint16_t num_threads);
+                      const uint16_t num_threads,
+                      const std::string &instance_id);
 
   private:
+    /* Clean up actions if an unexpected quit happens */
+    void setInterruptOrTermHandler();
+
     /* Initialize IPC between Sigil2 and Valgrind */
 
     void initShMem();

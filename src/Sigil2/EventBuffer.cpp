@@ -19,6 +19,13 @@ EventBuffer::EventBuffer()
 }
 
 
+EventBuffer::~EventBuffer()
+{
+    size_t event_buffer_size = MAX_BUFFERS*sizeof(Buffer);
+    SigiLog::debug("Backend Event Buffer size: " + std::to_string(event_buffer_size));
+}
+
+
 void EventBuffer::flush(Backend &backend)
 {
     assert(prod_buf != nullptr);

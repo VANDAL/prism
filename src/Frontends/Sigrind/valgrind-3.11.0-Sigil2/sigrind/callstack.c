@@ -120,6 +120,17 @@ static void function_entered(fn_node* fn)
     // let Sigil2 know which thread this function starts in
     SGL_(log_sync)(SGLPRIM_SYNC_SWAP, SGL_(active_tid));
   }
+  else if ( (SGL_(clo).start_collect_func != NULL) && (VG_(strcmp)(fn->name, SGL_(clo).start_collect_func) == 0) )
+  {
+    VG_(umsg)("*********************************************\n");
+    VG_(umsg)("Entering %s: turning on event collection\n", fn->name);
+    VG_(umsg)("*********************************************\n");
+    SGL_(is_in_event_collect_func) = True;
+
+    // let Sigil2 know which thread this function starts in
+    SGL_(log_sync)(SGLPRIM_SYNC_SWAP, SGL_(active_tid));
+  }
+
   /* send to sigil */
   SGL_(log_fn_entry)(fn);
 
@@ -147,6 +158,14 @@ static void function_left(fn_node* fn)
     VG_(umsg)("*********************************************\n");
     SGL_(is_in_event_collect_func) = False;
   }
+  else if ( (SGL_(clo).stop_collect_func != NULL) && (VG_(strcmp)(fn->name, SGL_(clo).stop_collect_func) == 0) )
+  {
+    VG_(umsg)("*********************************************\n");
+    VG_(umsg)("Leaving %s: turning off event collection\n", fn->name);
+    VG_(umsg)("*********************************************\n");
+    SGL_(is_in_event_collect_func) = False;
+  }
+
   /*send to sigil*/
   SGL_(log_fn_leave)(fn);
 
