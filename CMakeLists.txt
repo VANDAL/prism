@@ -53,6 +53,7 @@ include_directories(${SRC_BACKENDS})
 set(SOURCES
 	include/whereami/src/whereami.c
 	${SRC_SIGIL2}/Sigil.cpp
+	${SRC_SIGIL2}/SigilParser.cpp
 	${SRC_SIGIL2}/Plugins.cpp
 	${SRC_SIGIL2}/Frontends.cpp
 	${SRC_SIGIL2}/EventBuffer.cpp

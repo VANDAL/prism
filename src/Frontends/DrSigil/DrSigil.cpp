@@ -1,4 +1,5 @@
 #include <memory>
+#include <cassert>
 #include <csignal>
 #include <cstdlib>
 #include <fcntl.h>
@@ -6,12 +7,15 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
-#include <cassert>
+#include <glob.h>
+#include <ftw.h>
 
 #include "whereami.h"
 
 #include "Sigil2/Sigil.hpp"
 #include "DrSigil.hpp"
+
+#define DIR_TEMPLATE "/sgl2-dr-XXXXXX"
 
 /* Sigil2's DynamoRIO frontend forks DynamoRIO off as a separate process;
  * The DynamoRIO client sends the frontend dynamic events from the
@@ -20,47 +24,26 @@
 namespace sgl
 {
 
-namespace
-{
-/* signal handler needs this to know which files to clean up */
-std::string shadow_shmem_file;
-std::string shadow_empty_file;
-std::string shadow_full_file;
-};
+/* TODO rename */
+namespace {IPCcleanup ipc_cleanup;};
 
 ////////////////////////////////////////////////////////////
 // Sigil2 - DynamoRIO IPC
 ////////////////////////////////////////////////////////////
-DrSigil::DrSigil(int ipc_idx, const std::string &tmp_dir, const std::string &instance_id)
+DrSigil::DrSigil(int ipc_idx, const std::string &ipc_dir)
     : ipc_idx(ipc_idx)
     , curr_thread_id(-1)
-    , timestamp(instance_id)
-    , shmem_file(tmp_dir + "/" + DRSIGIL_SHMEM_NAME + "-" +
-                 std::to_string(ipc_idx) + "-" + timestamp)
-    , empty_file(tmp_dir + "/" + DRSIGIL_EMPTYFIFO_NAME + "-" +
-                 std::to_string(ipc_idx) + "-" + timestamp)
-    , full_file(tmp_dir + "/" + DRSIGIL_FULLFIFO_NAME + "-" +
-                std::to_string(ipc_idx) + "-" + timestamp)
+    , shmem_file(ipc_dir + "/" + DRSIGIL_SHMEM_NAME + "-" + std::to_string(ipc_idx))
+    , empty_file(ipc_dir + "/" + DRSIGIL_EMPTYFIFO_NAME + "-" + std::to_string(ipc_idx))
+    , full_file(ipc_dir + "/" + DRSIGIL_FULLFIFO_NAME + "-" + std::to_string(ipc_idx))
 {
-    shadow_shmem_file = shmem_file;
-    shadow_full_file  = full_file;
-    shadow_empty_file = empty_file;
+    ipc_cleanup.addShm(shmem_file);
+    ipc_cleanup.addNamedPipe(empty_file);
+    ipc_cleanup.addNamedPipe(full_file);
 
     initShMem();
     makeNewFifo(empty_file.c_str());
     makeNewFifo(full_file.c_str());
-}
-
-
-DrSigil::~DrSigil()
-{
-    /* file cleanup */
-    if (remove(shmem_file.c_str()) != 0 ||
-        remove(empty_file.c_str()) != 0 ||
-        remove(full_file.c_str()) != 0)
-    {
-        SigiLog::warn(std::string("deleting IPC files -- ").append(strerror(errno)));
-    }
 }
 
 
@@ -94,7 +77,7 @@ void DrSigil::initShMem()
     shared_mem = reinterpret_cast<DrSigilSharedData *>
                  (mmap(nullptr, sizeof(DrSigilSharedData), PROT_READ | PROT_WRITE, MAP_SHARED, fileno(fd), 0));
 
-    if (shared_mem == (void *) - 1)
+    if (shared_mem == (void *)-1)
     {
         fclose(fd);
         SigiLog::fatal(std::string("sigrind mmap shared memory failed -- ").append(strerror(errno)));
@@ -145,6 +128,9 @@ void DrSigil::connectDynamoRIO()
     {
         SigiLog::fatal(std::string("sigil2 failed to open dynamorio fifos -- ").append(strerror(errno)));
     }
+
+    ipc_cleanup.addPipeFD(emptyfd);
+    ipc_cleanup.addPipeFD(fullfd);
 }
 
 
@@ -291,11 +277,10 @@ using Exec = std::pair<std::string, ExecArgs>;
 ExecArgs tokenizeOpts(const std::vector<std::string> &user_exec,
                       const std::vector<std::string> &args,
                       const std::string &sigil_bin_dir,
-                      const std::string &tmp_dir,
-                      const uint16_t num_threads,
-                      const std::string &instance_id)
+                      const std::string &ipc_dir,
+                      const uint16_t num_threads)
 {
-    assert(!user_exec.empty() && !tmp_dir.empty());
+    assert(!user_exec.empty() && !ipc_dir.empty());
 
     /* format dynamorio options */
     //                 program name + dynamorio options + user program options + null
@@ -308,11 +293,25 @@ ExecArgs tokenizeOpts(const std::vector<std::string> &user_exec,
     dr_opts[i++] = strdup((sigil_bin_dir + "/dr").c_str());
     dr_opts[i++] = strdup("-c");
 
-    /* FIXME hardcoding 64-bit and debug/release */
-    dr_opts[i++] = strdup((sigil_bin_dir + "/dr/tools/lib64/release/libdrsigil.so").c_str());
+    /* detect 32/64 bit and release/debug build */
+    glob_t glob_result;
+    glob(std::string(sigil_bin_dir).append("/dr/tools/lib*/*").c_str(),
+         GLOB_MARK|GLOB_TILDE|GLOB_ONLYDIR,
+         NULL, &glob_result);
+
+    if (glob_result.gl_pathc != 1)
+    {
+        SigiLog::fatal("Error detecting \'libdrsigil.so\' path");
+    }
+
+    std::string dr_lib = std::string(glob_result.gl_pathv[0]);
+
+    globfree(&glob_result);
+
+    dr_opts[i++] = strdup((dr_lib + "libdrsigil.so").c_str());
     dr_opts[i++] = strdup(("--num-frontend-threads=" + std::to_string(num_threads)).c_str());
-    dr_opts[i++] = strdup(("--tmp-dir=" + tmp_dir).c_str());
-    dr_opts[i++] = strdup(("--uid=" + instance_id).c_str());
+    dr_opts[i++] = strdup(("--ipc-dir=" + ipc_dir).c_str());
+
     for (auto &arg : args)
     {
         dr_opts[i++] = strdup(arg.c_str());
@@ -333,9 +332,8 @@ ExecArgs tokenizeOpts(const std::vector<std::string> &user_exec,
 
 Exec configureDynamoRIO(const std::vector<std::string> &user_exec,
                         const std::vector<std::string> &args,
-                        const std::string &tmp_path,
-                        const uint16_t num_threads,
-                        const std::string &instance_id)
+                        const std::string &ipc_dir,
+                        const uint16_t num_threads)
 {
     int len, dirname_len;
     len = wai_getExecutablePath(NULL, 0, &dirname_len);
@@ -351,18 +349,53 @@ Exec configureDynamoRIO(const std::vector<std::string> &user_exec,
         SigiLog::fatal("couldn't find executable path");
     }
 
-    /* FIXME hardcoding bin64; need to detect dynamically;
-     * maybe a config file that's generated at build time */
-    std::string dr_exec = std::string(path) + ("/dr/bin64/drrun");
+    /* detect 32/64 bit */
+    glob_t glob_result;
+    glob(std::string(path).append("/dr/bin*").c_str(),
+         GLOB_MARK|GLOB_TILDE|GLOB_ONLYDIR,
+         NULL, &glob_result);
+
+    if (glob_result.gl_pathc != 1)
+    {
+        SigiLog::fatal("Error detecting \'drrun\' path");
+    }
+
+    std::string dr_exec = std::string(glob_result.gl_pathv[0]) + ("drrun");
+
+    globfree(&glob_result);
 
     /* execvp() expects a const char* const* */
-    auto dr_opts = tokenizeOpts(user_exec, args, path, tmp_path, num_threads, instance_id);
+    auto dr_opts = tokenizeOpts(user_exec, args, path, ipc_dir, num_threads);
 
     return std::make_pair(dr_exec, dr_opts);
 }
 
 }; //end namespace
 
+
+/* clean up IPC files */
+namespace
+{
+void drsigilCleanupHandler(int s)
+{
+    /* file cleanup */
+    ipc_cleanup.cleanup();
+
+    /* set default and re-raise */
+    signal(s, SIG_DFL);
+    raise(s);
+}
+
+void setInterruptOrTermHandler()
+{
+    struct sigaction sig_handler;
+    sig_handler.sa_handler = drsigilCleanupHandler;
+    sigemptyset(&sig_handler.sa_mask);
+    sig_handler.sa_flags = 0;
+    sigaction(SIGINT, &sig_handler, NULL);
+    sigaction(SIGTERM, &sig_handler, NULL);
+}
+};
 
 /* static init */
 int sgl::DrSigil::num_threads = 1;
@@ -377,24 +410,37 @@ void DrSigil::start(const std::vector<std::string> &user_exec,
     DrSigil::num_threads = num_threads;
 
     /* check IPC path */
-    char *tmp_path = getenv("TMPDIR");
+    char *shm_path = getenv("SIGIL2_SHM_DIR");
 
     /* posix shmem typically uses /dev/shm */
-    if (tmp_path == nullptr)
+    if (shm_path == nullptr)
     {
-        tmp_path = strdup("/dev/shm");
+        shm_path = strdup("/dev/shm");
     }
 
     struct stat info;
-
-    if (stat(tmp_path, &info) != 0)
+    if (stat(shm_path, &info) != 0)
     {
-        SigiLog::fatal(std::string(tmp_path).append(
-                           " not found\n\tset environment var 'TMPDIR' to a tmpfs mount"));
+        SigiLog::fatal(std::string(shm_path) +
+                       " not found\n\t"
+                       "set environment var 'SIGIL2_SHM_DIR' to a tmpfs mount");
     }
 
+    size_t template_length = strlen(shm_path) + sizeof(DIR_TEMPLATE);
+    char shm_template[template_length];
+    snprintf(shm_template, template_length, "%s%s", shm_path, DIR_TEMPLATE);
+
+    if (mkdtemp(shm_template) == nullptr)
+    {
+        SigiLog::fatal(std::string("creating shm dir failed -- ").append(strerror(errno)));
+    }
+
+    /* clean up */
+    ipc_cleanup.ipc_dir = shm_template;
+    setInterruptOrTermHandler();
+
     /* set up dynamorio environment */
-    auto dynamorio_args = configureDynamoRIO(user_exec, args, tmp_path, num_threads, instance_id);
+    auto dynamorio_args = configureDynamoRIO(user_exec, args, shm_template, num_threads);
 
     /* DynamoRIO frontend has a multithreaded interface */
     std::vector<std::shared_ptr<DrSigil>> dr_ifaces;
@@ -403,7 +449,7 @@ void DrSigil::start(const std::vector<std::string> &user_exec,
     /* set up interfaces to dynamorio */
     for (int i = 0; i < num_threads; ++i)
     {
-        dr_ifaces.push_back(std::make_shared<DrSigil>(i, tmp_path, instance_id));
+        dr_ifaces.push_back(std::make_shared<DrSigil>(i, +shm_template));
     }
 
     pid_t pid = fork();
@@ -437,31 +483,50 @@ void DrSigil::start(const std::vector<std::string> &user_exec,
     {
         SigiLog::fatal(std::string("sigrind fork failed -- ").append(strerror(errno)));
     }
+    
+    ipc_cleanup.cleanup();
 }
 
-namespace
-{
-void drsigilHandler(int s)
-{
-    /* file cleanup */
-    remove(shadow_shmem_file.c_str());
-    remove(shadow_empty_file.c_str());
-    remove(shadow_full_file.c_str());
 
-    /* set default and re-raise */
-    signal(s, SIG_DFL);
-    raise(s);
+void IPCcleanup::cleanup()
+{
+    for (auto fd : fds)
+    {
+        close(fd);
+    }
+
+    for (auto &pipe : named_pipes)
+    {
+        std::remove(pipe.c_str());
+    }
+
+    for (auto &shm : shm_files)
+    {
+        std::remove(shm.c_str());
+    }
+
+    std::remove(ipc_dir.c_str());
 }
-};
 
-void DrSigil::setInterruptOrTermHandler()
+
+void IPCcleanup::addNamedPipe(const std::string &pipe)
 {
-    struct sigaction sig_handler;
-    sig_handler.sa_handler = drsigilHandler;
-    sigemptyset(&sig_handler.sa_mask);
-    sig_handler.sa_flags = 0;
-    sigaction(SIGINT, &sig_handler, NULL);
-    sigaction(SIGTERM, &sig_handler, NULL);
+    std::lock_guard<std::mutex> lock(m);
+    named_pipes.emplace_back(pipe);
+}
+
+
+void IPCcleanup::addPipeFD(int fd)
+{
+    std::lock_guard<std::mutex> lock(m);
+    fds.emplace_back(fd);
+}
+
+
+void IPCcleanup::addShm(const std::string &shm)
+{
+    std::lock_guard<std::mutex> lock(m);
+    shm_files.emplace_back(shm);
 }
 
 }; //end namespace sgl

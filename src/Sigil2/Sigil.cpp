@@ -3,6 +3,7 @@
 #include "SigiLog.hpp"
 
 #include "InstrumentationIface.h"
+#include "SigilParser.hpp"
 #include "Sigil.hpp"
 
 
@@ -125,173 +126,38 @@ void Sigil::registerFrontend(std::string frontend, FrontendStarter start)
 ////////////////////////////////////////////////////////////
 // Argument Parsing
 ////////////////////////////////////////////////////////////
-namespace
-{
-
-constexpr const char frontend[] = "frontend";
-constexpr const char backend[] = "backend";
-constexpr const char executable[] = "executable";
-
-constexpr const char sigil2bin[] = "sigil2";
-constexpr const char frontend_usage[] =  "--frontend=FRONTEND [options]";
-constexpr const char backend_usage[] =   "--backend=BACKEND [options]";
-constexpr const char executable_usage[] = "--executable=BINARY [options]";
-
-
-[[noreturn]] void parse_error_exit(const std::string &msg)
-{
-    SigiLog::error("Error parsing arguments: " + msg);
-
-    std::cout << "\nUSAGE:" << std::endl;
-    std::cout << "    " << sigil2bin
-              << " " << frontend_usage
-              << " " << backend_usage
-              << " " << executable_usage << std::endl << std::endl;
-
-    exit(EXIT_FAILURE);
-}
-
-
-/* Sigil2 groups options together based on their position
- * in order to pass the option group to the frontend
- * instrumentation, the backend analysis, or the executable
- *
- * Most parsers have limited or confusing support for
- * order of non-option arguments in relation to option
- * arguments, including getopt
- *
- * Only allow long opts to avoid ambiguities.
- * Additionally imposes the constraint that the frontend,
- * backend, and executable cannot have any options that match */
-class ArgGroup
-{
-    /* long opt -> args */
-    std::map<std::string, Sigil::Args> args;
-    std::vector<std::string> empty;
-    std::string prev_opt;
-
-  public:
-    /* Add a long option to group args */
-    void addGroup(const std::string &group)
-    {
-        if (group.empty() == true)
-        {
-            return;
-        }
-
-        args.emplace(group, Sigil::Args());
-    }
-
-    /* Check an argv[] to see if it's been added as an
-     * arg group. If it is a validly formed arg group,
-     * begin grouping consecutive options under this group
-     * and return true; otherwise return false.
-     *
-     * long_opt is to be in the form: "--long_opt=argument" */
-    bool tryGroup(const std::string &arg)
-    {
-        /* only long opts valid */
-        if (arg.substr(0, 2).compare("--") != 0)
-        {
-            return false;
-        }
-
-        std::string rem(arg.substr(2));
-        auto eqidx = rem.find('=');
-
-        /* was this added? */
-        if (args.find(rem.substr(0, eqidx)) == args.cend())
-        {
-            return false;
-        }
-
-        /* a valid arg group requires '=argument' */
-        if (eqidx == std::string::npos || eqidx == rem.size() - 1)
-        {
-            parse_error_exit(std::string(arg).append(" missing argument"));
-        }
-
-        /* duplicate option groups not allowed */
-        prev_opt = rem.substr(0, eqidx);
-
-        if (args.at(prev_opt).empty() == false)
-        {
-            parse_error_exit(std::string(arg).append(" is duplicate option"));
-        }
-
-        /* initialize the group of args with this first argument */
-        args.at(prev_opt).push_back(rem.substr(eqidx + 1));
-
-        return true;
-    }
-
-    void addArg(const std::string &arg)
-    {
-        if (arg.empty() == true)
-        {
-            return;
-        }
-
-        /* the first argument must be an arg group */
-        if (prev_opt.empty() == true)
-        {
-            parse_error_exit(std::string(arg).append(" is not valid here"));
-        }
-
-        args.at(prev_opt).push_back(arg);
-    }
-
-    const Sigil::Args &operator[](const std::string &group) const
-    {
-        if (args.find(group) == args.cend())
-        {
-            return empty;
-        }
-        else
-        {
-            return args.at(group);
-        }
-    }
-};
-
-}; //end namespace
-
-
 void Sigil::parseOptions(int argc, char *argv[])
 {
+    /* custom parsing, by order of the arguments */
     ArgGroup arg_group;
 
     /* Pass through args to frontend/backend. */
-    arg_group.addGroup(frontend);
-    arg_group.addGroup(backend);
-    arg_group.addGroup(executable);
+    arg_group.addGroup(frontend, false);
+    arg_group.addGroup(backend, true);
+    arg_group.addGroup(executable, true);
+    arg_group.parse(argc, argv);
 
-    /* Parse loop */
-    for (int optidx = 1; optidx < argc; ++optidx)
+    /* The number of 'threads' Sigil2 will use */
+    /* MDL20160805 Currently only valid with DynamoRIO frontend. 
+     * This will cause 'n' event streams between Sigil2 and DynamoRIO
+     * to be generated, and 'n' separate backend instances will
+     * read from those event streams as separate threads */
+    num_threads = 1;
+    if (arg_group.getOpt(numthreads).empty() == false)
     {
-        const char *curr_arg = argv[optidx];
-
-        if (arg_group.tryGroup(curr_arg) == false)
+        num_threads = stoi(arg_group.getOpt(numthreads));
+        if (num_threads > 16 || num_threads < 1)
         {
-            arg_group.addArg(curr_arg);
+            SigiLog::fatal("Invalid number of threads specified");
         }
     }
-
-    if (arg_group[backend].empty() == true || arg_group[executable].empty() == true)
-    {
-        parse_error_exit("missing required arguments");
-    }
-
-    /* check number of threads */
-    //FIXME hardcode for testing
-    num_threads = 1;
 
     /* check frontend */
     std::string frontend_name;
 
-    if (arg_group[frontend].empty() == false)
+    if (arg_group.getGroup(frontend).empty() == false)
     {
-        frontend_name = arg_group[frontend][0];
+        frontend_name = arg_group.getGroup(frontend)[0];
     }
     else /*set default*/
     {
@@ -302,18 +168,17 @@ void Sigil::parseOptions(int argc, char *argv[])
 
     if (frontend_registry.find(frontend_name) != frontend_registry.cend())
     {
-        start_frontend = [this, arg_group, frontend_name]()
+        start_frontend = [this, arg_group, frontend_name]() mutable
         {
             Sigil::Args args;
-
-            if (arg_group[frontend].size() > 1)
+            if (arg_group.getGroup(frontend).size() > 1)
             {
-                auto start = arg_group[frontend].cbegin() + 1;
-                auto end = arg_group[frontend].cend();
+                auto start = arg_group.getGroup(frontend).cbegin() + 1;
+                auto end = arg_group.getGroup(frontend).cend();
                 args = {start, end};
             }
 
-            frontend_registry[frontend_name](arg_group[executable],
+            frontend_registry[frontend_name](arg_group.getGroup(executable),
                                              args,
                                              num_threads,
                                              instance_id);
@@ -331,11 +196,11 @@ void Sigil::parseOptions(int argc, char *argv[])
             frontend_error.append("\n\t").append(p.first);
         }
 
-        parse_error_exit(frontend_error);
+        SigiLog::fatal(frontend_error);
     }
 
     /* check backend */
-    std::string backend_name = arg_group[backend][0];
+    std::string backend_name = arg_group.getGroup(backend)[0];
     std::transform(backend_name.begin(), backend_name.end(), backend_name.begin(), ::tolower);
 
     if (backend_registry.find(backend_name) != backend_registry.cend())
@@ -343,10 +208,10 @@ void Sigil::parseOptions(int argc, char *argv[])
         /* send args to backend */
         Sigil::Args args;
 
-        if (arg_group[backend].size() > 1)
+        if (arg_group.getGroup(backend).size() > 1)
         {
-            auto start = arg_group[backend].cbegin() + 1;
-            auto end = arg_group[backend].cend();
+            auto start = arg_group.getGroup(backend).cbegin() + 1;
+            auto end = arg_group.getGroup(backend).cend();
             args = {start, end};
         }
 
@@ -373,6 +238,6 @@ void Sigil::parseOptions(int argc, char *argv[])
             backend_error.append("\n\t").append(p.first);
         }
 
-        parse_error_exit(backend_error);
+        SigiLog::fatal(backend_error);
     }
 }

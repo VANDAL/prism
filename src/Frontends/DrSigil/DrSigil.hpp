@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <mutex>
 #include "DrSigilIPC.h"
 
 /* Sigil2 receives events from DynamoRIO via a set of shared memory buffers
@@ -13,6 +14,22 @@
 
 namespace sgl
 {
+
+/* TODO rename */
+class IPCcleanup
+{
+    std::vector<std::string> named_pipes;
+    std::vector<int> fds;
+    std::vector<std::string> shm_files;
+    std::mutex m;
+
+  public:
+    std::string ipc_dir;
+    void cleanup();
+    void addNamedPipe(const std::string &pipe);
+    void addPipeFD(int fd);
+    void addShm(const std::string &shm);
+};
 
 class DrSigil
 {
@@ -32,7 +49,6 @@ class DrSigil
      * frontend manager, not in DynamoRIO */
     SglSyncEv thread_swap_event;
 
-    const std::string timestamp;
     const std::string shmem_file;
     const std::string empty_file;
     const std::string full_file;
@@ -46,8 +62,7 @@ class DrSigil
     DrSigilSharedData *shared_mem;
 
   public:
-    DrSigil(int ipc_idx, const std::string &tmp_dir, const std::string &instance_id);
-    ~DrSigil();
+    DrSigil(int ipc_idx, const std::string &ipc_dir);
     void produceDynamoRIOEvents();
 
     /* The start routine run by Sigil2 to begin event generation.
@@ -61,10 +76,6 @@ class DrSigil
                       const std::string &instance_id);
 
   private:
-    /* Clean up actions if an unexpected quit happens */
-    /* TODO thread-safe/thread-correct signal handler */
-    void setInterruptOrTermHandler();
-
     void initShMem();
     void makeNewFifo(const char *path) const;
     void connectDynamoRIO();

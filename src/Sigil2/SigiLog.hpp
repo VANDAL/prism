@@ -93,11 +93,11 @@ struct SigiLog
 
         error_ = spdlog::stderr_logger_st("sigil2-error");
         auto error = "[" + color("ERROR", "red") + "]";
-        error_->set_pattern(header + error + "  %v");
+        error_->set_pattern(header + error + " %v");
 
         debug_ = spdlog::stderr_logger_st("sigil2-debug");
         auto debug = "[" + color("DEBUG", "magenta") + "]";
-        debug_->set_pattern(header + debug + "  %v");
+        debug_->set_pattern(header + debug + " %v");
         debug_->set_level(spdlog::level::debug);
     }
 
