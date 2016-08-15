@@ -8,6 +8,7 @@
 
 [![BSD licensed](https://img.shields.io/badge/license-BSD-blue.svg)](./COPYING)
 [![Build Status](https://travis-ci.org/mdlui/Sigil2.svg?branch=travis-ci)](https://travis-ci.org/mdlui/Sigil2)
+[![Docs Status](https://readthedocs.org/projects/sigil2/badge)](http://sigil2.readthedocs.io/en/latest)
 
 Provides an extensible interface to  **architecture-agnostic** application events.
 
@@ -33,26 +34,7 @@ Sigil2 provides the *dynamic* behavior of an application with 4 event primitives
 * **Context** - markers for basic blocks, subroutines, instructions, etc
 * Control Flow support is pending community demand
 
-Each event has specific attributes that are accessible via the [Sigil2 API](https://github.com/mdlui/Sigil2/wiki/Event-API)
-
-## Platform support
-* Linux
-  * Additionally tested
-    * 64-bit **CentOS 7** (7.2.1511) on **x86\_64**
-    * 64-bit **ArchLinux** (as of July 22, 2016) on **x86\_64**
-  * In progress
-    * 32-bit
-    * ARM
-* OS X/macOS
-  * untested
-* Windows
-  * not supported
-* Requirements
-  * C++11 compiler support
-  * CMake 2.8.11+
-  * dependencies for frontends
-    * Valgrind 3.11.0 support - http://valgrind.org/info/platforms.html
-    * DynamoRIO support - https://github.com/DynamoRIO/dynamorio
+Each event has specific attributes that are accessible via the Sigil2 API
 
 ## Example Usage
 * Valgrind is the *default* frontend for generating events, if no option is specified
@@ -68,14 +50,12 @@ A third frontend argument can be supplied
 * `--frontend=FRONTEND`
 * `--frontend=dynamorio` is **_experimental_**
 
-####Multithreaded Support
-The Valgrind frontend has Pthread and OpenMP support for *applications* compiled with the following GCC versions:
-* 4.9.2
+## Platform support
+| Linux                                          | OSX/macOS | Windows       |
+| ---------------------------------------------- | --------- | ------------- |
+| 64-bit **CentOS 7** (7.2.1511) on **x86\_64**  | untested  | not supported |
+| In Progress: 32-bit                            |           |               |
+| In Progress: ARM                               |           |               |
 
-This version can be different than the GCC version used to compile Sigil2.
-Support for other GCC versions is possible, but contingent on whether or not symbols in the relevant libraries change.
-Most pthread synchronization events *should* be captured with recent GCC versions,
-however OpenMP synchronization events may not be captured. 
-
-## Developing for Sigil2
-See the [wiki](https://github.com/mdlui/Sigil2/wiki)
+## Documentation
+See the [docs](http://sigil2.readthedocs.io/en/latest)
