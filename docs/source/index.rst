@@ -42,9 +42,9 @@ See the :doc:`Quickstart <quickstart>` for information installation instructions
 Contribute
 ----------
 
-Issue Tracker: https://github.com/mdlui/Sigil2/issues
+Source Code: https://git.io/sigil2
 
-Source Code: https://github.com/mdlui/Sigil2
+Issue Tracker: https://github.com/mikelui/Sigil2/issues
 
 Support
 -------
@@ -56,4 +56,4 @@ License
 
 This project is licensed under the `BSD3 license`_.
 
-.. _`BSD3 license`: https://github.com/mdlui/Sigil2/blob/master/COPYING
+.. _`BSD3 license`: https://github.com/mikelui/Sigil2/blob/master/COPYING

@@ -1,13 +1,11 @@
 <p align="center">
-  <a href="https://github.com/mdlui/Sigil2/wiki">
   <img src="https://cdn.rawgit.com/mdlui/Sigil2/master/docs/sigil2-torus.png" alt="mmmmmm">
-  </a>
 </p>
 <p align="center"> <i>mmmmm...Sigil...</i>  </p>
 
 
 [![BSD licensed](https://img.shields.io/badge/license-BSD-blue.svg)](./COPYING)
-[![Build Status](https://travis-ci.org/mdlui/Sigil2.svg?branch=travis-ci)](https://travis-ci.org/mdlui/Sigil2)
+[![Build Status](https://travis-ci.org/mikelui/Sigil2.svg?branch=travis-ci)](https://travis-ci.org/mdlui/Sigil2)
 [![Docs Status](https://readthedocs.org/projects/sigil2/badge)](http://sigil2.readthedocs.io/en/latest)
 
 Provides an extensible interface to  **architecture-agnostic** application events.
