@@ -39,19 +39,19 @@ void EventBuffer::flush(Backend &backend)
 
         switch (ev.tag)
         {
-        case EvTag::SGL_MEM_TAG:
+        case EvTagEnum::SGL_MEM_TAG:
             backend.onMemEv(ev.mem);
             break;
 
-        case EvTag::SGL_COMP_TAG:
+        case EvTagEnum::SGL_COMP_TAG:
             backend.onCompEv(ev.comp);
             break;
 
-        case EvTag::SGL_SYNC_TAG:
+        case EvTagEnum::SGL_SYNC_TAG:
             backend.onSyncEv(ev.sync);
             break;
 
-        case EvTag::SGL_CXT_TAG:
+        case EvTagEnum::SGL_CXT_TAG:
             backend.onCxtEv(ev.cxt);
             break;
 

@@ -21,17 +21,20 @@
  *
  * These primitives are created in the event generation front end,
  * and passed to Sigil's event manager for further processing
+ *
+ * XXX MDL20160814
+ * These primitives are used both for presentation to a user-backend, and also
+ * used for IPC between event generation frontends. Due to the pure amount and
+ * variety of events transferred, each struct is packed to save memory space.
+ * Aligned structs would not be of much benefit anyway, due to the way events
+ * are serialized in shared memory. Otherwise, there is an overhead of up to 8x
+ * in memory space (using unions and padding structs for alignment in arrays).
  */
 
 #include <stdint.h>
-
 #include "PrimitiveEnums.h"
 
-typedef intptr_t  SyncID;
-typedef uintptr_t Addr;
-typedef uint32_t  ByteCount;
-
-#ifdef __cpluscplus
+#ifdef __cplusplus
 extern "C" {
 #else
 typedef struct SglMemEv SglMemEv;
@@ -42,47 +45,67 @@ typedef struct SglSyncEv SglSyncEv;
 typedef struct BufferedSglEv BufferedSglEv;
 #endif
 
+    typedef uintptr_t Addr;
+    typedef uint16_t ByteCount;
+    typedef intptr_t SyncID;
+    typedef uint8_t MemType;
+    typedef uint8_t CompCostType;
+    typedef uint8_t CompArity;
+    typedef uint8_t CompCostOp;
+    typedef uint8_t CFType;
+    typedef uint8_t CxtType;
+    typedef uint8_t SyncType;
+    typedef uint8_t EvTag;
+
     struct SglMemEv
     {
-        MemType       type;
         Addr          begin_addr;
         ByteCount     size;
-        unsigned char alignment; // TODO Is this useful? Can calculate from address+size
-    };
+        MemType       type;
+    } __attribute__ ((__packed__));
 
     struct SglCompEv
     {
         CompCostType  type;
         CompArity     arity;
         CompCostOp    op;
-        unsigned char size; // TODO rename?
-    };
+        uint8_t       size;
+    } __attribute__ ((__packed__));
 
     /* XXX unimplemented */
     struct SglCFEv
     {
         CFType        type;
-    };
+    } __attribute__ ((__packed__));
 
     struct SglCxtEv
     {
         CxtType type;
-        Addr    id;
-
-        /* how to implement efficiently? */
-        char         *name;
-        unsigned char len;
+        union
+        {
+            Addr id;
+            struct
+            {
+                char         *name;
+                uint8_t       len;
+                /* Implicit max length [256]
+                 *
+                 * XXX
+                 * The following 'len' bytes after this struct will be the name
+                 * of the context. The consumer of 'name' is responsible for
+                 * freeing it's memory */
+            } __attribute__ ((__packed__));
+        } __attribute__ ((__packed__));
     };
 
     struct SglSyncEv
     {
         SyncType      type;
         SyncID        id;
-    };
+    } __attribute__ ((__packed__));
 
     struct BufferedSglEv
     {
-        EvTag tag;
         union
         {
             SglMemEv  mem;
@@ -91,9 +114,10 @@ typedef struct BufferedSglEv BufferedSglEv;
             SglCxtEv  cxt;
             SglSyncEv sync;
         };
-    };
+        EvTag tag;
+    } __attribute__ ((__packed__));
 
-#ifdef __cpluscplus
+#ifdef __cplusplus
 }
 #endif
 

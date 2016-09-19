@@ -32,13 +32,13 @@ TEST_CASE("shadow memory tracks readers/writers", "[ShadowMemorySetGet]")
 
         TID tid1 = rand() % 1000;
         Addr addr1 = 0x0000;
-        SglMemEv ev1 = {SGLPRIM_MEM_LOAD, addr1, 4, 0};
+        SglMemEv ev1 = {addr1, 4, SGLPRIM_MEM_LOAD,};
         sm.updateReader(ev1.begin_addr, ev1.size, tid1);
 
         TID tid2 = rand() % 1000;
         Addr addr2 = sm.sm_size - 1;
         ByteCount bytes = 8;
-        SglMemEv ev2 = {SGLPRIM_MEM_LOAD, addr2, bytes, 0};
+        SglMemEv ev2 = {addr2, bytes, SGLPRIM_MEM_LOAD,};
         sm.updateReader(ev2.begin_addr, ev2.size, tid2);
 
         REQUIRE(sm.isReaderTID(addr1, tid1) == true);
@@ -56,14 +56,14 @@ TEST_CASE("shadow memory tracks readers/writers", "[ShadowMemorySetGet]")
 
         TID tid1 = rand() % 1000;
         Addr addr1 = 0x0000;
-        SglMemEv ev1 = {SGLPRIM_MEM_STORE, addr1, 4, 0};
+        SglMemEv ev1 = {addr1, 4, SGLPRIM_MEM_STORE,};
         EID eid1 = rand() % 1000;
         sm.updateWriter(ev1.begin_addr, ev1.size, tid1, eid1);
 
         TID tid2 = rand() % 1000;
         Addr addr2 = sm.sm_size - 1;
         ByteCount bytes = 8;
-        SglMemEv ev2 = {SGLPRIM_MEM_STORE, addr2, bytes, 0};
+        SglMemEv ev2 = {addr2, bytes, SGLPRIM_MEM_STORE,};
         EID eid2 = rand() % 1000;
         sm.updateWriter(ev2.begin_addr, ev2.size, tid2, eid2);
 
@@ -88,8 +88,8 @@ TEST_CASE("shadow memory tracks readers/writers", "[ShadowMemorySetGet]")
         TID tid1 = 1;
         Addr addr1 = 0x0000;
         EID eid1 = 0xFFFFF;
-        SglMemEv load = {SGLPRIM_MEM_LOAD, addr1, 4, 0};
-        SglMemEv store = {SGLPRIM_MEM_STORE, addr1, 4, 0};
+        SglMemEv load = {addr1, 4, SGLPRIM_MEM_LOAD,};
+        SglMemEv store = {addr1, 4, SGLPRIM_MEM_STORE,};
 
         sm.updateReader(load.begin_addr, load.size, tid1);
         REQUIRE(sm.isReaderTID(addr1, tid1) == true);

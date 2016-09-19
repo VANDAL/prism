@@ -34,7 +34,7 @@ void EventHandlers::onSyncEv(const SglSyncEv &ev)
     st_comm_ev.flush();
     st_comp_ev.flush();
 
-    if /*switching threads*/(ev.type == SyncType::SGLPRIM_SYNC_SWAP &&
+    if /*switching threads*/(ev.type == SyncTypeEnum::SGLPRIM_SYNC_SWAP &&
                              curr_thread_id != static_cast<TID>(ev.id))
     {
         if /*new thread*/(event_ids.find(ev.id) == event_ids.cend())
@@ -47,7 +47,7 @@ void EventHandlers::onSyncEv(const SglSyncEv &ev)
     }
     else
     {
-        STSyncType type = 0;
+        SyncType type = 0;
 
         switch (ev.type)
         {
@@ -73,15 +73,15 @@ void EventHandlers::onSyncEv(const SglSyncEv &ev)
          * NOTE: semaphores are not supported in SynchroTraceGen
          */
 
-        case SyncType::SGLPRIM_SYNC_LOCK:
+        case ::SGLPRIM_SYNC_LOCK:
             type = 1;
             break;
 
-        case SyncType::SGLPRIM_SYNC_UNLOCK:
+        case ::SGLPRIM_SYNC_UNLOCK:
             type = 2;
             break;
 
-        case SyncType::SGLPRIM_SYNC_CREATE:
+        case ::SGLPRIM_SYNC_CREATE:
         {
             std::lock_guard<std::mutex> lock(sync_event_mutex);
             thread_spawns.push_back(std::make_pair(curr_thread_id, ev.id));
@@ -90,11 +90,11 @@ void EventHandlers::onSyncEv(const SglSyncEv &ev)
         type = 3;
         break;
 
-        case SyncType::SGLPRIM_SYNC_JOIN:
+        case ::SGLPRIM_SYNC_JOIN:
             type = 4;
             break;
 
-        case SyncType::SGLPRIM_SYNC_BARRIER:
+        case ::SGLPRIM_SYNC_BARRIER:
         {
             std::lock_guard<std::mutex> lock(sync_event_mutex);
 
@@ -123,23 +123,23 @@ void EventHandlers::onSyncEv(const SglSyncEv &ev)
         type = 5;
         break;
 
-        case SyncType::SGLPRIM_SYNC_CONDWAIT:
+        case ::SGLPRIM_SYNC_CONDWAIT:
             type = 6;
             break;
 
-        case SyncType::SGLPRIM_SYNC_CONDSIG:
+        case ::SGLPRIM_SYNC_CONDSIG:
             type = 7;
             break;
 
-        case SyncType::SGLPRIM_SYNC_CONDBROAD:
+        case ::SGLPRIM_SYNC_CONDBROAD:
             type = 8;
             break;
 
-        case SyncType::SGLPRIM_SYNC_SPINLOCK:
+        case ::SGLPRIM_SYNC_SPINLOCK:
             type = 9;
             break;
 
-        case SyncType::SGLPRIM_SYNC_SPINUNLOCK:
+        case ::SGLPRIM_SYNC_SPINUNLOCK:
             type = 10;
             break;
 
@@ -166,11 +166,11 @@ void EventHandlers::onCompEv(const SglCompEv &ev)
 
     switch (ev.type)
     {
-    case CompCostType::SGLPRIM_COMP_IOP:
+    case CompCostTypeEnum::SGLPRIM_COMP_IOP:
         st_comp_ev.incIOP();
         break;
 
-    case CompCostType::SGLPRIM_COMP_FLOP:
+    case CompCostTypeEnum::SGLPRIM_COMP_FLOP:
         st_comp_ev.incFLOP();
         break;
 
@@ -187,11 +187,11 @@ void EventHandlers::onMemEv(const SglMemEv &ev)
 {
     switch (ev.type)
     {
-    case MemType::SGLPRIM_MEM_LOAD:
+    case MemTypeEnum::SGLPRIM_MEM_LOAD:
         onLoad(ev);
         break;
 
-    case MemType::SGLPRIM_MEM_STORE:
+    case MemTypeEnum::SGLPRIM_MEM_STORE:
         onStore(ev);
         break;
 
@@ -269,7 +269,7 @@ void EventHandlers::onStore(const SglMemEv &ev)
 void EventHandlers::onCxtEv(const SglCxtEv &ev)
 {
     /* Instruction address marker */
-    if (ev.type == CxtType::SGLPRIM_CXT_INSTR)
+    if (ev.type == CxtTypeEnum::SGLPRIM_CXT_INSTR)
     {
         st_cxt_ev.append_instr(ev.id);
     }

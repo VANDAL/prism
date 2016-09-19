@@ -144,7 +144,7 @@ inline void EventBuffer::produceEvent(const SglMemEv &ev)
     auto &used = prod_buf->used;
     BufferedSglEv(&buf)[MAX_EVENTS] = prod_buf->events;
 
-    buf[used].tag = EvTag::SGL_MEM_TAG;
+    buf[used].tag = EvTagEnum::SGL_MEM_TAG;
     buf[used].mem = ev;
     ++used;
 }
@@ -157,7 +157,7 @@ inline void EventBuffer::produceEvent(const SglCompEv &ev)
     auto &used = prod_buf->used;
     BufferedSglEv(&buf)[MAX_EVENTS] = prod_buf->events;
 
-    buf[used].tag = EvTag::SGL_COMP_TAG;
+    buf[used].tag = EvTagEnum::SGL_COMP_TAG;
     buf[used].comp = ev;
     ++used;
 }
@@ -170,7 +170,7 @@ inline void EventBuffer::produceEvent(const SglSyncEv &ev)
     auto &used = prod_buf->used;
     BufferedSglEv(&buf)[MAX_EVENTS] = prod_buf->events;
 
-    buf[used].tag = EvTag::SGL_SYNC_TAG;
+    buf[used].tag = EvTagEnum::SGL_SYNC_TAG;
     buf[used].sync = ev;
     ++used;
 }
@@ -183,7 +183,7 @@ inline void EventBuffer::produceEvent(const SglCxtEv &ev)
     auto &used = prod_buf->used;
     BufferedSglEv(&buf)[MAX_EVENTS] = prod_buf->events;
 
-    buf[used].tag = EvTag::SGL_CXT_TAG;
+    buf[used].tag = EvTagEnum::SGL_CXT_TAG;
     buf[used].cxt = ev;
     ++used;
 }

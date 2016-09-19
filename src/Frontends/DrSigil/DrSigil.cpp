@@ -201,19 +201,19 @@ void DrSigil::produceFromBuffer(unsigned int idx, unsigned int used)
 
         switch (buf[i].ev.tag)
         {
-        case EvTag::SGL_MEM_TAG:
+        case EvTagEnum::SGL_MEM_TAG:
             Sigil::instance().addEvent(buf[i].ev.mem, ipc_idx);
             break;
 
-        case EvTag::SGL_COMP_TAG:
+        case EvTagEnum::SGL_COMP_TAG:
             Sigil::instance().addEvent(buf[i].ev.comp, ipc_idx);
             break;
 
-        case EvTag::SGL_SYNC_TAG:
+        case EvTagEnum::SGL_SYNC_TAG:
             Sigil::instance().addEvent(buf[i].ev.sync, ipc_idx);
             break;
 
-        case EvTag::SGL_CXT_TAG:
+        case EvTagEnum::SGL_CXT_TAG:
             Sigil::instance().addEvent(buf[i].ev.cxt, ipc_idx);
             break;
 

@@ -1,10 +1,21 @@
 #ifndef SGL_PRIM_ENUM_H
 #define SGL_PRIM_ENUM_H
 
+#ifndef __cplusplus
+typedef enum CompArityEnum CompArityEnum;
+typedef enum CompCostTypeEnum CompCostTypeEnum;
+typedef enum CompCostOpEnum CompCostOpEnum;
+typedef enum MemTypeEnum MemTypeEnum;
+typedef enum CFTypeEnum CFTypeEnum;
+typedef enum CxtTypeEnum CxtTypeEnum;
+typedef enum SyncTypeEnum SyncTypeEnum;
+typedef enum EvTagEnum EvTagEnum;
+#endif
+
 ////////////////
 /*   Memory   */
 ////////////////
-enum MemType
+enum MemTypeEnum
 {
     SGLPRIM_MEM_TYPE_UNDEF = 0,
     SGLPRIM_MEM_LOAD,
@@ -15,14 +26,14 @@ enum MemType
 ////////////////
 /*  Compute   */
 ////////////////
-enum CompCostType
+enum CompCostTypeEnum
 {
     SGLPRIM_COMP_TYPE_UNDEF = 0,
     SGLPRIM_COMP_IOP,
     SGLPRIM_COMP_FLOP
 };
 
-enum CompArity
+enum CompArityEnum
 {
     SGLPRIM_COMP_ARITY_UNDEF = 0,
     SGLPRIM_COMP_NULLARY,
@@ -32,7 +43,7 @@ enum CompArity
     SGLPRIM_COMP_QUARTERNARY
 };
 
-enum CompCostOp
+enum CompCostOpEnum
 {
     SGLPRIM_COMP_OP_UNDEF = 0,
     SGLPRIM_COMP_ADD,
@@ -47,24 +58,24 @@ enum CompCostOp
 //////////////////
 /* Control Flow */
 //////////////////
-enum CFType
+enum CFTypeEnum
 {
     SGLPRIM_CF_UNDEF = 0,
     SGLPRIM_CF_JUMP,
-    SGLPRIM_CF_BRANCH_CND
+    SGLPRIM_CF_BRANCH_CND,
 };
 
 
 ///////////////
 /*  Context  */
 ///////////////
-enum CxtType
+enum CxtTypeEnum
 {
     SGLPRIM_CXT_UNDEF = 0,
-    SGLPRIM_CXT_INSTR = 1,
-    SGLPRIM_CXT_BB = 2,
-    SGLPRIM_CXT_FUNC = 3,
-    SGLPRIM_CXT_THREAD = 2
+    SGLPRIM_CXT_INSTR,
+    SGLPRIM_CXT_BB,
+    SGLPRIM_CXT_FUNC,
+    SGLPRIM_CXT_THREAD,
 };
 
 
@@ -74,7 +85,7 @@ enum CxtType
 /* TODO Many of these are specific
  * to SynchroTrace. Can we simplify
  * SynchroTrace to take a subset? */
-enum SyncType
+enum SyncTypeEnum
 {
     SGLPRIM_SYNC_UNDEF = 0,
     SGLPRIM_SYNC_CREATE,
@@ -90,34 +101,16 @@ enum SyncType
     SGLPRIM_SYNC_CONDSIG,
     SGLPRIM_SYNC_CONDBROAD,
     SGLPRIM_SYNC_SPINLOCK,
-    SGLPRIM_SYNC_SPINUNLOCK
+    SGLPRIM_SYNC_SPINUNLOCK,
 };
 
-enum EvTag
+enum EvTagEnum
 {
     SGL_MEM_TAG = 0,
     SGL_COMP_TAG,
     SGL_CF_TAG,
     SGL_CXT_TAG,
-    SGL_SYNC_TAG
+    SGL_SYNC_TAG,
 };
-
-#ifndef __cpluscplus
-//////////////////////////////////////
-typedef enum CompArity CompArity;
-typedef enum CompCostType CompCostType;
-typedef enum CompCostOp CompCostOp;
-//////////////////////////////////////
-typedef enum MemType MemType;
-//////////////////////////////////////
-typedef enum CFType CFType;
-//////////////////////////////////////
-typedef enum CxtType CxtType;
-//////////////////////////////////////
-typedef enum SyncType SyncType;
-//////////////////////////////////////
-typedef enum EvTag EvTag;
-//////////////////////////////////////
-#endif
 
 #endif //SGL_PRIM_ENUM_H

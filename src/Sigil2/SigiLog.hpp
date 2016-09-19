@@ -1,7 +1,7 @@
 #ifndef SGL_LOG_H
 #define SGL_LOG_H
 
-#define SGL_DEBUG
+//#define SGL_DEBUG
 
 #include "spdlog.h"
 /* TODO verify static initialization fiasco won't be a problem. 
