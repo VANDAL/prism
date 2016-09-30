@@ -77,10 +77,10 @@ class EventHandlers : public Backend
     static unsigned int primitives_per_st_comp_ev;
 
     /* interface to Sigil2 */
-    virtual void onSyncEv(const SglSyncEv &ev);
-    virtual void onCompEv(const SglCompEv &ev);
-    virtual void onMemEv(const SglMemEv &ev);
-    virtual void onCxtEv(const SglCxtEv &ev);
+    virtual void onSyncEv(const SglSyncEv &ev) override;
+    virtual void onCompEv(const SglCompEv &ev) override;
+    virtual void onMemEv(const SglMemEv &ev) override;
+    virtual void onCxtEv(const SglCxtEv &ev) override;
 
     /* SynchroTraceGen makes use of 3 SynchroTrace events,
      * i.e. Computation, Communication, and Synchronization.

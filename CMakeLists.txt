@@ -17,6 +17,9 @@ endmacro(use_cxx11)
 
 use_cxx11()
 
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall") 
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto") 
+
 ################################
 # Testing Framework uses Catch #
 ################################
@@ -71,8 +74,8 @@ set_target_properties(sigil2
 add_subdirectory(${SRC_BACKENDS}/SynchroTraceGen)
 target_link_libraries(sigil2 STGen)
 
-add_subdirectory(${SRC_BACKENDS}/Dummy)
-target_link_libraries(sigil2 dummy)
+add_subdirectory(${SRC_BACKENDS}/SimpleCount)
+target_link_libraries(sigil2 SimpleCount)
 
 ##########################
 # Interface to Frontends #
@@ -82,3 +85,6 @@ target_link_libraries(sigil2 Sigrind)
 
 add_subdirectory(${SRC_FRONTENDS}/DrSigil)
 target_link_libraries(sigil2 DrSigil)
+
+add_subdirectory(${SRC_FRONTENDS}/Injector)
+target_link_libraries(sigil2 Injector)

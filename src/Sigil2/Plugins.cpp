@@ -3,10 +3,12 @@
 /* Static plugins are registered to Sigil here
  * TODO dynamic plugins */
 
-/*
-#include "MySigilBackend.h"
-SIGIL_REGISTER(MyBackEnd)
-*/
+#include "SimpleCount/Handler.hpp"
+SIGIL_REGISTER(simplecount)
+{
+    BACKEND(SimpleCount::Handler)
+    EXIT(SimpleCount::cleanup);
+}
 
 #include "SynchroTraceGen/EventHandlers.hpp"
 SIGIL_REGISTER(stgen)
@@ -15,10 +17,3 @@ SIGIL_REGISTER(stgen)
     PARSER(STGen::onParse)
     EXIT(STGen::onExit);
 }
-
-//#include "Dummy/Dummy.hpp"
-//SIGIL_REGISTER(dummy)
-//{
-//	/* example with regular functions */
-//	/* argument parser is optional */
-//}

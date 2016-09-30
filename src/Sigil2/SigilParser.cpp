@@ -124,7 +124,7 @@ auto ArgGroup::getGroup(const std::string &group) -> const Args&
 
 auto ArgGroup::getOpt(const std::string &opt) -> const std::string&
 {
-    assert (args.find(opt) != args.cend());
+    /* returns an empty string if not found */
     return args[opt];
 }
 

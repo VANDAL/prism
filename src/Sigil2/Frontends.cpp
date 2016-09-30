@@ -1,6 +1,7 @@
 #include "Sigil.hpp"
 #include "Frontends/Sigrind/Sigrind.hpp"
 #include "Frontends/DrSigil/DrSigil.hpp"
+#include "Frontends/Injector/Injector.hpp"
 
 namespace sgl
 {
@@ -17,6 +18,7 @@ namespace
 {
 Frontend valgrind("valgrind", Sigrind::start);
 Frontend dynamorio("dynamorio", DrSigil::start);
+Frontend random("inject", Injector::start);
 };
 
 };

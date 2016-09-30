@@ -14,10 +14,11 @@
 class Backend
 {
   public:
-    virtual void onMemEv(const SglMemEv &) = 0;
-    virtual void onCompEv(const SglCompEv &) = 0;
-    virtual void onSyncEv(const SglSyncEv &) = 0;
-    virtual void onCxtEv(const SglCxtEv &) = 0;
+    virtual void onMemEv (const SglMemEv &)  {}
+    virtual void onCompEv(const SglCompEv &) {}
+    virtual void onSyncEv(const SglSyncEv &) {}
+    virtual void onCxtEv (const SglCxtEv &)  {}
+    virtual void onCFEv  (const SglCFEv &)   {}
 };
 
 

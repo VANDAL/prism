@@ -55,6 +55,10 @@ void EventBuffer::flush(Backend &backend)
             backend.onCxtEv(ev.cxt);
             break;
 
+        case EvTagEnum::SGL_CF_TAG:
+            backend.onCFEv(ev.cf);
+            break;
+
         default:
             /* control flow unimplemented */
             SigiLog::fatal(std::string("Received unhandled event in ").append(__FILE__));

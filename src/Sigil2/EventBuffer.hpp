@@ -14,7 +14,7 @@ namespace sgl
 
 /* fudge numbers */
 constexpr unsigned int MAX_EVENTS = 100000;
-constexpr unsigned int MAX_BUFFERS = 15; // XXX MUST be >= 2
+constexpr unsigned int MAX_BUFFERS = 8; // XXX MUST be a power of 2 and > 1
 
 class EventBuffer
 {
@@ -78,24 +78,20 @@ class EventBuffer
      * are decided in the future. */
     struct CircularCounter
     {
-        CircularCounter(int mod_val) : mod_val(mod_val)
+        CircularCounter(int mod_val) : mod_mask(mod_val - 1)
         {
+            /* must be a power of 2 */
+            assert((mod_val >= 2) && ((mod_val & (mod_val - 1)) == 0));
             val = 0;
         }
         int increment()
         {
-            int old_val = val;
-
-            if (++val == mod_val)
-            {
-                val = 0;
-            }
-
-            return old_val;
+            val = (val + 1) & mod_mask;
+            return val;
         }
       private:
         int val;
-        int mod_val;
+        int mod_mask;
     };
 
     /* Simple queuing producer->consumer
@@ -106,8 +102,9 @@ class EventBuffer
      * to index which buffer the producer(frontend)/consumer(backend)
      * should use.
      */
-    void produceEvent(const SglMemEv &ev);
     void produceEvent(const SglCompEv &ev);
+    void produceEvent(const SglMemEv &ev);
+    void produceEvent(const SglCFEv &ev);
     void produceEvent(const SglSyncEv &ev);
     void produceEvent(const SglCxtEv &ev);
 
@@ -159,6 +156,19 @@ inline void EventBuffer::produceEvent(const SglCompEv &ev)
 
     buf[used].tag = EvTagEnum::SGL_COMP_TAG;
     buf[used].comp = ev;
+    ++used;
+}
+
+
+inline void EventBuffer::produceEvent(const SglCFEv &ev)
+{
+    assert(prod_buf != nullptr);
+
+    auto &used = prod_buf->used;
+    BufferedSglEv(&buf)[MAX_EVENTS] = prod_buf->events;
+
+    buf[used].tag = EvTagEnum::SGL_CF_TAG;
+    buf[used].cf = ev;
     ++used;
 }
 
