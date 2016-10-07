@@ -200,6 +200,13 @@ void Sigrind::writeEmptyFifo(unsigned int idx)
 }
 
 
+#ifdef SIGRIND_DEBUG
+unsigned long long mem_events;
+unsigned long long comp_events;
+unsigned long long sync_events;
+unsigned long long cxt_events;
+#endif
+
 void Sigrind::produceFromBuffer(unsigned int idx, unsigned int used)
 {
     assert(idx < SIGRIND_BUFNUM);
@@ -218,6 +225,10 @@ void Sigrind::produceFromBuffer(unsigned int idx, unsigned int used)
             Sigil::instance().addEvent(buf[i].comp, be_idx);
             break;
 
+        case EvTagEnum::SGL_CF_TAG:
+            Sigil::instance().addEvent(buf[i].cf, be_idx);
+            break;
+
         case EvTagEnum::SGL_SYNC_TAG:
             Sigil::instance().addEvent(buf[i].sync, be_idx);
             break;
@@ -227,9 +238,32 @@ void Sigrind::produceFromBuffer(unsigned int idx, unsigned int used)
             break;
 
         default:
-            SigiLog::fatal("received unhandled event in sigrind");
+            SigiLog::fatal("received unhandled event in sigrind: " + std::to_string(buf[i].tag));
             break;
         }
+
+#ifdef SIGRIND_DEBUG
+        switch (buf[i].tag)
+        {
+        case EvTagEnum::SGL_MEM_TAG:
+            ++mem_events;
+            break;
+        case EvTagEnum::SGL_COMP_TAG:
+            ++comp_events;
+            break;
+        case EvTagEnum::SGL_CF_TAG:
+            break;
+        case EvTagEnum::SGL_SYNC_TAG:
+            ++sync_events;
+            break;
+        case EvTagEnum::SGL_CXT_TAG:
+            ++cxt_events;
+            break;
+        default:
+            break;
+        }
+#endif
+
     }
 }
 
@@ -268,6 +302,13 @@ void Sigrind::produceSigrindEvents()
         /* tell Valgrind that the buffer is empty again */
         writeEmptyFifo(idx);
     }
+
+#ifdef SIGRIND_DEBUG
+    SigiLog::info("Memory Events: "  + std::to_string(mem_events));
+    SigiLog::info("Compute Events: " + std::to_string(comp_events));
+    SigiLog::info("Sync Events: "    + std::to_string(sync_events));
+    SigiLog::info("Context Events: " + std::to_string(cxt_events));
+#endif
 }
 
 

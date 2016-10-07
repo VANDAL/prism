@@ -9,13 +9,11 @@ int EventBuffer::g_id = 0;
 EventBuffer::EventBuffer()
     : full(0)
     , empty(MAX_BUFFERS)
-    , prod_idx(MAX_BUFFERS)
-    , cons_idx(MAX_BUFFERS)
 {
     m_id = ++g_id;
     /* initialize producer-consumer state */
     empty.P();
-    prod_buf = &bufbuf[prod_idx.increment()];
+    prod_buf = &bufbuf[prod_idx.increment_or_reset()];
 }
 
 
@@ -31,7 +29,7 @@ void EventBuffer::flush(Backend &backend)
     assert(prod_buf != nullptr);
     full.P();
 
-    Buffer &buf = bufbuf[cons_idx.increment()];
+    Buffer &buf = bufbuf[cons_idx.increment_or_reset()];
 
     for (decltype(buf.used) i = 0; i < buf.used; ++i)
     {

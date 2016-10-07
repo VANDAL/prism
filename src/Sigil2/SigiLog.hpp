@@ -3,7 +3,7 @@
 
 //#define SGL_DEBUG
 
-#include "spdlog.h"
+#include "spdlog/spdlog.h"
 /* TODO verify static initialization fiasco won't be a problem. 
  * What happens when spdlog's registry is destructed? */
 

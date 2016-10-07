@@ -38,6 +38,15 @@ class EventManager
     EventManager &operator=(const EventManager &) = delete;
     ~EventManager();
 
+    /* XXX Not thread safe.
+     *
+     * Undefined behavior if more than one thread
+     * calls this function with the SAME buf_idx.
+     *
+     * That is, thread_1 and thread_2 can only call
+     * this function with buf_idx=1 and buf_idx=2,
+     * respectively.
+     */
     template<typename T>
     void addEvent(const T &ev, uint16_t buf_idx = 0);
 

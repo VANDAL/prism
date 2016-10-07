@@ -6,7 +6,6 @@
 #include <condition_variable>
 #include <cassert>
 
-#include "Primitive.h"
 #include "Backends.hpp"
 
 namespace sgl
@@ -74,24 +73,21 @@ class EventBuffer
         std::condition_variable cond;
     };
 
-    /* Circular counter to help indexing if more buffers
-     * are decided in the future. */
+    template<int N>
     struct CircularCounter
     {
-        CircularCounter(int mod_val) : mod_mask(mod_val - 1)
+        static_assert((N >= 2) && ((N & (N - 1)) == 0), "N must be a power of 2");
+        CircularCounter()
         {
-            /* must be a power of 2 */
-            assert((mod_val >= 2) && ((mod_val & (mod_val - 1)) == 0));
             val = 0;
         }
-        int increment()
+        int increment_or_reset()
         {
-            val = (val + 1) & mod_mask;
+            val = (val + 1) & (N-1);
             return val;
         }
       private:
         int val;
-        int mod_mask;
     };
 
     /* Simple queuing producer->consumer
@@ -113,7 +109,7 @@ class EventBuffer
     Sem full, empty;
     Buffer *prod_buf;
     Buffer bufbuf[MAX_BUFFERS];
-    CircularCounter prod_idx, cons_idx;
+    CircularCounter<MAX_BUFFERS> prod_idx, cons_idx;
 };
 
 
@@ -127,7 +123,7 @@ inline void EventBuffer::addEvent(const T &ev)
     else
     {
         empty.P();
-        prod_buf = &bufbuf[prod_idx.increment()];
+        prod_buf = &bufbuf[prod_idx.increment_or_reset()];
         full.V();
         produceEvent(ev);
     }
