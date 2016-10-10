@@ -6,46 +6,49 @@ namespace STGen
 
 auto ShadowMemory::updateWriter(Addr addr, ByteCount bytes, TID tid, EID eid) -> void
 {
+    assert(tid < MAX_THREADS);
     for (ByteCount i = 0; i < bytes; ++i)
     {
-        ShadowObject& so = shadow_objects[addr + i];
-        std::lock_guard<std::mutex> lock(so.mut);
+        ShadowObject &so = shadow_objects[addr + i];
 
         so.last_writer = tid;
         so.last_writer_event = eid;
 
         /* Reset readers on new write */
-        so.last_readers.assign({SO_UNDEF});
+        std::fill(so.last_readers, (so.last_readers + LAST_READER_SECTION_COUNT), 0);
     }
 }
 
 
+auto inline TID_bit_value(TID tid) -> reader_thr_t
+{
+    return 1 << (tid & (LAST_READER_SECTION_SIZE - 1));
+}
+
 auto ShadowMemory::updateReader(Addr addr, ByteCount bytes, TID tid) -> void
 {
+    assert(tid < MAX_THREADS);
     for (ByteCount i = 0; i < bytes; ++i)
     {
-        ShadowObject& so = shadow_objects[addr + i];
-        std::lock_guard<std::mutex> lock(so.mut);
+        ShadowObject &so = shadow_objects[addr + i];
 
-        so.last_readers.push_back(tid);
+        /* set thread bit in last reader section */
+        auto section = tid / LAST_READER_SECTION_SIZE;
+        reader_thr_t &last_reader_section = so.last_readers[section];
+        last_reader_section |= TID_bit_value(tid);
     }
 }
 
 
 auto ShadowMemory::isReaderTID(Addr addr, TID tid) -> bool
 {
-    ShadowObject& so = shadow_objects[addr];
-    std::lock_guard<std::mutex> lock(so.mut);
+    assert(tid < MAX_THREADS);
+    ShadowObject &so = shadow_objects[addr];
 
-    for (TID reader : so.last_readers)
-    {
-        if (reader == tid)
-        {
-            return true;
-        }
-    }
+    auto section = tid / LAST_READER_SECTION_SIZE;
+    reader_thr_t last_reader_section = so.last_readers[section];
 
-    return false;
+    return TID_bit_value(tid) & last_reader_section;
 }
 
 
@@ -105,10 +108,6 @@ ShadowMemory::~ShadowMemory()
         {
             sm_actual += sizeof(ShadowMemoryImpl::SecondaryMap);
             sm_actual += sm->capacity()*sizeof(ShadowMemoryImpl::ShadowObject);
-            for (auto &so : *sm)
-            {
-                sm_actual += so.last_readers.capacity()*sizeof(TID);
-            }
         }
     }
 

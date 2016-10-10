@@ -8,8 +8,7 @@
 #include <memory>
 #include <mutex>
 
-/* Shadow Memory tracks 'shadow state' for an address.
- *
+/* Shadow Memory tracks 'shadow state' for an address.  *
  * In SynchroTraceGen, 'shadow state' takes the form of
  * the most recent thread to read from/write to an address.
  *
@@ -27,6 +26,14 @@ namespace STGen
 using TID = int16_t;
 using EID = int32_t;
 constexpr TID SO_UNDEF = -1;
+
+/* XXX do not change type */
+using reader_thr_t = char;
+constexpr size_t MAX_THREADS = 128;
+constexpr size_t LAST_READER_SECTION_SIZE = sizeof(reader_thr_t) * 8;
+constexpr size_t LAST_READER_SECTION_COUNT = MAX_THREADS/LAST_READER_SECTION_SIZE;
+static_assert((MAX_THREADS >= (LAST_READER_SECTION_SIZE)) && !(MAX_THREADS & (MAX_THREADS-1)),
+              "MAX_THREADS must be a power of 2");
 
 class ShadowMemory
 {
@@ -73,9 +80,10 @@ class ShadowMemory
             /* Last thread/event to read/write to addr */
             TID last_writer{SO_UNDEF};
             EID last_writer_event{SO_UNDEF};
-            /* A vector -- each address can have multiple readers */
-            std::vector<TID> last_readers{SO_UNDEF};
-            std::mutex mut;
+
+            /* A bitfield -- each bit represents a thread
+             * each address can have multiple readers */
+            reader_thr_t last_readers[LAST_READER_SECTION_COUNT];
         };
 
         using SecondaryMap = std::vector<ShadowObject>;

@@ -17,7 +17,11 @@ TEST_CASE("shadow memory inits readers/writers", "[ShadowMemoryInit]")
         ShadowMemory sm;
         REQUIRE(sm.getWriterTID(0) == STGen::SO_UNDEF);
         REQUIRE(sm.getWriterEID(0) == STGen::SO_UNDEF);
-        REQUIRE(sm.isReaderTID(0, STGen::SO_UNDEF) == true);
+
+        for(size_t i = 0; i < STGen::MAX_THREADS; ++i)
+        {
+            REQUIRE(sm.isReaderTID(0, i) == false);
+        }
     }
 }
 
@@ -30,12 +34,12 @@ TEST_CASE("shadow memory tracks readers/writers", "[ShadowMemorySetGet]")
         std::cout << std::endl;
         ShadowMemory sm;
 
-        TID tid1 = rand() % 1000;
+        TID tid1 = rand() % STGen::MAX_THREADS;
         Addr addr1 = 0x0000;
         SglMemEv ev1 = {addr1, 4, SGLPRIM_MEM_LOAD,};
         sm.updateReader(ev1.begin_addr, ev1.size, tid1);
 
-        TID tid2 = rand() % 1000;
+        TID tid2 = rand() % STGen::MAX_THREADS;
         Addr addr2 = sm.sm_size - 1;
         ByteCount bytes = 8;
         SglMemEv ev2 = {addr2, bytes, SGLPRIM_MEM_LOAD,};
@@ -46,21 +50,20 @@ TEST_CASE("shadow memory tracks readers/writers", "[ShadowMemorySetGet]")
         //This should cross SM boundaries
         REQUIRE(sm.isReaderTID(addr2, tid2) == true);
         REQUIRE(sm.isReaderTID(addr2 + bytes - 1, tid2) == true);
-
-        REQUIRE(sm.isReaderTID(addr2 + bytes, STGen::SO_UNDEF) == true);
+        REQUIRE(sm.isReaderTID(addr2 + bytes, tid2) == false);
     }
 
     SECTION("setting WRITERS across SM boundaries")
     {
         ShadowMemory sm;
 
-        TID tid1 = rand() % 1000;
+        TID tid1 = rand() % STGen::MAX_THREADS;
         Addr addr1 = 0x0000;
         SglMemEv ev1 = {addr1, 4, SGLPRIM_MEM_STORE,};
         EID eid1 = rand() % 1000;
         sm.updateWriter(ev1.begin_addr, ev1.size, tid1, eid1);
 
-        TID tid2 = rand() % 1000;
+        TID tid2 = rand() % STGen::MAX_THREADS;
         Addr addr2 = sm.sm_size - 1;
         ByteCount bytes = 8;
         SglMemEv ev2 = {addr2, bytes, SGLPRIM_MEM_STORE,};
@@ -78,7 +81,6 @@ TEST_CASE("shadow memory tracks readers/writers", "[ShadowMemorySetGet]")
 
         //Sanity check
         REQUIRE(sm.isReaderTID(addr2, tid2) == false);
-        REQUIRE(sm.isReaderTID(addr2, STGen::SO_UNDEF) == true);
     }
 
     SECTION("setting writer clears out reader")
@@ -96,7 +98,7 @@ TEST_CASE("shadow memory tracks readers/writers", "[ShadowMemorySetGet]")
         REQUIRE(sm.getWriterTID(addr1) == STGen::SO_UNDEF);
 
         sm.updateWriter(store.begin_addr, store.size, tid1, eid1);
-        REQUIRE(sm.isReaderTID(addr1, STGen::SO_UNDEF) == true);
+        REQUIRE(sm.isReaderTID(addr1, tid1) == false);
         REQUIRE(sm.getWriterTID(addr1) == tid1);
         REQUIRE(sm.getWriterEID(addr1) == eid1);
     }
