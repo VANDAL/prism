@@ -1,7 +1,7 @@
 #include <cassert>
 #include <sstream>
 
-#include "sinks/ostream_sink.h"
+#include "spdlog/sinks/ostream_sink.h"
 #include "Sigil2/SigiLog.hpp"
 
 #include "EventHandlers.hpp"
@@ -310,7 +310,8 @@ void onExit()
          * that were spawned from the original thread */
         if (pair.first == 1)
         {
-            pthread_logger->info() << "##" << pair.second << "," << thread_creates[create_idx];
+            pthread_logger->info("##" + std::to_string(pair.second) +
+                                 "," + std::to_string(thread_creates[create_idx]));
         }
 
         ++create_idx; //Skip past thread spawns that happened in other threads

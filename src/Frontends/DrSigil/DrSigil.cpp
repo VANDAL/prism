@@ -9,11 +9,13 @@
 #include <sys/mman.h>
 #include <glob.h>
 #include <ftw.h>
+#include <iostream>
 
 #include "whereami.h"
 
 #include "Sigil2/Sigil.hpp"
 #include "DrSigil.hpp"
+
 
 #define DIR_TEMPLATE "/sgl2-dr-XXXXXX"
 
