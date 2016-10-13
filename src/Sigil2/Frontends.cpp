@@ -1,7 +1,10 @@
 #include "Sigil.hpp"
-#include "Frontends/Sigrind/Sigrind.hpp"
-#include "Frontends/DrSigil/DrSigil.hpp"
 #include "Frontends/Injector/Injector.hpp"
+#include "Frontends/Sigrind/Sigrind.hpp"
+
+#ifdef ENABLE_DRSIGIL
+#include "Frontends/DrSigil/DrSigil.hpp"
+#endif
 
 namespace sgl
 {
@@ -16,9 +19,12 @@ struct Frontend
 
 namespace
 {
+Frontend inject("inject", Injector::start);
 Frontend valgrind("valgrind", Sigrind::start);
+
+#ifdef ENABLE_DRSIGIL
 Frontend dynamorio("dynamorio", DrSigil::start);
-Frontend random("inject", Injector::start);
+#endif
 };
 
 };

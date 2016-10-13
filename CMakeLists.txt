@@ -31,10 +31,10 @@ include(CTest)
 # add_library(Catch INTERFACE)
 # target_include_directories(Catch INTERFACE include/Catch/include)
 
-###########################################
-# Include everything                      #
-# ...probably a cleaner way to do this... #
-###########################################
+###################################################
+# Include everything                              #
+# ...there's probably a cleaner way to do this... #
+###################################################
 get_filename_component(SRC_SIGIL2 src/Sigil2 ABSOLUTE)
 get_filename_component(SRC_FRONTENDS src/Frontends ABSOLUTE)
 get_filename_component(SRC_BACKENDS src/Backends ABSOLUTE)
@@ -80,11 +80,18 @@ target_link_libraries(sigil2 SimpleCount)
 ##########################
 # Interface to Frontends #
 ##########################
+# static or random event injector
+add_subdirectory(${SRC_FRONTENDS}/Injector)
+target_link_libraries(sigil2 Injector)
+
+# valgrind DBI -- default
 add_subdirectory(${SRC_FRONTENDS}/Sigrind)
 target_link_libraries(sigil2 Sigrind)
 
-add_subdirectory(${SRC_FRONTENDS}/DrSigil)
-target_link_libraries(sigil2 DrSigil)
+# dynamorio DBI -- experimental
+if(ENABLE_DRSIGIL)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_DRSIGIL")
 
-add_subdirectory(${SRC_FRONTENDS}/Injector)
-target_link_libraries(sigil2 Injector)
+	add_subdirectory(${SRC_FRONTENDS}/DrSigil)
+	target_link_libraries(sigil2 DrSigil)
+endif(ENABLE_DRSIGIL)
