@@ -6,11 +6,9 @@
 Welcome to |project|
 ====================
 
-|project| is a framework for observing and analyzing applications.
-
 .. note:: This documentation is still a WIP
 
-See :doc:`here for an in depth overview of Sigil2 <overview>`.
+|project| is a framework for observing and analyzing applications.
 
 .. toctree::
    :maxdepth: 2

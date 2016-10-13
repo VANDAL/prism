@@ -12,8 +12,10 @@ so low-level, detailed traces are the primary use-case.
 
 Workloads
 ---------
-
-A workload can be represented in many ways.
+One of the main goals behind |project| is **providing a straightforward interface**
+to represent and analyze workloads.
+A workload can be represented in many ways, and each way has different
+requirements. 
 
 ...you might represent a workload as a simple assembly instruction trace:
 
@@ -36,10 +38,23 @@ A workload can be represented in many ways.
    pop    %rbp
    retq
 
-.. todo:: ...or you might want some type of call graph:
+...or you might represent a workload as a call graph:
 
-          ...or something else...
+.. image:: _static/callgraph_simple.svg
 
+...or you might represent a workload as a memory trace:
+
+.. code-block:: none
+
+   ADDR         BYTES
+   0xdeadbeef   8
+   0x12345678   4
+   0x00000000   1
+   ...
+
+...or more complex representations.
+Each of these representations are made up of the same event categories,
+albeit at different levels of granularity.
 
 Event Primitives
 ^^^^^^^^^^^^^^^^
@@ -54,13 +69,15 @@ Because of the variety of use-cases for analyzing workloads,
 +-----------------+-----------------------------------------+
 | Memory          | some movement of data                   |
 +-----------------+-----------------------------------------+
+| Control Flow    | divergence in an event stream           |
++-----------------+-----------------------------------------+
 | Synchronization | ordering between separate event streams |
 +-----------------+-----------------------------------------+
 | Context         | grouping of events                      |
 +-----------------+-----------------------------------------+
 
-A serializable format is not defined, but an example abstraction could look
-like: ::
+The format of these events is not defined,
+but you can imagine that events would look like: ::
 
   ...
   compute     FLOP,   add,   SIMD4

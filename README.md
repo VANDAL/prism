@@ -5,7 +5,7 @@
 
 
 [![BSD licensed](https://img.shields.io/badge/license-BSD-blue.svg)](./COPYING)
-[![Build Status](https://travis-ci.org/mikelui/Sigil2.svg?branch=travis-ci)](https://travis-ci.org/mdlui/Sigil2)
+[![Build Status](https://travis-ci.org/mikelui/Sigil2.svg?branch=travis-ci)](https://travis-ci.org/mikelui/Sigil2)
 [![Docs Status](https://readthedocs.org/projects/sigil2/badge)](http://sigil2.readthedocs.io/en/latest)
 
 Provides an extensible interface to  **architecture-agnostic** application events.
