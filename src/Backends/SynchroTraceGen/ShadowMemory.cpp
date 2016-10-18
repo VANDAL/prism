@@ -15,15 +15,10 @@ auto ShadowMemory::updateWriter(Addr addr, ByteCount bytes, TID tid, EID eid) ->
         so.last_writer_event = eid;
 
         /* Reset readers on new write */
-        std::fill(so.last_readers, (so.last_readers + LAST_READER_SECTION_COUNT), 0);
+        so.last_readers.reset();
     }
 }
 
-
-auto inline TID_bit_value(TID tid) -> reader_thr_t
-{
-    return 1 << (tid & (LAST_READER_SECTION_SIZE - 1));
-}
 
 auto ShadowMemory::updateReader(Addr addr, ByteCount bytes, TID tid) -> void
 {
@@ -31,11 +26,7 @@ auto ShadowMemory::updateReader(Addr addr, ByteCount bytes, TID tid) -> void
     for (ByteCount i = 0; i < bytes; ++i)
     {
         ShadowObject &so = shadow_objects[addr + i];
-
-        /* set thread bit in last reader section */
-        auto section = tid / LAST_READER_SECTION_SIZE;
-        reader_thr_t &last_reader_section = so.last_readers[section];
-        last_reader_section |= TID_bit_value(tid);
+        so.last_readers.set(tid);
     }
 }
 
@@ -44,11 +35,7 @@ auto ShadowMemory::isReaderTID(Addr addr, TID tid) -> bool
 {
     assert(tid < MAX_THREADS);
     ShadowObject &so = shadow_objects[addr];
-
-    auto section = tid / LAST_READER_SECTION_SIZE;
-    reader_thr_t last_reader_section = so.last_readers[section];
-
-    return TID_bit_value(tid) & last_reader_section;
+    return so.last_readers.test(tid);
 }
 
 
