@@ -1,5 +1,5 @@
 #include "Handler.hpp"
-#include "spdlog.h"
+#include "spdlog/spdlog.h"
 #include <atomic>
 
 namespace
@@ -65,4 +65,4 @@ auto cleanup() -> void
     logger->info("Total CntlFlow Events: {}", global_cf_cnt);
     logger->info("Total Context  Events: {}", global_cxt_cnt);
 }
-}; //end namespace dummy
+}; //end namespace SimpleCount

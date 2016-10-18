@@ -77,6 +77,9 @@ target_link_libraries(sigil2 STGen)
 add_subdirectory(${SRC_BACKENDS}/SimpleCount)
 target_link_libraries(sigil2 SimpleCount)
 
+add_subdirectory(${SRC_BACKENDS}/SigilClassic)
+target_link_libraries(sigil2 SigilClassic)
+
 ##########################
 # Interface to Frontends #
 ##########################
