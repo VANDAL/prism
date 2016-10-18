@@ -8,7 +8,7 @@
 #include <unordered_map>
 
 #include "MemoryPool.h"
-#include "spdlog.h"
+#include "spdlog/spdlog.h"
 
 #include "Sigil2/Primitive.h"
 #include "ShadowMemory.hpp"
@@ -24,6 +24,7 @@
 
 namespace STGen
 {
+using StatCounter = unsigned long long;
 
 /* for speed, adapted from http://stackoverflow.com/a/33447587 */
 template <typename I>
@@ -137,7 +138,6 @@ class STInstrEvent
  */
 struct STCompEvent
 {
-    using StatCounter = unsigned long long;
     StatCounter iop_cnt;
     StatCounter flop_cnt;
 
@@ -162,62 +162,8 @@ struct STCompEvent
     const std::shared_ptr<spdlog::logger> &logger;
 
   public:
-    /* global count over all threads */
-    static std::atomic<StatCounter> flop_count_global;
-    static std::atomic<StatCounter> iop_count_global;
-
-    /* local to each thread */
-    struct _per_thread_t
-    {
-        TID curr_tid = -1;
-
-        /* (thread id, <iop, flop>) */
-        std::map<TID, std::pair<StatCounter, StatCounter>> per_thread_counts;
-        StatCounter flop_count{0};
-        StatCounter iop_count{0};
-
-        void sync()
-        {
-            per_thread_counts[curr_tid].first = iop_count;
-            per_thread_counts[curr_tid].second = flop_count;
-        }
-
-        void setThread(TID tid)
-        {
-            sync();
-
-            if /*new thread*/(per_thread_counts.find(tid) == per_thread_counts.cend())
-            {
-                iop_count = 0;
-                flop_count = 0;
-            }
-            else
-            {
-                iop_count = per_thread_counts[tid].first;
-                flop_count = per_thread_counts[tid].second;
-            }
-
-            curr_tid = tid;
-        }
-
-        StatCounter getThreadIOPS(TID tid)
-        {
-            sync();
-
-            return per_thread_counts[tid].first;
-        }
-
-        StatCounter getThreadFLOPS(TID tid)
-        {
-            sync();
-
-            return per_thread_counts[tid].second;
-        }
-
-    } per_thread_data;
-
-  public:
-    STCompEvent(TID &tid, EID &eid, const std::shared_ptr<spdlog::logger> &logger,
+    STCompEvent(TID &tid, EID &eid,
+                const std::shared_ptr<spdlog::logger> &logger,
                 STInstrEvent &instr_ev);
     void flush();
     void updateWrites(const SglMemEv &ev);

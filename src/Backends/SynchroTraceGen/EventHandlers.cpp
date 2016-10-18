@@ -21,6 +21,68 @@ unsigned int EventHandlers::primitives_per_st_comp_ev{100};
 
 
 ////////////////////////////////////////////////////////////
+// Local stats for each thread
+// Required for CPI estimates in SynchroTrace
+////////////////////////////////////////////////////////////
+decltype(PerThreadStats::per_thread_counts) PerThreadStats::per_thread_counts;
+decltype(PerThreadStats::per_thread_mutex) PerThreadStats::per_thread_mutex;
+
+void PerThreadStats::sync()
+{
+    if(curr_tid != INVL_TID)
+    {
+        std::lock_guard<std::mutex> lock(per_thread_mutex);
+        per_thread_counts[curr_tid].first = iop_count;
+        per_thread_counts[curr_tid].second = flop_count;
+    }
+}
+
+bool PerThreadStats::isNewThread(TID tid)
+{
+    std::lock_guard<std::mutex> lock(per_thread_mutex);
+    return per_thread_counts.find(tid) == per_thread_counts.cend();
+}
+
+void PerThreadStats::setThread(TID tid)
+{
+    /* XXX MDL20161018 Performance Concern:
+     * Up to 3 mutex locks occur in this function.
+     * If threads switch often enough,
+     * this could become a significant bottleneck. */
+
+    sync();
+
+    if(isNewThread(tid))
+    {
+        iop_count = 0;
+        flop_count = 0;
+    }
+    else
+    {
+        std::lock_guard<std::mutex> lock(per_thread_mutex);
+        iop_count = per_thread_counts[tid].first;
+        flop_count = per_thread_counts[tid].second;
+    }
+
+    curr_tid = tid;
+}
+
+StatCounter PerThreadStats::getThreadIOPS(TID tid)
+{
+    sync();
+    std::lock_guard<std::mutex> lock(per_thread_mutex);
+    return per_thread_counts[tid].first;
+}
+
+StatCounter PerThreadStats::getThreadFLOPS(TID tid)
+{
+    sync();
+    std::lock_guard<std::mutex> lock(per_thread_mutex);
+    return per_thread_counts[tid].second;
+}
+
+
+////////////////////////////////////////////////////////////
 // Synchronization Event Handling
 ////////////////////////////////////////////////////////////
 std::mutex sync_event_mutex;
@@ -167,10 +229,12 @@ void EventHandlers::onCompEv(const SglCompEv &ev)
     switch (ev.type)
     {
     case CompCostTypeEnum::SGLPRIM_COMP_IOP:
+        ++stats.iop_count;
         st_comp_ev.incIOP();
         break;
 
     case CompCostTypeEnum::SGLPRIM_COMP_FLOP:
+        ++stats.flop_count;
         st_comp_ev.incFLOP();
         break;
 
@@ -279,6 +343,10 @@ void EventHandlers::onCxtEv(const SglCxtEv &ev)
 ////////////////////////////////////////////////////////////
 // Flush any pthread data
 ////////////////////////////////////////////////////////////
+
+/* XXX MDL20161018 should only be invoked after all instances of EventHandlers are
+ * destroyed. This is the expected case and the user should not have to
+ * do anything special */
 void onExit()
 {
     std::string pthread_metadata(EventHandlers::output_directory + "/sigil.pthread.out");
@@ -335,8 +403,13 @@ void onExit()
 
     /* For SynchroTraceSim CPI calculations */
     pthread_logger->info("Total instructions: " + std::to_string(STInstrEvent::instr_count));
-    pthread_logger->info("Total iops: " + std::to_string(STCompEvent::iop_count_global));
-    pthread_logger->info("Total flops: " + std::to_string(STCompEvent::flop_count_global));
+
+    for (auto &p : PerThreadStats::per_thread_counts)
+    {
+        pthread_logger->info("Thread Stats: " + std::to_string(p.first));
+        pthread_logger->info("\tIOPS : " + std::to_string(p.second.first));
+        pthread_logger->info("\tFLOPS: " + std::to_string(p.second.second));
+    }
 
     pthread_logger->flush();
 }
@@ -361,18 +434,6 @@ EventHandlers::~EventHandlers()
     st_comm_ev.flush();
     st_comp_ev.flush();
     // sync events already flush immediately
-
-    for (auto &p : loggers)
-    {
-        std::string IOP_stats = "IOP_cnt: ";
-        IOP_stats.append(std::to_string(st_comp_ev.per_thread_data.getThreadIOPS(p.first)));
-
-        std::string FLOP_stats = "FLOP_cnt: ";
-        FLOP_stats.append(std::to_string(st_comp_ev.per_thread_data.getThreadFLOPS(p.first)));
-
-        p.second->info(IOP_stats);
-        p.second->info(FLOP_stats);
-    }
 
     /* close remaining logs before gzstreams close
      * to prevent nasty race conditions that can
@@ -400,6 +461,8 @@ void EventHandlers::setThread(TID tid)
 {
     assert(tid >= 0);
 
+    stats.setThread(tid);
+
     if (curr_thread_id == tid)
     {
         return;
@@ -420,9 +483,6 @@ void EventHandlers::setThread(TID tid)
         curr_event_id = event_ids[tid];
         switchThreadLog(tid);
     }
-
-    /* XXX pacohotfix: for tracking per-thread iop/flop totals */
-    st_comp_ev.per_thread_data.setThread(tid);
 
     curr_thread_id = tid;
 }

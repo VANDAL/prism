@@ -5,7 +5,7 @@
 #include <memory>
 #include <fstream>
 
-#include "spdlog.h"
+#include "spdlog/spdlog.h"
 #include "zfstream.h"
 #include "Sigil2/Sigil.hpp"
 
@@ -18,6 +18,30 @@ namespace STGen
 /* parse any arguments */
 void onParse(Sigil::Args args);
 void onExit();
+
+
+////////////////////////////////////////////////////////////
+// Local stats for each thread
+// Required for CPI estimates in SynchroTrace
+////////////////////////////////////////////////////////////
+struct PerThreadStats
+{
+    static constexpr TID INVL_TID = -1;
+    TID curr_tid{INVL_TID};
+
+    /* (thread id, <iop, flop>) */
+    static std::mutex per_thread_mutex;
+    static std::unordered_map<TID, std::pair<StatCounter, StatCounter>> per_thread_counts;
+    StatCounter flop_count{0};
+    StatCounter iop_count{0};
+
+    void sync();
+    bool isNewThread(TID tid);
+    void setThread(TID tid);
+    StatCounter getThreadIOPS(TID tid);
+    StatCounter getThreadFLOPS(TID tid);
+};
+
 
 ////////////////////////////////////////////////////////////
 // Shared between all threads
@@ -97,6 +121,7 @@ class EventHandlers : public Backend
     STCompEvent st_comp_ev;
     STCommEvent st_comm_ev;
     STSyncEvent st_sync_ev;
+    PerThreadStats stats;
 
   private:
     void onLoad(const SglMemEv &ev_data);

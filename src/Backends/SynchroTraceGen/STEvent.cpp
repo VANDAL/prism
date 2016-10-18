@@ -1,6 +1,6 @@
 #include "STEvent.hpp"
 
-#include "spdlog.h"
+#include "spdlog/spdlog.h"
 #include <cassert>
 #include <cstring>
 
@@ -10,9 +10,6 @@ namespace STGen
 ////////////////////////////////////////////////////////////
 // SynchroTrace - Compute Event
 ////////////////////////////////////////////////////////////
-decltype(STCompEvent::flop_count_global) STCompEvent::flop_count_global{0};
-decltype(STCompEvent::iop_count_global) STCompEvent::iop_count_global{0};
-
 STCompEvent::STCompEvent(TID &tid, EID &eid, const std::shared_ptr<spdlog::logger> &logger,
                          STInstrEvent &instr_ev)
     : instr_ev(instr_ev)
@@ -109,9 +106,6 @@ void STCompEvent::incIOP()
     is_empty = false;
     ++iop_cnt;
     ++total_events;
-
-    ++per_thread_data.iop_count;
-    ++iop_count_global;
 }
 
 
@@ -120,9 +114,6 @@ void STCompEvent::incFLOP()
     is_empty = false;
     ++flop_cnt;
     ++total_events;
-
-    ++per_thread_data.flop_count;
-    ++flop_count_global;
 }
 
 
