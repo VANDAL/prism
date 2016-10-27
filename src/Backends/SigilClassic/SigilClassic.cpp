@@ -1,6 +1,16 @@
 #include "SigilClassic.hpp"
 #include "Sigil2/SigiLog.hpp"
 
+/* XXX overflow builtin not in GCC <5.
+ * This overflow check should only be used for
+ * variables which increment by 1 each time. */
+#if __GNUC__ >= 5
+#define INCR_EID_OVERFLOW(var) __builtin_add_overflow(var, 1, &var)
+#else
+#define INCR_EID_OVERFLOW(var) (var == INT_MAX ? true : var += 1 && false)
+#endif
+
+
 namespace SigilClassic
 {
 
@@ -34,8 +44,11 @@ auto SigilContext::enterEntity(std::string name) -> void
     /* Initialize new metadata in map, and set name */
 
     /* count is not bounded, error if too many functions */
-    if(__builtin_add_overflow(global_eid_cnt, 1, &global_eid_cnt))
+    if(INCR_EID_OVERFLOW(global_eid_cnt))
+    {
         SigiLog::fatal("SigilClassic detected overflow in entity count");
+    }
+
     EID caller = *cur_eid;
     *cur_eid = global_eid_cnt;
 
