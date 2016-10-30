@@ -13,7 +13,7 @@
 #define DRSIGIL_FULLFIFO_NAME ("sgl2-dr-full")
 #define DRSIGIL_FINISHED (0xFFFFFFFFu)
 
-#ifdef __cpluscplus
+#ifdef __cplusplus
 extern "C" {
 #else
 typedef struct DrSigilEvent DrSigilEvent;
@@ -31,7 +31,7 @@ typedef struct DrSigilSharedData DrSigilSharedData;
         DrSigilEvent buf[DRSIGIL_BUFNUM][DRSIGIL_BUFSIZE];
     };
 
-#ifdef __cpluscplus
+#ifdef __cplusplus
 }
 #else
 #endif

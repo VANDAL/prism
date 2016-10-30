@@ -16,7 +16,7 @@
 #define SIGRIND_FULLFIFO_NAME ("sgl2-vg-full")
 #define SIGRIND_FINISHED (0xFFFFFFFFu)
 
-#ifdef __cpluscplus
+#ifdef __cplusplus
 extern "C" {
 #else
 typedef struct SigrindSharedData SigrindSharedData;
@@ -27,7 +27,7 @@ typedef struct SigrindSharedData SigrindSharedData;
         BufferedSglEv buf[SIGRIND_BUFNUM][SIGRIND_BUFSIZE];
     };
 
-#ifdef __cpluscplus
+#ifdef __cplusplus
 }
 #else
 #endif
