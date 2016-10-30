@@ -7,7 +7,7 @@
 #if __GNUC__ >= 5
 #define INCR_EID_OVERFLOW(var) __builtin_add_overflow(var, 1, &var)
 #else
-#define INCR_EID_OVERFLOW(var) (var == INT_MAX ? true : var += 1 && false)
+#define INCR_EID_OVERFLOW(var) (var == INT_MAX ? true : (var += 1) && false)
 #endif
 
 
