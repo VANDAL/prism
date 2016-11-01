@@ -54,7 +54,7 @@ auto Handler::onCxtEv(const SglCxtEv &ev) -> void
     switch(ev.type)
     {
       case CxtTypeEnum::SGLPRIM_CXT_FUNC_ENTER:
-        cxt.enterEntity(ev.name);  
+        //cxt.enterEntity(ev.name);  
         break;
       case CxtTypeEnum::SGLPRIM_CXT_FUNC_EXIT:
         cxt.exitEntity();  

@@ -16,6 +16,8 @@ Welcome to |project|
    quickstart
    overview
    user-docs
+   backends
+   frontends
    dev-docs
    about
 

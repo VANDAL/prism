@@ -8,6 +8,8 @@
 #define SIGRIND_BUFSIZE (1 << 24)
 #define SIGRIND_BUFNUM (4)
 
+#define SIGRIND_FN_ARENA_SIZE (1 << 22)
+
 /* A timestamp should be appended to these names
  * to avoid conflicts when multiple instances
  * are run concurrently */
@@ -20,11 +22,17 @@
 extern "C" {
 #else
 typedef struct SigrindSharedData SigrindSharedData;
+typedef struct SigrindFnNameArena SigrindFnNameArena;
 #endif
 
     struct SigrindSharedData
     {
         BufferedSglEv buf[SIGRIND_BUFNUM][SIGRIND_BUFSIZE];
+    };
+
+    struct SigrindFnNameArena
+    {
+        char names[SIGRIND_FN_ARENA_SIZE];
     };
 
 #ifdef __cplusplus

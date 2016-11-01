@@ -432,19 +432,38 @@ ExecArgs tokenizeOpts(const std::vector<std::string> &user_exec,
     assert(!user_exec.empty() && !tmp_dir.empty());
 
     /* format valgrind options */
-    /*                 program name + valgrind options + tmp_dir + timestamp + start/stop_func + user program options + null */
-    int vg_opts_size = 1            + 2 + args.size()    + 1       + 1       + 2               + user_exec.size()     + 1;
+    int vg_opts_size = 1/*program name*/ +
+                       2/*vg opts*/ +
+                       1/*tmp_dir*/ +
+                       1/*timestamp*/ +
+                       8/*sigrind opts default*/ +
+                       args.size()/*sigrind opts defined*/ +
+                       user_exec.size()/*user program options*/ +
+                       1/*null*/;
     char **vg_opts = static_cast<char **>(malloc(vg_opts_size * sizeof(char *)));
 
     int i = 0;
+    /*program name*/
     vg_opts[i++] = strdup("valgrind");
+
+    /*vg opts*/
     vg_opts[i++] = strdup("--fair-sched=yes"); /* more reliable and reproducible
                                                   thread interleaving; round robins
                                                   each thread instead of letting one
                                                   thread dominate execution */
     vg_opts[i++] = strdup("--tool=sigrind");
+
     vg_opts[i++] = strdup((std::string("--tmp-dir=").append(tmp_dir)).c_str());
     vg_opts[i++] = strdup((std::string("--timestamp=").append(timestamp)).c_str());
+
+    /*sigrind defaults*/
+    vg_opts[i++] = strdup("--gen-mem=yes");
+    vg_opts[i++] = strdup("--gen-comp=yes");
+    vg_opts[i++] = strdup("--gen-cf=no");
+    vg_opts[i++] = strdup("--gen-sync=yes");
+    vg_opts[i++] = strdup("--gen-instr=yes");
+    vg_opts[i++] = strdup("--gen-bb=no");
+    vg_opts[i++] = strdup("--gen-fn=no");
 
     for (auto &arg : args)
     {

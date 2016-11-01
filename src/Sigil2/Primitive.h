@@ -86,14 +86,8 @@ typedef struct BufferedSglEv BufferedSglEv;
             Addr id;
             struct
             {
-                char         *name;
-                uint8_t       len;
-                /* Implicit max length [256]
-                 *
-                 * XXX
-                 * The following 'len' bytes after this struct will be the name
-                 * of the context. The consumer of 'name' is responsible for
-                 * freeing it's memory */
+                uint32_t idx;
+                uint8_t  len; /* Implicit max length [256] */
             } __attribute__ ((__packed__));
         } __attribute__ ((__packed__));
     };
