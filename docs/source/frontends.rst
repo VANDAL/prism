@@ -17,8 +17,8 @@ Description
 ^^^^^^^^^^^
 
 Uses a heavily modified Callgrind tool, *Sigrind*, to observe |project| *event
-primitives* and pass them to the backend.  Valgrind is serializes all threads
-in the target executable, so only one thread's event stream is passed to the
+primitives* and pass them to the backend.  Valgrind serializes all threads in
+the target executable, so only one thread's event stream is passed to the
 backend at a time. A context switch is signaled with a |project| context event.
 Because threads are serialized by Valgrind, the target executable is mostly
 deterministic.

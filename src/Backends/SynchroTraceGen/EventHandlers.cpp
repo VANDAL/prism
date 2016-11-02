@@ -576,7 +576,7 @@ void onParse(Sigil::Args args)
 
     if (unmatched > 0)
     {
-        SigiLog::warn("unexpected synchrotracegen options");
+        SigiLog::fatal("unexpected synchrotracegen options");
     }
 
     if (matches['o'].empty() == false)
