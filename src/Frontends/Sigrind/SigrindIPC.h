@@ -30,11 +30,6 @@ typedef struct SigrindFnNameArena SigrindFnNameArena;
         BufferedSglEv buf[SIGRIND_BUFNUM][SIGRIND_BUFSIZE];
     };
 
-    struct SigrindFnNameArena
-    {
-        char names[SIGRIND_FN_ARENA_SIZE];
-    };
-
 #ifdef __cplusplus
 }
 #else

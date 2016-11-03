@@ -23,7 +23,7 @@ namespace STGen
  * set to 16-bits and 32-bits for memory usage considerations.
  * Increasing the sizes may be required in the future. */
 using TID = int16_t;
-using EID = int32_t;
+using EID = uint32_t;
 constexpr TID SO_UNDEF = -1;
 
 /* XXX do not change type */
@@ -75,7 +75,7 @@ class ShadowMemory
         {
             /* Last thread/event to read/write to addr */
             TID last_writer{SO_UNDEF};
-            EID last_writer_event{SO_UNDEF};
+            EID last_writer_event{0};
 
             /* A bitfield -- each bit represents a thread
              * each address can have multiple readers */

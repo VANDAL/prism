@@ -16,7 +16,7 @@ TEST_CASE("shadow memory inits readers/writers", "[ShadowMemoryInit]")
     {
         ShadowMemory sm;
         REQUIRE(sm.getWriterTID(0) == STGen::SO_UNDEF);
-        REQUIRE(sm.getWriterEID(0) == STGen::SO_UNDEF);
+        REQUIRE(sm.getWriterEID(0) == 0);
 
         for(size_t i = 0; i < STGen::MAX_THREADS; ++i)
         {

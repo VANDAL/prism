@@ -424,8 +424,8 @@ EventHandlers::EventHandlers()
     , st_comm_ev(curr_thread_id, curr_event_id, curr_logger, st_cxt_ev)
     , st_sync_ev(curr_thread_id, curr_event_id, curr_logger)
 {
-    curr_thread_id = -1;
-    curr_event_id = -1;
+    curr_thread_id = SO_UNDEF;
+    curr_event_id = 0;
 }
 
 

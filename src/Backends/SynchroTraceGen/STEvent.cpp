@@ -1,8 +1,17 @@
 #include "STEvent.hpp"
+#include "Sigil2/SigiLog.hpp"
 
-#include "spdlog/spdlog.h"
 #include <cassert>
 #include <cstring>
+
+/* XXX overflow builtin not in GCC <5.
+ * This overflow check should only be used for
+ * variables which increment by 1 each time. */
+#if __GNUC__ >= 5
+#define INCR_EID_OVERFLOW(var) __builtin_add_overflow(var, 1, &var)
+#else
+#define INCR_EID_OVERFLOW(var) (var == UINT_MAX ? true : (var += 1) && false)
+#endif
 
 namespace STGen
 {
@@ -55,7 +64,12 @@ void STCompEvent::flush()
         }
 
         logger->info(logmsg);
-        ++event_id;
+
+        if(INCR_EID_OVERFLOW(event_id))
+        {
+            SigiLog::fatal("SynchroTraceGen Event ID overflow");
+        }
+
         reset();
     }
 }
@@ -173,7 +187,12 @@ void STCommEvent::flush()
         }
 
         logger->info(logmsg);
-        ++event_id;
+
+        if(INCR_EID_OVERFLOW(event_id))
+        {
+            SigiLog::fatal("SynchroTraceGen Event ID overflow");
+        }
+
         reset();
     }
 }
@@ -272,7 +291,11 @@ void STSyncEvent::flush(const STSyncType type, const Addr sync_addr)
     logmsg += n2hexstr(sync_addr);
     logger->info(logmsg);
     logmsg.clear();
-    ++event_id;
+
+    if(INCR_EID_OVERFLOW(event_id))
+    {
+        SigiLog::fatal("SynchroTraceGen Event ID overflow");
+    }
 }
 
 
