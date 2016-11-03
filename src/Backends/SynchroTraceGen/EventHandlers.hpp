@@ -9,7 +9,7 @@
 #include "zfstream.h"
 #include "Sigil2/Sigil.hpp"
 
-#include "ShadowMemory.hpp"
+#include "STShadowMemory.hpp"
 #include "STEvent.hpp"
 
 namespace STGen
@@ -68,7 +68,7 @@ class EventHandlers : public Backend
     /* Shadow memory is shared amongst all instances,
      * with the implication that each instance may be
      * a separate thread's stream of events */
-    static ShadowMemory shad_mem;
+    static STShadowMemory shad_mem;
 
     /* Per-thread event count. Logged to SynchroTrace event trace.
      * Each derived SynchroTrace event tracks the same event id.  */

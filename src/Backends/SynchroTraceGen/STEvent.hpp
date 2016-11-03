@@ -11,7 +11,7 @@
 #include "spdlog/spdlog.h"
 
 #include "Sigil2/Primitive.h"
-#include "ShadowMemory.hpp"
+#include "STShadowMemory.hpp"
 
 /*******************************************************************************
  * SynchroTrace Events

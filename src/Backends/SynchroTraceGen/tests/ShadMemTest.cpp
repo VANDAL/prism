@@ -4,9 +4,9 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "SynchroTraceGen/ShadowMemory.hpp"
+#include "SynchroTraceGen/STShadowMemory.hpp"
 
-using STGen::ShadowMemory;
+using STGen::STShadowMemory;
 using STGen::TID;
 using STGen::EID;
 
@@ -14,7 +14,7 @@ TEST_CASE("shadow memory inits readers/writers", "[ShadowMemoryInit]")
 {
     SECTION("secondary maps and values are INITIALIZED")
     {
-        ShadowMemory sm;
+        STShadowMemory sm;
         REQUIRE(sm.getWriterTID(0) == STGen::SO_UNDEF);
         REQUIRE(sm.getWriterEID(0) == 0);
 
@@ -32,7 +32,7 @@ TEST_CASE("shadow memory tracks readers/writers", "[ShadowMemorySetGet]")
     SECTION("setting READERS across SM boundaries")
     {
         std::cout << std::endl;
-        ShadowMemory sm;
+        STShadowMemory sm;
 
         TID tid1 = rand() % STGen::MAX_THREADS;
         Addr addr1 = 0x0000;
@@ -40,7 +40,7 @@ TEST_CASE("shadow memory tracks readers/writers", "[ShadowMemorySetGet]")
         sm.updateReader(ev1.begin_addr, ev1.size, tid1);
 
         TID tid2 = rand() % STGen::MAX_THREADS;
-        Addr addr2 = sm.sm_size - 1;
+        Addr addr2 = sm.sm.sm_size - 1;
         ByteCount bytes = 8;
         SglMemEv ev2 = {addr2, bytes, SGLPRIM_MEM_LOAD,};
         sm.updateReader(ev2.begin_addr, ev2.size, tid2);
@@ -55,7 +55,7 @@ TEST_CASE("shadow memory tracks readers/writers", "[ShadowMemorySetGet]")
 
     SECTION("setting WRITERS across SM boundaries")
     {
-        ShadowMemory sm;
+        STShadowMemory sm;
 
         TID tid1 = rand() % STGen::MAX_THREADS;
         Addr addr1 = 0x0000;
@@ -64,7 +64,7 @@ TEST_CASE("shadow memory tracks readers/writers", "[ShadowMemorySetGet]")
         sm.updateWriter(ev1.begin_addr, ev1.size, tid1, eid1);
 
         TID tid2 = rand() % STGen::MAX_THREADS;
-        Addr addr2 = sm.sm_size - 1;
+        Addr addr2 = sm.sm.sm_size - 1;
         ByteCount bytes = 8;
         SglMemEv ev2 = {addr2, bytes, SGLPRIM_MEM_STORE,};
         EID eid2 = rand() % 1000;
@@ -85,7 +85,7 @@ TEST_CASE("shadow memory tracks readers/writers", "[ShadowMemorySetGet]")
 
     SECTION("setting writer clears out reader")
     {
-        ShadowMemory sm;
+        STShadowMemory sm;
 
         TID tid1 = 1;
         Addr addr1 = 0x0000;
