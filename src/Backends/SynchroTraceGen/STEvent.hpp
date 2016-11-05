@@ -90,6 +90,9 @@ struct AddrSet
 
 
 /**
+ * XXX MDL20161104
+ * Instruction address not currenlty utilized
+ *
  * A SynchroTrace Instruction Event
  *
  * SynchroTrace tracks instruction addresses for future work to increase
@@ -98,7 +101,7 @@ struct AddrSet
  *
  * The addresses are aggregated to avoid needless writes
  */
-class STInstrEvent
+struct STInstrEvent
 {
     /* all active addresses */
     std::string instrs;
@@ -106,11 +109,6 @@ class STInstrEvent
     bool is_empty;
     const std::shared_ptr<spdlog::logger> &logger;
 
-  public:
-    /* running count over all threads */
-    static std::atomic<unsigned long long> instr_count;
-
-  public:
     STInstrEvent(const std::shared_ptr<spdlog::logger> &logger);
     void append_instr(Addr addr);
 
@@ -151,8 +149,6 @@ struct STCompEvent
     AddrSet stores_unique;
     AddrSet loads_unique;
 
-    STInstrEvent &instr_ev;
-
     StatCounter total_events;
     bool is_empty;
 
@@ -161,10 +157,7 @@ struct STCompEvent
     std::string logmsg;
     const std::shared_ptr<spdlog::logger> &logger;
 
-  public:
-    STCompEvent(TID &tid, EID &eid,
-                const std::shared_ptr<spdlog::logger> &logger,
-                STInstrEvent &instr_ev);
+    STCompEvent(TID &tid, EID &eid, const std::shared_ptr<spdlog::logger> &logger);
     void flush();
     void updateWrites(const SglMemEv &ev);
     void updateWrites(const Addr begin, const Addr size);
@@ -208,16 +201,12 @@ struct STCommEvent
     LoadEdges comms;
     bool is_empty;
 
-    STInstrEvent &instr_ev;
-
     TID &thread_id;
     EID &event_id;
     std::string logmsg;
     const std::shared_ptr<spdlog::logger> &logger;
 
-  public:
-    STCommEvent(TID &tid, EID &eid, const std::shared_ptr<spdlog::logger> &logger,
-                STInstrEvent &instr_ev);
+    STCommEvent(TID &tid, EID &eid, const std::shared_ptr<spdlog::logger> &logger);
     void flush();
 
     /**
@@ -249,7 +238,7 @@ struct STCommEvent
  * Synchronizatin events are expected to be immediately logged.
  */
 using STSyncType = unsigned char;
-class STSyncEvent
+struct STSyncEvent
 {
     STSyncType type = 0;
     Addr sync_addr = 0;
@@ -259,7 +248,6 @@ class STSyncEvent
     std::string logmsg;
     const std::shared_ptr<spdlog::logger> &logger;
 
-  public:
     STSyncEvent(TID &tid, EID &eid, const std::shared_ptr<spdlog::logger> &logger);
 
     /* only behavior is immediate flush */

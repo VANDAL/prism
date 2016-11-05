@@ -19,10 +19,8 @@ namespace STGen
 ////////////////////////////////////////////////////////////
 // SynchroTrace - Compute Event
 ////////////////////////////////////////////////////////////
-STCompEvent::STCompEvent(TID &tid, EID &eid, const std::shared_ptr<spdlog::logger> &logger,
-                         STInstrEvent &instr_ev)
-    : instr_ev(instr_ev)
-    , thread_id(tid)
+STCompEvent::STCompEvent(TID &tid, EID &eid, const std::shared_ptr<spdlog::logger> &logger)
+    : thread_id(tid)
     , event_id(eid)
     , logger(logger)
 {
@@ -34,8 +32,6 @@ void STCompEvent::flush()
 {
     if (is_empty == false)
     {
-        instr_ev.flush();
-
         logmsg += std::to_string(event_id).append(",");
         logmsg += std::to_string(thread_id).append(",");
         logmsg += std::to_string(iop_cnt).append(",");
@@ -149,10 +145,8 @@ inline void STCompEvent::reset()
 ////////////////////////////////////////////////////////////
 // SynchroTrace - Communication Event
 ////////////////////////////////////////////////////////////
-STCommEvent::STCommEvent(TID &tid, EID &eid, const std::shared_ptr<spdlog::logger> &logger,
-                         STInstrEvent &instr_ev)
-    : instr_ev(instr_ev)
-    , thread_id(tid)
+STCommEvent::STCommEvent(TID &tid, EID &eid, const std::shared_ptr<spdlog::logger> &logger)
+    : thread_id(tid)
     , event_id(eid)
     , logger(logger)
 {
@@ -164,8 +158,6 @@ void STCommEvent::flush()
 {
     if (is_empty == false)
     {
-        instr_ev.flush();
-
         logmsg += std::to_string(event_id).append(",");
         logmsg += std::to_string(thread_id);
 
@@ -233,8 +225,6 @@ inline void STCommEvent::reset()
 ////////////////////////////////////////////////////////////
 // SynchroTrace - Context Event (Instruction)
 ////////////////////////////////////////////////////////////
-std::atomic<unsigned long long> STInstrEvent::instr_count{0};
-
 STInstrEvent::STInstrEvent(const std::shared_ptr<spdlog::logger> &logger)
     : logger(logger)
 {
@@ -244,11 +234,6 @@ STInstrEvent::STInstrEvent(const std::shared_ptr<spdlog::logger> &logger)
 
 void STInstrEvent::append_instr(Addr addr)
 {
-    /* Parity with current version of SynchroTraceSim;
-     * only requires an instruction count */
-    ++instr_count;
-    return;
-
     instrs += "! ";
     instrs += n2hexstr(addr);
     instrs += " ";

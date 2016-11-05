@@ -24,22 +24,23 @@ void onExit();
 // Local stats for each thread
 // Required for CPI estimates in SynchroTrace
 ////////////////////////////////////////////////////////////
+/* XXX MDL20161104
+ * Stats implementation will cause lock contention in frontends that produce
+ * frequent thread switching in event streams, such as DynamoRIO. */
 struct PerThreadStats
 {
     static constexpr TID INVL_TID = -1;
     TID curr_tid{INVL_TID};
 
-    /* (thread id, <iop, flop>) */
-    static std::mutex per_thread_mutex;
-    static std::unordered_map<TID, std::pair<StatCounter, StatCounter>> per_thread_counts;
-    StatCounter flop_count{0};
-    StatCounter iop_count{0};
+    /* <iop, flop, read, write>) */
+    enum Type {IOP = 0, FLOP, Read, Write, Instr};
+    using Stats = std::tuple<StatCounter, StatCounter, StatCounter, StatCounter, StatCounter>;
+    Stats curr_counts{0,0,0,0,0};
 
+    static std::mutex stats_mutex;
+    static std::unordered_map<TID, Stats> per_thread_counts;
     void sync();
-    bool isNewThread(TID tid);
     void setThread(TID tid);
-    StatCounter getThreadIOPS(TID tid);
-    StatCounter getThreadFLOPS(TID tid);
 };
 
 
@@ -112,12 +113,7 @@ class EventHandlers : public Backend
      * One of each event is populated and flushed as Sigil
      * primitives are processed. Because there might be trillions
      * or more of SynchroTrace events, dynamic heap allocation of
-     * consecutive SynchroTrace events is avoided
-     *
-     * An additional pseudo-event, an instruction event, represents
-     * instruction addresses. Whenever any other event is flushed,
-     * this instruction event should also be flushed. */
-    STInstrEvent st_cxt_ev;
+     * consecutive SynchroTrace events is avoided */
     STCompEvent st_comp_ev;
     STCommEvent st_comm_ev;
     STSyncEvent st_sync_ev;

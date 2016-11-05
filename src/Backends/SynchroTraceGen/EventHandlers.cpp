@@ -17,68 +17,44 @@ STShadowMemory EventHandlers::shad_mem;
 
 std::string EventHandlers::output_directory{"."};
 const std::string EventHandlers::filebase = "sigil.events.out-";
-unsigned int EventHandlers::primitives_per_st_comp_ev{100};
+unsigned EventHandlers::primitives_per_st_comp_ev{100};
 
 
 ////////////////////////////////////////////////////////////
-// Local stats for each thread
+// Stats for each thread
 // Required for CPI estimates in SynchroTrace
 ////////////////////////////////////////////////////////////
 decltype(PerThreadStats::per_thread_counts) PerThreadStats::per_thread_counts;
-decltype(PerThreadStats::per_thread_mutex) PerThreadStats::per_thread_mutex;
+decltype(PerThreadStats::stats_mutex) PerThreadStats::stats_mutex;
 
 void PerThreadStats::sync()
 {
     if(curr_tid != INVL_TID)
     {
-        std::lock_guard<std::mutex> lock(per_thread_mutex);
-        per_thread_counts[curr_tid].first = iop_count;
-        per_thread_counts[curr_tid].second = flop_count;
+        std::lock_guard<std::mutex> lock(stats_mutex);
+        per_thread_counts[curr_tid] = curr_counts;
     }
-}
-
-bool PerThreadStats::isNewThread(TID tid)
-{
-    std::lock_guard<std::mutex> lock(per_thread_mutex);
-    return per_thread_counts.find(tid) == per_thread_counts.cend();
 }
 
 void PerThreadStats::setThread(TID tid)
 {
-    /* XXX MDL20161018 Performance Concern:
-     * Up to 3 mutex locks occur in this function.
-     * If threads switch often enough,
-     * this could become a significant bottleneck. */
+    std::lock_guard<std::mutex> lock(stats_mutex);
 
-    sync();
-
-    if(isNewThread(tid))
+    if(curr_tid != INVL_TID)
     {
-        iop_count = 0;
-        flop_count = 0;
+        per_thread_counts[curr_tid] = curr_counts;
+    }
+
+    if(per_thread_counts.find(tid) == per_thread_counts.cend())
+    {
+        curr_counts = {0,0,0,0,0};
     }
     else
     {
-        std::lock_guard<std::mutex> lock(per_thread_mutex);
-        iop_count = per_thread_counts[tid].first;
-        flop_count = per_thread_counts[tid].second;
+        curr_counts = per_thread_counts[tid];
     }
 
     curr_tid = tid;
-}
-
-StatCounter PerThreadStats::getThreadIOPS(TID tid)
-{
-    sync();
-    std::lock_guard<std::mutex> lock(per_thread_mutex);
-    return per_thread_counts[tid].first;
-}
-
-StatCounter PerThreadStats::getThreadFLOPS(TID tid)
-{
-    sync();
-    std::lock_guard<std::mutex> lock(per_thread_mutex);
-    return per_thread_counts[tid].second;
 }
 
 
@@ -229,12 +205,12 @@ void EventHandlers::onCompEv(const SglCompEv &ev)
     switch (ev.type)
     {
     case CompCostTypeEnum::SGLPRIM_COMP_IOP:
-        ++stats.iop_count;
+        ++(std::get<PerThreadStats::Type::IOP>(stats.curr_counts));
         st_comp_ev.incIOP();
         break;
 
     case CompCostTypeEnum::SGLPRIM_COMP_FLOP:
-        ++stats.flop_count;
+        ++(std::get<PerThreadStats::Type::FLOP>(stats.curr_counts));
         st_comp_ev.incFLOP();
         break;
 
@@ -252,10 +228,12 @@ void EventHandlers::onMemEv(const SglMemEv &ev)
     switch (ev.type)
     {
     case MemTypeEnum::SGLPRIM_MEM_LOAD:
+        ++(std::get<PerThreadStats::Type::Read>(stats.curr_counts));
         onLoad(ev);
         break;
 
     case MemTypeEnum::SGLPRIM_MEM_STORE:
+        ++(std::get<PerThreadStats::Type::Write>(stats.curr_counts));
         onStore(ev);
         break;
 
@@ -335,7 +313,7 @@ void EventHandlers::onCxtEv(const SglCxtEv &ev)
     /* Instruction address marker */
     if (ev.type == CxtTypeEnum::SGLPRIM_CXT_INSTR)
     {
-        st_cxt_ev.append_instr(ev.id);
+        ++(std::get<PerThreadStats::Type::Instr>(stats.curr_counts));
     }
 }
 
@@ -349,19 +327,33 @@ void EventHandlers::onCxtEv(const SglCxtEv &ev)
  * do anything special */
 void onExit()
 {
+    /* For SynchroTraceSim thread scheduling
+     * and CPI calculations */
     std::string pthread_metadata(EventHandlers::output_directory + "/sigil.pthread.out");
+    std::string stats_metadata(EventHandlers::output_directory + "/sigil.stats.out");
     std::ofstream pthread_file(pthread_metadata, std::ios::trunc | std::ios::out);
+    std::ofstream stats_file(stats_metadata, std::ios::trunc | std::ios::out);
 
     if (pthread_file.fail() == true)
     {
         SigiLog::fatal("Failed to open: " + pthread_metadata);
     }
+    else if (stats_file.fail() == true)
+    {
+        SigiLog::fatal("Failed to open: " + stats_metadata);
+    }
 
     spdlog::set_sync_mode();
-    auto ostream_sink = std::make_shared<spdlog::sinks::ostream_sink_st>(pthread_file);
-    auto pthread_logger = spdlog::create(pthread_metadata, {ostream_sink});
-    pthread_logger->set_pattern("%v");
+    auto pthread_sink = std::make_shared<spdlog::sinks::ostream_sink_st>(pthread_file);
+    auto stats_sink = std::make_shared<spdlog::sinks::ostream_sink_st>(stats_file);
 
+    auto pthread_logger = spdlog::create(pthread_metadata, {pthread_sink});
+    auto stats_logger = spdlog::create(stats_metadata, {stats_sink});
+
+    pthread_logger->set_pattern("%v");
+    stats_logger->set_pattern("%v");
+
+    /*********************************************************************/
     SigiLog::info("Flushing thread metadata to: " + pthread_metadata);
 
     /* The order the threads were seen SHOULD match to
@@ -401,17 +393,31 @@ void onExit()
         pthread_logger->info(ss.str());
     }
 
-    /* For SynchroTraceSim CPI calculations */
-    pthread_logger->info("Total instructions: " + std::to_string(STInstrEvent::instr_count));
+    pthread_logger->flush();
+    /*********************************************************************/
 
+    /*********************************************************************/
+    SigiLog::info("Flushing statistics to: " + stats_metadata);
+
+    StatCounter total_instr_count{0};
     for (auto &p : PerThreadStats::per_thread_counts)
     {
-        pthread_logger->info("Thread Stats: " + std::to_string(p.first));
-        pthread_logger->info("\tIOPS : " + std::to_string(p.second.first));
-        pthread_logger->info("\tFLOPS: " + std::to_string(p.second.second));
+        stats_logger->info("Thread Stats: " + std::to_string(p.first));
+        stats_logger->info("\tIOPS  : " +
+                             std::to_string(std::get<PerThreadStats::Type::IOP>(p.second)));
+        stats_logger->info("\tFLOPS : " +
+                             std::to_string(std::get<PerThreadStats::Type::FLOP>(p.second)));
+        stats_logger->info("\tReads : " +
+                             std::to_string(std::get<PerThreadStats::Type::Read>(p.second)));
+        stats_logger->info("\tWrites: " +
+                             std::to_string(std::get<PerThreadStats::Type::Write>(p.second)));
+
+        total_instr_count += std::get<PerThreadStats::Type::Instr>(p.second);
     }
 
-    pthread_logger->flush();
+    stats_logger->info("Total instructions: " + std::to_string(total_instr_count));
+    stats_logger->flush();
+    /*********************************************************************/
 }
 
 
@@ -419,9 +425,8 @@ void onExit()
 // Miscellaneous
 ////////////////////////////////////////////////////////////
 EventHandlers::EventHandlers()
-    : st_cxt_ev(curr_logger)
-    , st_comp_ev(curr_thread_id, curr_event_id, curr_logger, st_cxt_ev)
-    , st_comm_ev(curr_thread_id, curr_event_id, curr_logger, st_cxt_ev)
+    : st_comp_ev(curr_thread_id, curr_event_id, curr_logger)
+    , st_comm_ev(curr_thread_id, curr_event_id, curr_logger)
     , st_sync_ev(curr_thread_id, curr_event_id, curr_logger)
 {
     curr_thread_id = SO_UNDEF;
@@ -431,6 +436,9 @@ EventHandlers::EventHandlers()
 
 EventHandlers::~EventHandlers()
 {
+    // sync the last thread's stats
+    stats.sync();
+
     st_comm_ev.flush();
     st_comp_ev.flush();
     // sync events already flush immediately

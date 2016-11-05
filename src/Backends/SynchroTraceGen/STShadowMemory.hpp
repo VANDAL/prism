@@ -4,9 +4,11 @@
 #include "ShadowMemory.hpp"
 
 #include <cstdint>
-#include <vector>
-#include <memory>
 #include <bitset>
+
+/* In SynchroTraceGen, 'shadow state' takes the form of
+ * the most recent thread to {read from, write to} an address.
+ */
 
 namespace STGen
 {
@@ -17,8 +19,6 @@ namespace STGen
 using TID = int16_t;
 using EID = uint32_t;
 constexpr TID SO_UNDEF = -1;
-
-/* XXX do not change type */
 constexpr TID MAX_THREADS = 128;
 static_assert((MAX_THREADS > 0) && !(MAX_THREADS & (MAX_THREADS-1)),
               "MAX_THREADS must be a power of 2");
@@ -54,11 +54,8 @@ inline auto STShadowMemory::updateWriter(Addr addr, ByteCount bytes, TID tid, EI
     for (ByteCount i = 0; i < bytes; ++i)
     {
         ShadowObject &so = sm[addr + i];
-
         so.last_writer = tid;
         so.last_writer_event = eid;
-
-        /* Reset readers on new write */
         so.last_readers.reset();
     }
 }

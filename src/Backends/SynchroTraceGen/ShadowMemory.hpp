@@ -7,27 +7,20 @@
 #include <vector>
 #include <memory>
 
-/* Shadow Memory tracks 'shadow state' for an address.  *
- * In SynchroTraceGen, 'shadow state' takes the form of
- * the most recent thread to read from/write to an address.
- *
+/* Shadow Memory tracks 'shadow state' for an address.
  * For further clarification, please read,
  * "How to Shadow Every Byte of Memory Used by a Program"
  * by Nicholas Nethercote and Julian Seward
  */
 
+/* XXX: Setting {addr, pm} bits too large can cause bad_alloc errors */
 template <typename SO, unsigned ADDR_BITS = 38, unsigned PM_BITS = 16>
 class ShadowMemory
 {
-    static_assert(ADDR_BITS > 0, "");
-    static_assert(PM_BITS > 0, "");
+    static_assert(ADDR_BITS > 0 && ADDR_BITS < 64, "Invalid address range");
+    static_assert(PM_BITS > 0, "Invalid offset for primary map");
 
   public:
-    /* XXX: setting max address bits ABOVE 63
-     * has undefined behavior;
-     *
-     * XXX: Setting addr/pm bits too large can cause
-     * bad_alloc errors */
     ShadowMemory()
         : addr_bits(ADDR_BITS)
         , pm_bits(PM_BITS)
@@ -53,26 +46,24 @@ class ShadowMemory
 
     auto operator[](Addr addr) -> SO&
     {
-        if ((addr >> addr_bits) > 0)
-        {
-            char s_addr[32];
-            sprintf(s_addr, "0x%lx", addr);
-
-            std::string msg("shadow memory max address limit [");
-            msg.append(s_addr).append("]");
-
-            SigiLog::fatal(msg);
-        }
-        else
+        if ((addr >> addr_bits) == 0)
         {
             SecondaryMapPtr &ptr = pm[addr >> sm_bits]; /* PM offset */
             if (ptr == nullptr)
             {
                 ptr = SecondaryMapPtr(new SecondaryMap(sm_size));
-                /* XXX check if this failed? */
+                assert(ptr != nullptr);
             }
 
             return (*ptr)[addr & ((1ULL << sm_bits) - 1)]; /* SM offset */
+        }
+        else
+        {
+            char s_addr[32];
+            sprintf(s_addr, "0x%lx", addr);
+            std::string msg("shadow memory max address limit [");
+            msg.append(s_addr).append("]");
+            SigiLog::fatal(msg);
         }
     }
 
