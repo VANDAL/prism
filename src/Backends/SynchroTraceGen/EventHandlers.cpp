@@ -47,7 +47,7 @@ void PerThreadStats::setThread(TID tid)
 
     if(per_thread_counts.find(tid) == per_thread_counts.cend())
     {
-        curr_counts = {0,0,0,0,0};
+        curr_counts = std::make_tuple(0,0,0,0,0);
     }
     else
     {
