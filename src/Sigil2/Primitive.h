@@ -45,7 +45,7 @@ typedef struct SglSyncEv SglSyncEv;
 typedef struct BufferedSglEv BufferedSglEv;
 #endif
 
-    typedef uintptr_t Addr;
+    typedef uintptr_t Addr; /* XXX Can cause type redefinition problems on 32-bit platforms */
     typedef uint16_t ByteCount;
     typedef intptr_t SyncID;
     typedef uint8_t MemType;
@@ -57,6 +57,8 @@ typedef struct BufferedSglEv BufferedSglEv;
     typedef uint8_t SyncType;
     typedef uint8_t EvTag;
 
+    /* XXX How will unaligned accesses affect RISC architectures?
+     * TODO Make sure no member accesses assume alignment */
     struct SglMemEv
     {
         Addr          begin_addr;

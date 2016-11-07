@@ -38,21 +38,19 @@ class EventManager
     EventManager &operator=(const EventManager &) = delete;
     ~EventManager();
 
-    /* XXX Not thread safe.
-     *
+    /* XXX NOT THREAD SAFE
      * Undefined behavior if more than one thread
      * calls this function with the SAME buf_idx.
-     *
      * That is, thread_1 and thread_2 can only call
      * this function with buf_idx=1 and buf_idx=2,
-     * respectively.
-     */
+     * respectively. */
     template<typename T>
     void addEvent(const T &ev, uint16_t buf_idx = 0);
-
     void finish();
 
   private:
+    /* A backend is created and run for each Sigil2 backend thread */
+    void consumeEvents(EventBuffer &buffer);
     const BackendFactory backend_factory;
 
     /* The frontends forward events to these buffers.
@@ -62,14 +60,8 @@ class EventManager
      * those callbacks will need to be thread-safe. That
      * responsibility is on the backend developer. */
     std::vector<std::shared_ptr<EventBuffer>> frontend_buffers;
-
-    /* plugins implemented as separate thread */
     std::vector<std::thread> consumers;
     bool finish_consumers;
-
-    /* The backend is created and run in this
-     * function for each Sigil backend thread */
-    void consumeEvents(EventBuffer &buffer);
 };
 
 

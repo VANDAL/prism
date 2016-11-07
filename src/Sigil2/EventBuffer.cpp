@@ -4,22 +4,19 @@
 namespace sgl
 {
 
-int EventBuffer::g_id = 0;
-
 EventBuffer::EventBuffer()
     : full(0)
     , empty(MAX_BUFFERS)
 {
-    m_id = ++g_id;
     /* initialize producer-consumer state */
     empty.P();
-    prod_buf = &bufbuf[prod_idx.increment_or_reset()];
+    prod_buf = &bufbuf[++prod_idx];
 }
 
 
 EventBuffer::~EventBuffer()
 {
-    size_t event_buffer_size = MAX_BUFFERS*sizeof(Buffer);
+    size_t event_buffer_size = MAX_BUFFERS * sizeof(Buffer);
     SigiLog::debug("Backend Event Buffer size: " + std::to_string(event_buffer_size));
 }
 
@@ -29,7 +26,7 @@ void EventBuffer::flush(Backend &backend)
     assert(prod_buf != nullptr);
     full.P();
 
-    Buffer &buf = bufbuf[cons_idx.increment_or_reset()];
+    Buffer &buf = bufbuf[++cons_idx];
 
     for (decltype(buf.used) i = 0; i < buf.used; ++i)
     {
