@@ -18,15 +18,6 @@ This creates a ``build/bin`` folder containing the :program:`sigil2` executable.
 It can be run in place, or the entire ``bin`` folder can be moved,
 although it's not advised to move it to a system location.
 
-.. note:: If you have build errors about **undefined references**,
-          try (in the ``build`` dir):
-
-.. code-block:: none
-
-   $ rm -rf * 
-   $ cmake .. -DCMAKE_BUILD_TYPE=release -DCMAKE_AR:FILEPATH=gcc-ar -DCMAKE_RANLIB:FILEPATH=gcc-ranlib
-   $ make -j<JOBS>
-
 Running Sigil2
 --------------
 
