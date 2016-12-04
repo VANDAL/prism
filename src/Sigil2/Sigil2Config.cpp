@@ -40,7 +40,7 @@ auto Sigil2Config::parseCommandLine(int argc, char* argv[]) -> Sigil2Config&
     std::string feName;
     std::vector<std::string> feArgs;
     std::tie(feName, feArgs) = parser.frontend();
-    _frontend = feFactory.create(feName, {execArgs, feArgs, _threads});
+    _frontend = feFactory.create(feName, std::make_tuple(execArgs, feArgs, _threads));
 
     return *this;
 }

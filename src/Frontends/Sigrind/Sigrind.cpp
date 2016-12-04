@@ -245,9 +245,9 @@ namespace
 using ExecArgs = char *const *;
 using Exec = std::pair<std::string, ExecArgs>;
 
-auto gccWarn(const std::vector<std::string> &user_exec) -> void
+auto gccWarn(const std::vector<std::string> &userExec) -> void
 {
-    assert(user_exec.empty() == false);
+    assert(userExec.empty() == false);
 
     /* Naively assume the first option is the user binary.
      * ML: KS says that OpenMP is only guaranteed to work for
@@ -259,7 +259,7 @@ auto gccWarn(const std::vector<std::string> &user_exec) -> void
     std::string gcc_version_needed("4.9.2");
     std::string gcc_version_found;
 
-    if (reader.load(user_exec[0]) != 0)
+    if (reader.load(userExec[0]) != 0)
     {
         ELFIO::Elf_Half sec_num = reader.sections.size();
 
@@ -295,7 +295,7 @@ auto gccWarn(const std::vector<std::string> &user_exec) -> void
 
     if (is_gcc_compatible == false)
     {
-        warn("\'" + user_exec[0] + "\'" + ":");
+        warn("\'" + userExec[0] + "\'" + ":");
         warn("GCC version " + gcc_version_needed + " not detected");
 
         if (gcc_version_found.empty() == false)
@@ -341,11 +341,11 @@ auto configureWrapperEnv(std::string sigil2_path) -> void
 }
 
 
-auto tokenizeOpts(const std::vector<std::string>& user_exec,
+auto tokenizeOpts(const std::vector<std::string>& userExec,
                   const std::vector<std::string>& args,
-                  const std::string& ipc_dir) -> ExecArgs
+                  const std::string& ipcDir) -> ExecArgs
 {
-    assert(!user_exec.empty() && !ipc_dir.empty());
+    assert(!userExec.empty() && !ipcDir.empty());
 
     /* format valgrind options */
     int vg_opts_size = 1/*program name*/ +
@@ -353,7 +353,7 @@ auto tokenizeOpts(const std::vector<std::string>& user_exec,
                        1/*ipc_dir*/ +
                        8/*sigrind opts default*/ +
                        args.size()/*sigrind opts defined*/ +
-                       user_exec.size()/*user program options*/ +
+                       userExec.size()/*user program options*/ +
                        1/*null*/;
     char **vg_opts = static_cast<char **>(malloc(vg_opts_size * sizeof(char *)));
 
@@ -368,7 +368,7 @@ auto tokenizeOpts(const std::vector<std::string>& user_exec,
                                                   thread dominate execution */
     vg_opts[i++] = strdup("--tool=sigrind");
 
-    vg_opts[i++] = strdup((std::string("--ipc-dir=").append(ipc_dir)).c_str());
+    vg_opts[i++] = strdup((std::string("--ipc-dir=").append(ipcDir)).c_str());
 
     /*sigrind defaults*/
     vg_opts[i++] = strdup("--gen-mem=yes");
@@ -382,7 +382,7 @@ auto tokenizeOpts(const std::vector<std::string>& user_exec,
     for (auto &arg : args)
         vg_opts[i++] = strdup(arg.c_str());
 
-    for (auto &arg : user_exec)
+    for (auto &arg : userExec)
         vg_opts[i++] = strdup(arg.c_str());
 
     vg_opts[i] = nullptr;
@@ -391,9 +391,9 @@ auto tokenizeOpts(const std::vector<std::string>& user_exec,
 }
 
 
-auto configureValgrind(const std::vector<std::string>& user_exec,
+auto configureValgrind(const std::vector<std::string>& userExec,
                        const std::vector<std::string>& args,
-                       const std::string& ipc_dir) -> Exec
+                       const std::string& ipcDir) -> Exec
 {
     int len, dirname_len;
     len = wai_getExecutablePath(NULL, 0, &dirname_len);
@@ -420,7 +420,7 @@ auto configureValgrind(const std::vector<std::string>& user_exec,
     std::string vg_exec = std::string(path).append("/vg/bin/valgrind");
 
     /* execvp() expects a const char* const* */
-    auto vg_opts = tokenizeOpts(user_exec, args, ipc_dir);
+    auto vg_opts = tokenizeOpts(userExec, args, ipcDir);
 
     return std::make_pair(vg_exec, vg_opts);
 }
@@ -464,14 +464,14 @@ auto startSigrind(FrontendStarterArgs args) -> void
 
     gccWarn(userExecArgs);
 
-    auto shmem_path{configureShmemPath()};
+    std::string shmemPath{configureShmemPath()};
 
     auto pid = fork();
     if (pid >= 0)
     {
         if (pid == 0)
         {
-            auto valgrindArgs = configureValgrind(userExecArgs, sigrindArgs, shmem_path);
+            auto valgrindArgs = configureValgrind(userExecArgs, sigrindArgs, shmemPath);
             int res = execvp(valgrindArgs.first.c_str(), valgrindArgs.second);
 
             if (res == -1)
@@ -479,7 +479,7 @@ auto startSigrind(FrontendStarterArgs args) -> void
         }
         else
         {
-            sigrindIface = std::make_shared<Sigrind>(numThreads, shmem_path);
+            sigrindIface = std::make_shared<Sigrind>(numThreads, shmemPath);
             _sigrindReady = true;
             sigrindIface->readSigrindEvents();
 
@@ -505,7 +505,8 @@ auto sigrindReady() -> bool
 
 auto acqBufferFromSigrind(unsigned idx) -> const EventBuffer*
 {
-    assert(std::atomic_load(&sigrindIface));
+    /* atomic_load(shared_ptr*) doesn't appear implemented in gcc4.8 */
+    // assert(std::atomic_load(&sigrindIface));
     if (idx != 0)
         fatal("Valgrind frontend only has buffer index: 0");
 
@@ -518,7 +519,8 @@ auto acqBufferFromSigrind(unsigned idx) -> const EventBuffer*
 
 auto relBufferFromSigrind(unsigned idx) -> void
 {
-    assert(std::atomic_load(&sigrindIface));
+    /* atomic_load(shared_ptr*) doesn't appear implemented in gcc4.8 */
+    // assert(std::atomic_load(&sigrindIface));
     if (idx != 0)
         fatal("Valgrind frontend only has buffer index: 0");
 
