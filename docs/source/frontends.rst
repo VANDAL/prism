@@ -67,6 +67,42 @@ Options
 | --gen-fn={`yes,no`}
 |   Default: no
 |   Currently unsupported
+|
+
+
+Multithreaded Application Support
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The Valgrind frontend automatically supports *synchronization events* in
+applications that use the **POSIX threads** library and/or the **OpenMP**
+library by intercepting relevant API calls.
+
+Pthreads
+~~~~~~~~
+
+Pthreads should be supported for most versions of GCC/libc, because the Pthread
+API is quite stable.
+
+Pthreads support exists for any application dynamically linked to the Pthreads
+library.
+
+See `Static Library Support`_ for applicatons that are statically linked.
+
+OpenMP
+~~~~~~
+
+Only **GCC 4.9.2** is officially supported for synchronization event capture,
+because the implementation of the library is more likely to change between GCC versions.
+
+Dynamically linked OpenMP applications are not supported.
+Only `Static Library Support`_ exists.
+
+Static Library Support
+~~~~~~~~~~~~~~~~~~~~~~
+
+Applications that use a static Pthreads or OpenMP library must be manually linked with the
+Sigil2-Valgrind wrapper archive.
+This can be found in ``BUILD_DIR/bin/libsglwrapper.a``.
 
 ----
 
@@ -85,6 +121,9 @@ Description
 
 .. note:: Custom options must be passed to **cmake** during configuration to
           build with DynamoRIO support.
+
+**Experimental DynamioRIO support is temporarily disabled due to internal
+refactoring to improve resource usage and accuracy.**
 
 Options
 ^^^^^^^

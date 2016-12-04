@@ -11,17 +11,22 @@ include_directories(
 
 # Function wrapper for intercepting multithreading libs
 # (pthread and openmp function calls)
-add_library(sglwrapper SHARED sglwrapper.c)
-target_compile_definitions(sglwrapper PUBLIC
-	-DVGO_linux=1)
-set_target_properties(sglwrapper
+add_library(sglwrapper-shared SHARED sglwrapper.c)
+add_library(sglwrapper-static STATIC sglwrapper.c)
+target_compile_definitions(sglwrapper-shared PUBLIC -DVGO_linux=1)
+target_compile_definitions(sglwrapper-static PUBLIC -DVGO_linux=1)
+set_target_properties(sglwrapper-shared
 	PROPERTIES
-	LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
+	LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin
+	OUTPUT_NAME sglwrapper)
+set_target_properties(sglwrapper-static
+	PROPERTIES
+	ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin
+	OUTPUT_NAME sglwrapper)
 
-set(SOURCES
-	Sigrind.cpp)
+set(SOURCES Sigrind.cpp)
 add_library(Sigrind STATIC ${SOURCES})
-add_dependencies(Sigrind sglwrapper)
+add_dependencies(Sigrind sglwrapper-shared sglwrapper-static)
 
 # valgrind build
 include(ExternalProject)
