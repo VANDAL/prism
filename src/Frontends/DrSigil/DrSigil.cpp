@@ -16,7 +16,6 @@
 #include "Sigil2/Sigil.hpp"
 #include "DrSigil.hpp"
 
-
 #define DIR_TEMPLATE "/sgl2-dr-XXXXXX"
 
 /* Sigil2's DynamoRIO frontend forks DynamoRIO off as a separate process;
@@ -404,8 +403,7 @@ int sgl::DrSigil::num_threads = 1;
 
 void DrSigil::start(const std::vector<std::string> &user_exec,
                     const std::vector<std::string> &args,
-                    const uint16_t num_threads,
-                    const std::string &instance_id)
+                    const uint16_t num_threads)
 {
     assert(user_exec.empty() == false);
 

@@ -42,7 +42,6 @@ typedef struct SglCompEv SglCompEv;
 typedef struct SglCFEv SglCFEv;
 typedef struct SglCxtEv SglCxtEv;
 typedef struct SglSyncEv SglSyncEv;
-typedef struct BufferedSglEv BufferedSglEv;
 #endif
 
     typedef uintptr_t Addr; /* XXX Can cause type redefinition problems on 32-bit platforms */
@@ -98,19 +97,6 @@ typedef struct BufferedSglEv BufferedSglEv;
     {
         SyncType      type;
         SyncID        id;
-    } __attribute__ ((__packed__));
-
-    struct BufferedSglEv
-    {
-        union
-        {
-            SglMemEv  mem;
-            SglCompEv comp;
-            SglCFEv   cf;
-            SglCxtEv  cxt;
-            SglSyncEv sync;
-        };
-        EvTag tag;
     } __attribute__ ((__packed__));
 
 #ifdef __cplusplus

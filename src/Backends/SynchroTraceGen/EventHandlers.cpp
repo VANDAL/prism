@@ -512,7 +512,9 @@ void EventHandlers::initThreadLog(TID tid)
 
     auto ostream_sink = std::make_shared<spdlog::sinks::ostream_sink_st>(*thread_gz);
 
-    spdlog::set_async_mode(1 << 10);
+    /* XXX modify this to reduce memory in STGen.
+     * Buffers for asynchronous I/O */
+    spdlog::set_async_mode(1 << 14);
 
     curr_logger = spdlog::create(std::to_string(tid), {ostream_sink});
     curr_logger->set_pattern("%v");
@@ -535,7 +537,7 @@ void EventHandlers::switchThreadLog(TID tid)
 ////////////////////////////////////////////////////////////
 // Option Parsing
 ////////////////////////////////////////////////////////////
-void onParse(Sigil::Args args)
+void onParse(Args args)
 {
     /* only accept short options */
     std::set<char> options;

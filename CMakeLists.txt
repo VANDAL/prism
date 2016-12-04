@@ -55,12 +55,11 @@ include_directories(${SRC_BACKENDS})
 ################
 set(SOURCES
 	include/whereami/src/whereami.c
-	${SRC_SIGIL2}/Sigil.cpp
-	${SRC_SIGIL2}/SigilParser.cpp
-	${SRC_SIGIL2}/Plugins.cpp
+	${SRC_SIGIL2}/Backends.cpp
 	${SRC_SIGIL2}/Frontends.cpp
-	${SRC_SIGIL2}/EventBuffer.cpp
-	${SRC_SIGIL2}/EventManager.cpp
+	${SRC_SIGIL2}/Sigil2Parser.cpp
+	${SRC_SIGIL2}/Sigil2Config.cpp
+	${SRC_SIGIL2}/Sigil2.cpp
 	${SRC_SIGIL2}/main.cpp)
 add_executable(sigil2 ${SOURCES})
 target_link_libraries(sigil2 pthread rt)
@@ -74,18 +73,18 @@ set_target_properties(sigil2
 add_subdirectory(${SRC_BACKENDS}/SynchroTraceGen)
 target_link_libraries(sigil2 STGen)
 
-add_subdirectory(${SRC_BACKENDS}/SimpleCount)
-target_link_libraries(sigil2 SimpleCount)
+#add_subdirectory(${SRC_BACKENDS}/SimpleCount)
+#target_link_libraries(sigil2 SimpleCount)
 
-add_subdirectory(${SRC_BACKENDS}/SigilClassic)
-target_link_libraries(sigil2 SigilClassic)
+#add_subdirectory(${SRC_BACKENDS}/SigilClassic)
+#target_link_libraries(sigil2 SigilClassic)
 
 ##########################
 # Interface to Frontends #
 ##########################
 # static or random event injector
-add_subdirectory(${SRC_FRONTENDS}/Injector)
-target_link_libraries(sigil2 Injector)
+#add_subdirectory(${SRC_FRONTENDS}/Injector)
+#target_link_libraries(sigil2 Injector)
 
 # valgrind DBI -- default
 add_subdirectory(${SRC_FRONTENDS}/Sigrind)

@@ -7,7 +7,7 @@
 
 #include "spdlog/spdlog.h"
 #include "zfstream.h"
-#include "Sigil2/Sigil.hpp"
+#include "Sigil2/Backends.hpp"
 
 #include "STShadowMemory.hpp"
 #include "STEvent.hpp"
@@ -16,7 +16,7 @@ namespace STGen
 {
 
 /* parse any arguments */
-void onParse(Sigil::Args args);
+void onParse(Args args);
 void onExit();
 
 
@@ -64,7 +64,7 @@ extern std::vector<TID> thread_creates;
 extern std::vector<std::pair<Addr, std::set<TID>>> barrier_participants;
 
 
-class EventHandlers : public Backend
+class EventHandlers : public BackendIface
 {
     /* Shadow memory is shared amongst all instances,
      * with the implication that each instance may be

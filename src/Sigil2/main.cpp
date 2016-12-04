@@ -1,7 +1,10 @@
-#include "Sigil.hpp"
+#include "Sigil2.hpp"
 #include <iostream>
 
-void prettyPrintSigil2()
+#include "Frontends/Sigrind/Sigrind.hpp"
+#include "Backends/SynchroTraceGen/EventHandlers.hpp"
+
+auto prettyPrintSigil2() -> void
 {
     std::string title =
         "    ______    _           _  __   _____   \n"
@@ -15,10 +18,26 @@ void prettyPrintSigil2()
     std::cerr << title;
 }
 
-int main(int argc, char *argv[])
+
+int main(int argc, char* argv[])
 {
     prettyPrintSigil2();
 
-    Sigil::instance().parseOptions(argc, argv);
-    Sigil::instance().generateEvents();
+    auto config = Sigil2Config()
+        .registerFrontend("valgrind",
+                          {sgl::startSigrind,
+                           sgl::acqBufferFromSigrind,
+                           sgl::relBufferFromSigrind,
+                           sgl::sigrindReady,
+                          })
+        .registerBackend("stgen",
+                         {[]() {return std::make_shared<::STGen::EventHandlers>();},
+                          ::STGen::onParse,
+                          ::STGen::onExit,
+                          {},}
+                        )
+        .parseCommandLine(argc, argv);
+
+
+    return startSigil2(config);
 }

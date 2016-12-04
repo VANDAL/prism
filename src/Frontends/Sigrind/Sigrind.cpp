@@ -1,88 +1,82 @@
-#include <iterator>
-#include <sstream>
-#include <fstream>
-#include <string>
-#include <vector>
-#include <cassert>
-#include <memory>
-#include <thread>
-#include <chrono>
-#include <stdexcept>
-#include <cerrno>
-#include <cstring>
+#include "Sigrind.hpp"
+#include "Sigil2/SigiLog.hpp"
+#include "whereami.h"
+#include "elfio/elfio.hpp"
+
 #include <csignal>
-#include <cstdlib>
 #include <fcntl.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
 
-#include "Sigil2/Sigil.hpp"
-#include "Sigil2/InstrumentationIface.h"
-#include "Sigrind.hpp"
-#include "whereami.h"
-#include "elfio/elfio.hpp"
+#define DIR_TEMPLATE "/sgl2-vg-XXXXXX"
 
 namespace sgl
 {
 
+using SigiLog::warn;
+using SigiLog::fatal;
+
 namespace
 {
 /* signal handler needs this to know which files to clean up */
-std::string shadow_shmem_file;
-std::string shadow_empty_file;
-std::string shadow_full_file;
+std::string shadow_shmemName;
+std::string shadow_emptyFifoName;
+std::string shadow_fullFifoName;
+
+/* One interface to Valgrind */
+std::atomic<bool> _sigrindReady{false};
+std::shared_ptr<Sigrind> sigrindIface;
+Sem complete{0};
 };
 
 ////////////////////////////////////////////////////////////
 // Sigil2 - Valgrind IPC
 ////////////////////////////////////////////////////////////
-Sigrind::Sigrind(int num_threads, const std::string &tmp_dir, const std::string &instance_id)
-    : timestamp(instance_id)
-    , shmem_file(tmp_dir + "/" + SIGRIND_SHMEM_NAME + timestamp)
-    , empty_file(tmp_dir + "/" + SIGRIND_EMPTYFIFO_NAME + timestamp)
-    , full_file(tmp_dir + "/" + SIGRIND_FULLFIFO_NAME + timestamp)
-    , num_threads(num_threads)
-    , be_idx(0)
+Sigrind::Sigrind(int threads, const std::string &ipcDir)
+    : shmemName(ipcDir + "/" + SIGRIND_SHMEM_NAME)
+    , emptyFifoName(ipcDir + "/" + SIGRIND_EMPTYFIFO_NAME)
+    , fullFifoName (ipcDir + "/" + SIGRIND_FULLFIFO_NAME)
+    , threads(threads)
+    , idx(0)
 {
-    shadow_shmem_file = shmem_file;
-    shadow_full_file  = full_file;
-    shadow_empty_file = empty_file;
-
+    assert(threads == 1);
+    shadow_shmemName = shmemName;
+    shadow_fullFifoName  = fullFifoName;
+    shadow_emptyFifoName = emptyFifoName;
     setInterruptOrTermHandler();
+
+    makeNewFifo(emptyFifoName.c_str());
+    makeNewFifo(fullFifoName.c_str());
     initShMem();
-    makeNewFifo(empty_file.c_str());
-    makeNewFifo(full_file.c_str());
 }
 
 
 Sigrind::~Sigrind()
 {
     /* disconnect from Valgrind */
-    munmap(shared_mem, sizeof(SigrindSharedData));
+    munmap(shared, sizeof(SigrindSharedData));
     close(emptyfd);
     close(fullfd);
 
     /* file cleanup */
-    if (remove(shmem_file.c_str()) != 0 ||
-        remove(empty_file.c_str()) != 0 ||
-        remove(full_file.c_str()) != 0)
+    if (remove(shmemName.c_str()) != 0 ||
+        remove(emptyFifoName.c_str()) != 0 ||
+        remove(fullFifoName.c_str()) != 0)
     {
-        SigiLog::warn(std::string("deleting IPC files -- ").append(strerror(errno)));
+        warn(std::string("deleting IPC files -- ") + strerror(errno));
     }
 }
 
-void Sigrind::initShMem()
+
+auto Sigrind::initShMem() -> void
 {
     std::unique_ptr<SigrindSharedData> init(new SigrindSharedData());
 
-    FILE *fd = fopen(shmem_file.c_str(), "wb+");
+    FILE *fd = fopen(shmemName.c_str(), "wb+");
 
     if (fd == nullptr)
-    {
-        SigiLog::fatal(std::string("sigrind shared memory file open failed -- ").append(strerror(errno)));
-    }
+        fatal(std::string("sigrind shared memory file open failed -- ") + strerror(errno));
 
     /* XXX From write(2) man pages:
      *
@@ -97,178 +91,96 @@ void Sigrind::initShMem()
     if (count != 1)
     {
         fclose(fd);
-        SigiLog::fatal(std::string("sigrind shared memory file write failed -- ").append(strerror(errno)));
+        fatal(std::string("sigrind shared memory file write failed -- ") + strerror(errno));
     }
 
-    shared_mem = reinterpret_cast<SigrindSharedData *>
+    shared = reinterpret_cast<SigrindSharedData *>
                  (mmap(nullptr, sizeof(SigrindSharedData), PROT_READ | PROT_WRITE, MAP_SHARED, fileno(fd), 0));
 
-    if (shared_mem == (void *) - 1)
+    if (shared == (void *) - 1)
     {
         fclose(fd);
-        SigiLog::fatal(std::string("sigrind mmap shared memory failed -- ").append(strerror(errno)));
+        fatal(std::string("sigrind mmap shared memory failed -- ") + strerror(errno));
     }
 
     fclose(fd);
 }
 
 
-void Sigrind::makeNewFifo(const char *path) const
+auto Sigrind::makeNewFifo(const char *path) const -> void
 {
     if (mkfifo(path, 0600) < 0)
     {
         if (errno == EEXIST)
         {
             if (remove(path) != 0)
-            {
-                SigiLog::fatal(std::string("sigil2 could not delete old fifos -- ").append(strerror(errno)));
-            }
+                fatal(std::string("sigil2 could not delete old fifos -- ") + strerror(errno));
 
             if (mkfifo(path, 0600) < 0)
-            {
-                SigiLog::fatal(std::string("sigil2 failed to create valgrind fifos -- ").append(strerror(errno)));
-            }
+                fatal(std::string("sigil2 failed to create valgrind fifos -- ") + strerror(errno));
         }
         else
         {
-            SigiLog::fatal(std::string("sigil2 failed to create valgrind fifos -- ").append(strerror(errno)));
+            fatal(std::string("sigil2 failed to create valgrind fifos -- ") + strerror(errno));
         }
     }
 }
 
 
-void Sigrind::connectValgrind()
+auto Sigrind::connectValgrind() -> void
 {
-    int tries = 0;
+    constexpr unsigned max_tries = 8;
+    unsigned tries = 0;
 
     do
     {
-        emptyfd = open(empty_file.c_str(), O_WRONLY | O_NONBLOCK);
+        emptyfd = open(emptyFifoName.c_str(), O_WRONLY | O_NONBLOCK);
 
         if (emptyfd < 0)
-        {
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        }
         else //connected
-        {
             break;
-        }
 
         ++tries;
     }
-    while (tries < 4);
+    while (tries < max_tries);
 
-    if (tries == 4 || emptyfd < 0)
-    {
-        SigiLog::fatal("sigil2 failed to connect to valgrind");
-    }
+    if (tries == max_tries || emptyfd < 0)
+        fatal("sigil2 failed to connect to valgrind");
 
     /* XXX Sigil might get stuck blocking if Valgrind
      * unexpectedly exits before connecting at this point */
-    fullfd = open(full_file.c_str(), O_RDONLY);
+    fullfd = open(fullFifoName.c_str(), O_RDONLY);
 
     if (fullfd < 0)
-    {
-        SigiLog::fatal(std::string("sigil2 failed to open valgrind fifos -- ").append(strerror(errno)));
-    }
+        fatal(std::string("sigil2 failed to open valgrind fifos -- ") + strerror(errno));
 }
 
 
-int Sigrind::readFullFifo()
+auto Sigrind::readFullFifo() -> int
 {
+    int full_data;
     int res = read(fullfd, &full_data, sizeof(full_data));
 
     if (res == 0)
-    {
-        SigiLog::fatal("Unexpected end of fifo");
-    }
+        fatal("Unexpected end of fifo");
     else if (res < 0)
-    {
-        SigiLog::fatal(std::string("could not read from valgrind full fifo -- ").append(strerror(errno)));
-    }
+        fatal(std::string("could not read from valgrind full fifo -- ") + strerror(errno));
 
     return full_data;
 }
 
 
-void Sigrind::writeEmptyFifo(unsigned int idx)
+auto Sigrind::writeEmptyFifo(unsigned idx) -> void
 {
-    if (write(emptyfd, &idx, sizeof(idx)) < 0)
-    {
-        SigiLog::fatal(std::string("could not send valgrind empty buffer status -- ").append(strerror(errno)));
-    }
+    auto res = write(emptyfd, &idx, sizeof(idx));
+
+    if (res < 0)
+        fatal(std::string("could not send valgrind empty buffer status -- ") + strerror(errno));
 }
 
 
-#ifdef SIGRIND_DEBUG
-unsigned long long mem_events;
-unsigned long long comp_events;
-unsigned long long sync_events;
-unsigned long long cxt_events;
-#endif
-
-void Sigrind::produceFromBuffer(unsigned int idx, unsigned int used)
-{
-    assert(idx < SIGRIND_BUFNUM);
-
-    BufferedSglEv(&buf)[SIGRIND_BUFSIZE] = shared_mem->buf[idx];
-
-    for (unsigned int i = 0; i < used; ++i)
-    {
-        switch (buf[i].tag)
-        {
-        case EvTagEnum::SGL_MEM_TAG:
-            Sigil::instance().addEvent(buf[i].mem, be_idx);
-            break;
-
-        case EvTagEnum::SGL_COMP_TAG:
-            Sigil::instance().addEvent(buf[i].comp, be_idx);
-            break;
-
-        case EvTagEnum::SGL_CF_TAG:
-            Sigil::instance().addEvent(buf[i].cf, be_idx);
-            break;
-
-        case EvTagEnum::SGL_SYNC_TAG:
-            Sigil::instance().addEvent(buf[i].sync, be_idx);
-            break;
-
-        case EvTagEnum::SGL_CXT_TAG:
-            Sigil::instance().addEvent(buf[i].cxt, be_idx);
-            break;
-
-        default:
-            SigiLog::fatal("received unhandled event in sigrind: " + std::to_string(buf[i].tag));
-            break;
-        }
-
-#ifdef SIGRIND_DEBUG
-        switch (buf[i].tag)
-        {
-        case EvTagEnum::SGL_MEM_TAG:
-            ++mem_events;
-            break;
-        case EvTagEnum::SGL_COMP_TAG:
-            ++comp_events;
-            break;
-        case EvTagEnum::SGL_CF_TAG:
-            break;
-        case EvTagEnum::SGL_SYNC_TAG:
-            ++sync_events;
-            break;
-        case EvTagEnum::SGL_CXT_TAG:
-            ++cxt_events;
-            break;
-        default:
-            break;
-        }
-#endif
-
-    }
-}
-
-
-void Sigrind::produceSigrindEvents()
+auto Sigrind::readSigrindEvents() -> void
 {
     /* Valgrind should have started by now */
     connectValgrind();
@@ -276,15 +188,15 @@ void Sigrind::produceSigrindEvents()
     while (finished == false)
     {
         /* Valgrind sends event buffer metadata */
-        unsigned int from_valgrind = readFullFifo();
+        unsigned fromVG = readFullFifo();
+        emptied.P();
 
-        unsigned int idx;
-        unsigned int used;
+        unsigned idx;
+        unsigned used;
 
-        if (from_valgrind == SIGRIND_FINISHED)
+        if (fromVG == SIGRIND_FINISHED)
         {
-            /* Valgrind finished;
-             * partial leftover buffer */
+            /* Partial buffer possible */
             finished = true;
             idx = readFullFifo();
             used = readFullFifo();
@@ -292,25 +204,38 @@ void Sigrind::produceSigrindEvents()
         else
         {
             /* full buffer */
-            idx = from_valgrind;
-            used = SIGRIND_BUFSIZE;
+            idx = fromVG;
+            used = MAX_EVENTS;
         }
 
-        /* send data to backend */
-        produceFromBuffer(idx, used);
-
-        /* tell Valgrind that the buffer is empty again */
-        writeEmptyFifo(idx);
+        q.enqueue(idx);
+        filled.V();
     }
-
-#ifdef SIGRIND_DEBUG
-    SigiLog::info("Memory Events: "  + std::to_string(mem_events));
-    SigiLog::info("Compute Events: " + std::to_string(comp_events));
-    SigiLog::info("Sync Events: "    + std::to_string(sync_events));
-    SigiLog::info("Context Events: " + std::to_string(cxt_events));
-#endif
 }
 
+
+auto Sigrind::acquire() -> EventBuffer*
+{
+    filled.P();
+    lastBufferIdx = q.dequeue();
+    return &(shared->sigrind_buf[lastBufferIdx]);
+}
+
+
+auto Sigrind::release() -> void
+{
+    emptied.V();
+
+    /* Tell Valgrind that the buffer is empty again */
+    writeEmptyFifo(lastBufferIdx);
+
+    /* check if all buffers have been consumed */
+    if (finished == true && emptied.value() == NUM_BUFFERS)
+    {
+        _sigrindReady = false;
+        complete.V();
+    }
+}
 
 ////////////////////////////////////////////////////////////
 // Launching Valgrind
@@ -320,7 +245,7 @@ namespace
 using ExecArgs = char *const *;
 using Exec = std::pair<std::string, ExecArgs>;
 
-void gccWarn(const std::vector<std::string> &user_exec)
+auto gccWarn(const std::vector<std::string> &user_exec) -> void
 {
     assert(user_exec.empty() == false);
 
@@ -370,25 +295,21 @@ void gccWarn(const std::vector<std::string> &user_exec)
 
     if (is_gcc_compatible == false)
     {
-        SigiLog::warn("\'" + user_exec[0] + "\'" + ":");
-        SigiLog::warn("GCC version " + gcc_version_needed + " not detected");
+        warn("\'" + user_exec[0] + "\'" + ":");
+        warn("GCC version " + gcc_version_needed + " not detected");
 
         if (gcc_version_found.empty() == false)
-        {
-            SigiLog::warn("GCC version " + gcc_version_found + " found");
-        }
+            warn("GCC version " + gcc_version_found + " found");
         else
-        {
-            SigiLog::warn("GCC version could not be detected");
-        }
+            warn("GCC version could not be detected");
 
-        SigiLog::warn("OpenMP synchronization events may not be captured");
-        SigiLog::warn("Pthread synchronization events are probably fine");
+        warn("OpenMP synchronization events may not be captured");
+        warn("Pthread synchronization events are probably fine");
     }
 }
 
 
-void configureWrapperEnv(std::string sigil2_path)
+auto configureWrapperEnv(std::string sigil2_path) -> void
 {
     /* check if function capture is available
      * (for multithreaded lib intercepts) */
@@ -401,13 +322,9 @@ void configureWrapperEnv(std::string sigil2_path)
         std::string set_preload;
 
         if (get_preload == nullptr)
-        {
             set_preload = sglwrapper;
-        }
         else
-        {
             set_preload = std::string(get_preload).append(":").append(sglwrapper);
-        }
 
         setenv("LD_PRELOAD", set_preload.c_str(), true);
     }
@@ -416,26 +333,24 @@ void configureWrapperEnv(std::string sigil2_path)
         /* If the wrapper library is in LD_PRELOAD,
          * but not in the sigil2 directory,
          * then this warning can be ignored */
-        SigiLog::warn("'sglwrapper.so' not found");
-        SigiLog::warn("Synchronization events will not be detected without the wrapper library loaded");
+        warn("'sglwrapper.so' not found");
+        warn("Synchronization events will not be detected without the wrapper library loaded");
     }
 
     sofile.close();
 }
 
 
-ExecArgs tokenizeOpts(const std::vector<std::string> &user_exec,
-                      const std::vector<std::string> &args,
-                      const std::string &tmp_dir,
-                      const std::string &timestamp)
+auto tokenizeOpts(const std::vector<std::string>& user_exec,
+                  const std::vector<std::string>& args,
+                  const std::string& ipc_dir) -> ExecArgs
 {
-    assert(!user_exec.empty() && !tmp_dir.empty());
+    assert(!user_exec.empty() && !ipc_dir.empty());
 
     /* format valgrind options */
     int vg_opts_size = 1/*program name*/ +
                        2/*vg opts*/ +
-                       1/*tmp_dir*/ +
-                       1/*timestamp*/ +
+                       1/*ipc_dir*/ +
                        8/*sigrind opts default*/ +
                        args.size()/*sigrind opts defined*/ +
                        user_exec.size()/*user program options*/ +
@@ -453,8 +368,7 @@ ExecArgs tokenizeOpts(const std::vector<std::string> &user_exec,
                                                   thread dominate execution */
     vg_opts[i++] = strdup("--tool=sigrind");
 
-    vg_opts[i++] = strdup((std::string("--tmp-dir=").append(tmp_dir)).c_str());
-    vg_opts[i++] = strdup((std::string("--timestamp=").append(timestamp)).c_str());
+    vg_opts[i++] = strdup((std::string("--ipc-dir=").append(ipc_dir)).c_str());
 
     /*sigrind defaults*/
     vg_opts[i++] = strdup("--gen-mem=yes");
@@ -466,14 +380,10 @@ ExecArgs tokenizeOpts(const std::vector<std::string> &user_exec,
     vg_opts[i++] = strdup("--gen-fn=no");
 
     for (auto &arg : args)
-    {
         vg_opts[i++] = strdup(arg.c_str());
-    }
 
     for (auto &arg : user_exec)
-    {
         vg_opts[i++] = strdup(arg.c_str());
-    }
 
     vg_opts[i] = nullptr;
 
@@ -481,10 +391,9 @@ ExecArgs tokenizeOpts(const std::vector<std::string> &user_exec,
 }
 
 
-Exec configureValgrind(const std::vector<std::string> &user_exec,
-                       const std::vector<std::string> &args,
-                       const std::string &tmp_path,
-                       const std::string &timestamp)
+auto configureValgrind(const std::vector<std::string>& user_exec,
+                       const std::vector<std::string>& args,
+                       const std::string& ipc_dir) -> Exec
 {
     int len, dirname_len;
     len = wai_getExecutablePath(NULL, 0, &dirname_len);
@@ -497,7 +406,7 @@ Exec configureValgrind(const std::vector<std::string> &user_exec,
     }
     else
     {
-        SigiLog::fatal("couldn't find executable path");
+        fatal("couldn't find executable path");
     }
 
     /* set up valgrind function wrapping to capture synchronization */
@@ -511,75 +420,109 @@ Exec configureValgrind(const std::vector<std::string> &user_exec,
     std::string vg_exec = std::string(path).append("/vg/bin/valgrind");
 
     /* execvp() expects a const char* const* */
-    auto vg_opts = tokenizeOpts(user_exec, args, tmp_path, timestamp);
+    auto vg_opts = tokenizeOpts(user_exec, args, ipc_dir);
 
     return std::make_pair(vg_exec, vg_opts);
+}
+
+
+auto configureShmemPath() -> std::string
+{
+    /* check IPC path */
+    char *shm_path = strdup(getenv("SIGIL2_SHM_DIR") != nullptr ?
+                            getenv("SIGIL2_SHM_DIR") : "/dev/shm");
+
+    struct stat info;
+    if (stat(shm_path, &info) != 0)
+        fatal(std::string(shm_path) + " not found\n" +
+              "\tset environment var 'SIGIL2_SHM_DIR' to a tmpfs mount");
+
+    size_t template_length = strlen(shm_path) + sizeof(DIR_TEMPLATE);
+    char shm_template[template_length];
+    snprintf(shm_template, template_length, "%s%s", shm_path, DIR_TEMPLATE);
+    delete[] shm_path;
+
+    if (mkdtemp(shm_template) == nullptr)
+        fatal(std::string("creating shm dir failed -- ") + strerror(errno));
+
+    return shm_template;
 }
 }; //end namespace
 
 
-void Sigrind::start(const std::vector<std::string> &user_exec,
-                    const std::vector<std::string> &args,
-                    const uint16_t num_threads,
-                    const std::string &instance_id)
+////////////////////////////////////////////////////////////
+// Interface to Sigil2 core
+////////////////////////////////////////////////////////////
+auto startSigrind(FrontendStarterArgs args) -> void
 {
-    assert(user_exec.empty() == false);
+    const auto& userExecArgs = std::get<0>(args);
+    const auto& sigrindArgs  = std::get<1>(args);
+    const auto& numThreads   = std::get<2>(args);
 
-    if (num_threads != 1)
-    {
-        SigiLog::fatal("Valgrind frontend attempted with other than 1 thread");
-    }
+    if (numThreads != 1)
+        fatal("Valgrind frontend attempted with other than 1 thread");
 
-    /* warn user if gcc version is not fully supported */
-    gccWarn(user_exec);
+    gccWarn(userExecArgs);
 
-    /* check IPC path */
-    char *tmp_path = getenv("TMPDIR");
+    auto shmem_path{configureShmemPath()};
 
-    /* posix shmem typically uses /dev/shm
-     * valgrind API doesn't provide shmem syscalls, manually mmap */
-    if (tmp_path == nullptr)
-    {
-        tmp_path = strdup("/dev/shm");
-    }
-
-    struct stat info;
-
-    if (stat(tmp_path, &info) != 0)
-    {
-        SigiLog::fatal(std::string(tmp_path).append(
-                           " not found\n\tset environment var 'TMPDIR' to a tmpfs mount"));
-    }
-
-    /* set up interface to valgrind */
-    Sigrind sigrind_iface(num_threads, tmp_path, instance_id);
-
-    /* set up valgrind environment */
-    auto valgrind_args = configureValgrind(user_exec, args, tmp_path, instance_id);
-
-    pid_t pid = fork();
-
+    auto pid = fork();
     if (pid >= 0)
     {
         if (pid == 0)
         {
-            /* kickoff Valgrind */
-            int res = execvp(valgrind_args.first.c_str(), valgrind_args.second);
+            auto valgrindArgs = configureValgrind(userExecArgs, sigrindArgs, shmem_path);
+            int res = execvp(valgrindArgs.first.c_str(), valgrindArgs.second);
 
             if (res == -1)
-            {
-                SigiLog::fatal(std::string("starting valgrind failed -- ").append(strerror(errno)));
-            }
+                fatal(std::string("starting valgrind failed -- ") + strerror(errno));
         }
         else
         {
-            sigrind_iface.produceSigrindEvents();
+            sigrindIface = std::make_shared<Sigrind>(numThreads, shmem_path);
+            _sigrindReady = true;
+            sigrindIface->readSigrindEvents();
+
+            /* wait for Sigil2 to consume all buffers */
+            complete.P();
+
+            /* teardown the valgrind interface */
+            sigrindIface.reset();
         }
     }
     else
     {
-        SigiLog::fatal(std::string("sigrind fork failed -- ").append(strerror(errno)));
+        fatal(std::string("sigrind fork failed -- ") + strerror(errno));
     }
+}
+
+
+auto sigrindReady() -> bool
+{
+    return _sigrindReady;
+}
+
+
+auto acqBufferFromSigrind(unsigned idx) -> const EventBuffer*
+{
+    assert(std::atomic_load(&sigrindIface));
+    if (idx != 0)
+        fatal("Valgrind frontend only has buffer index: 0");
+
+    if (sigrindReady() == false)
+        return nullptr;
+    else
+        return sigrindIface->acquire();
+}
+
+
+auto relBufferFromSigrind(unsigned idx) -> void
+{
+    assert(std::atomic_load(&sigrindIface));
+    if (idx != 0)
+        fatal("Valgrind frontend only has buffer index: 0");
+
+    sigrindIface->release();
 }
 
 namespace
@@ -587,9 +530,9 @@ namespace
 void sigrindHandler(int s)
 {
     /* file cleanup */
-    remove(shadow_shmem_file.c_str());
-    remove(shadow_empty_file.c_str());
-    remove(shadow_full_file.c_str());
+    remove(shadow_shmemName.c_str());
+    remove(shadow_emptyFifoName.c_str());
+    remove(shadow_fullFifoName.c_str());
 
     /* set default and re-raise */
     signal(s, SIG_DFL);

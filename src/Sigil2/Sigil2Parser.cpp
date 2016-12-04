@@ -1,22 +1,94 @@
-#ifndef SIGIL_PARSER_H
-#define SIGIL_PARSER_H
+#include "Sigil2Parser.hpp"
 
-#include "SigilParser.hpp"
+////////////////////////////////////////////////////////
+// Sigil2Parser
+////////////////////////////////////////////////////////
+constexpr char Sigil2Parser::frontendOption[];
+constexpr char Sigil2Parser::backendOption[];
+constexpr char Sigil2Parser::executableOption[];
+constexpr char Sigil2Parser::numThreadsOption[];
 
+Sigil2Parser::Sigil2Parser(int argc, char* argv[])
+{
+    parser.addGroup(frontendOption, false);
+    parser.addGroup(backendOption, true);
+    parser.addGroup(executableOption, true);
+    parser.parse(argc, argv);
+}
+
+
+auto Sigil2Parser::threads() -> int
+{
+    /* The number of 'threads' Sigil2 will use */
+    /* MDL20160805 Currently only valid with DynamoRIO frontend.
+     * This will cause 'n' event streams between Sigil2 and DynamoRIO
+     * to be generated, and 'n' separate backend instances will
+     * read from those event streams as separate threads */
+    int threads = 1;
+    const auto threadsArg = parser.getOpt(numThreadsOption);
+    if (threadsArg.empty() == false)
+    {
+        threads = stoi(threadsArg);
+
+        if (threads > 16 || threads < 1)
+            SigiLog::fatal("Invalid number of threads specified");
+    }
+
+    return threads;
+}
+
+
+auto Sigil2Parser::backend() -> ToolTuple
+{
+    return tool(backendOption);
+}
+
+
+auto Sigil2Parser::frontend() -> ToolTuple
+{
+    return tool(frontendOption);
+}
+
+
+auto Sigil2Parser::executable() -> Args
+{
+    return parser.getGroup(executableOption);
+}
+
+#include <iostream>
+auto Sigil2Parser::tool(const char* option) -> ToolTuple
+{
+    const auto args = parser.getGroup(option);
+
+    if (args.size() == 0)
+        return {"", {}};
+
+    auto name = args.front();
+    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+
+    auto start = args.cbegin() + 1;
+    auto end = args.cend();
+
+    return {name, {start, end}};
+}
+
+
+////////////////////////////////////////////////////////
+// ArgGroup
+////////////////////////////////////////////////////////
 auto ArgGroup::display_help() -> void
 {
     std::string help;
     help = "Usage: \n";
     help += "                ";
     help += "sigil2 [options] ";
+
     for (const auto &option : optional_groups)
-    {
         help += "[--" + option + "=VALUE" + " [options]] ";
-    }
+
     for (const auto &option : required_groups)
-    {
         help += "--" + option + "=VALUE" + " [options] ";
-    }
+
     SigiLog::warn(help);
 }
 
@@ -115,21 +187,33 @@ auto ArgGroup::addArg(const std::string &arg) -> void
 }
 
 
-auto ArgGroup::getGroup(const std::string &group) -> const Args&
+auto ArgGroup::getGroup(const std::string &group) const -> Args
 {
-    assert (group_args.find(group) != group_args.cend());
-    return group_args[group];
+    auto group_search = group_args.find(group);
+
+    if (group_search == group_args.cend())
+    {
+        return std::vector<std::string>();
+    }
+
+    return group_search->second;
 }
 
 
-auto ArgGroup::getOpt(const std::string &opt) -> const std::string&
+auto ArgGroup::getOpt(const std::string &opt) const -> std::string
 {
-    /* returns an empty string if not found */
-    return args[opt];
+    auto opt_search = args.find(opt);
+
+    if (opt_search == args.cend())
+    {
+        return std::string();
+    }
+
+    return opt_search->second;
 }
 
 
-auto ArgGroup::parse(int argc, const char *const argv[]) -> bool
+auto ArgGroup::parse(int argc, char* argv[]) -> bool
 {
     for (int optidx = 1; optidx < argc; ++optidx)
     {
@@ -152,5 +236,3 @@ auto ArgGroup::parse(int argc, const char *const argv[]) -> bool
 
     return true;
 }
-
-#endif

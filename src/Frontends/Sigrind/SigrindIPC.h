@@ -3,12 +3,8 @@
 
 /* Used in shared memory IPC between Valgrind and Sigil2 */
 
-#include "Sigil2/Primitive.h"
-
-#define SIGRIND_BUFSIZE (1 << 24)
-#define SIGRIND_BUFNUM (4)
-
-#define SIGRIND_FN_ARENA_SIZE (1 << 22)
+#include "Sigil2/EventBuffer.h"
+#define NUM_BUFFERS (8)
 
 /* A timestamp should be appended to these names
  * to avoid conflicts when multiple instances
@@ -25,9 +21,11 @@ typedef struct SigrindSharedData SigrindSharedData;
 typedef struct SigrindFnNameArena SigrindFnNameArena;
 #endif
 
+    /* TODO all shared memory accesses should be atomic to guarantee avoiding
+     * race conditions */
     struct SigrindSharedData
     {
-        BufferedSglEv buf[SIGRIND_BUFNUM][SIGRIND_BUFSIZE];
+        EventBuffer sigrind_buf[NUM_BUFFERS];
     };
 
 #ifdef __cplusplus

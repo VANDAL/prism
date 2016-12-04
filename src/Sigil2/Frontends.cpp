@@ -1,30 +1,77 @@
-#include "Sigil.hpp"
-#include "Frontends/Injector/Injector.hpp"
-#include "Frontends/Sigrind/Sigrind.hpp"
+#include "Frontends.hpp"
+#include "SigiLog.hpp"
+#include <algorithm>
 
-#ifdef ENABLE_DRSIGIL
-#include "Frontends/DrSigil/DrSigil.hpp"
-#endif
-
-namespace sgl
+auto FrontendFactory::create(ToolName name, FrontendStarterArgs args) const -> Frontend
 {
+    /* default */
+    if (name.empty() == true)
+        name = "valgrind";
 
-struct Frontend
-{
-    Frontend(std::string name, Sigil::FrontendStarter start)
+    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+
+    if (exists(name) == true)
     {
-        Sigil::instance().registerFrontend(name, start);
+        auto frontend = registry.find(name)->second;
+        frontend.args = args;
+        return frontend;
     }
-};
+    else
+    {
+        std::string error(" invalid frontend argument ");
+        error.append(name + "\n");
+        error.append("\tAvailable frontends: ");
 
-namespace
+        for (auto name : available())
+            error.append("\n\t").append(name);
+
+        SigiLog::fatal(error);
+    }
+}
+
+
+auto FrontendFactory::add(ToolName name, FrontendStarter start) -> void
 {
-Frontend inject("inject", Injector::start);
-Frontend valgrind("valgrind", Sigrind::start);
+    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+    auto p = registry.emplace(name, Frontend());
+    p.first->second.start = start;
+}
 
-#ifdef ENABLE_DRSIGIL
-Frontend dynamorio("dynamorio", DrSigil::start);
-#endif
-};
 
-};
+auto FrontendFactory::add(ToolName name, FrontendBufferAcquire acq) -> void
+{
+    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+    auto p = registry.emplace(name, Frontend());
+    p.first->second.acq = acq;
+}
+
+
+auto FrontendFactory::add(ToolName name, FrontendBufferRelease rel) -> void
+{
+    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+    auto p = registry.emplace(name, Frontend());
+    p.first->second.rel = rel;
+}
+
+
+auto FrontendFactory::add(ToolName name, FrontendReady ready) -> void
+{
+    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+    auto p = registry.emplace(name, Frontend());
+    p.first->second.ready = ready;
+}
+
+
+auto FrontendFactory::exists(ToolName name) const -> bool
+{
+    return registry.find(name) != registry.cend();
+}
+
+
+auto FrontendFactory::available() const -> std::vector<std::string>
+{
+    std::vector<std::string> names;
+    for (auto frontends : registry)
+        names.emplace_back(frontends.first);
+    return names;
+}

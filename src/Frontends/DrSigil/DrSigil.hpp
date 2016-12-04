@@ -72,8 +72,7 @@ class DrSigil
     static int num_threads;
     static void start(const std::vector<std::string> &user_exec,
                       const std::vector<std::string> &args,
-                      const uint16_t num_threads,
-                      const std::string &instance_id);
+                      const uint16_t num_threads);
 
   private:
     void initShMem();
