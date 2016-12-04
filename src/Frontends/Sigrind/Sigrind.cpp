@@ -20,6 +20,7 @@ using SigiLog::fatal;
 namespace
 {
 /* signal handler needs this to know which files to clean up */
+std::string shadow_ipcDir;
 std::string shadow_shmemName;
 std::string shadow_emptyFifoName;
 std::string shadow_fullFifoName;
@@ -34,14 +35,17 @@ Sem complete{0};
 // Sigil2 - Valgrind IPC
 ////////////////////////////////////////////////////////////
 Sigrind::Sigrind(int threads, const std::string &ipcDir)
-    : shmemName(ipcDir + "/" + SIGRIND_SHMEM_NAME)
+    : ipcDir(ipcDir)
+    , shmemName(ipcDir + "/" + SIGRIND_SHMEM_NAME)
     , emptyFifoName(ipcDir + "/" + SIGRIND_EMPTYFIFO_NAME)
     , fullFifoName (ipcDir + "/" + SIGRIND_FULLFIFO_NAME)
     , threads(threads)
     , idx(0)
 {
     assert(threads == 1);
-    shadow_shmemName = shmemName;
+
+    shadow_ipcDir        = ipcDir;
+    shadow_shmemName     = shmemName;
     shadow_fullFifoName  = fullFifoName;
     shadow_emptyFifoName = emptyFifoName;
     setInterruptOrTermHandler();
@@ -60,9 +64,10 @@ Sigrind::~Sigrind()
     close(fullfd);
 
     /* file cleanup */
-    if (remove(shmemName.c_str()) != 0 ||
+    if (remove(shmemName.c_str())     != 0 ||
         remove(emptyFifoName.c_str()) != 0 ||
-        remove(fullFifoName.c_str()) != 0)
+        remove(fullFifoName.c_str())  != 0 ||
+        remove(ipcDir.c_str())        != 0)
     {
         warn(std::string("deleting IPC files -- ") + strerror(errno));
     }
@@ -535,6 +540,7 @@ void sigrindHandler(int s)
     remove(shadow_shmemName.c_str());
     remove(shadow_emptyFifoName.c_str());
     remove(shadow_fullFifoName.c_str());
+    remove(shadow_ipcDir.c_str());
 
     /* set default and re-raise */
     signal(s, SIG_DFL);

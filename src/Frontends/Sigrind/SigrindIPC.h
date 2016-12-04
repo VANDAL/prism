@@ -18,7 +18,6 @@
 extern "C" {
 #else
 typedef struct SigrindSharedData SigrindSharedData;
-typedef struct SigrindFnNameArena SigrindFnNameArena;
 #endif
 
     /* TODO all shared memory accesses should be atomic to guarantee avoiding

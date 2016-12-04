@@ -144,6 +144,7 @@ class Sigrind
      * it with events */
     auto writeEmptyFifo(unsigned idx) -> void;
 
+    const std::string ipcDir;
     const std::string shmemName;
     const std::string emptyFifoName;
     const std::string fullFifoName;
