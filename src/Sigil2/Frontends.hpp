@@ -25,7 +25,7 @@ using FrontendStarter = std::function<void(FrontendStarterArgs)>;
  * frontend is ready. When the frontend runs out of events, a null pointer is
  * returned. */
 struct EventBuffer;
-using FrontendBufferAcquire = std::function<const EventBuffer*(unsigned idx)>;
+using FrontendBufferAcquire = std::function<EventBuffer*(unsigned idx)>;
 using FrontendBufferRelease = std::function<void(unsigned idx)>;
 using FrontendReady = std::function<bool(void)>;
 

@@ -66,7 +66,8 @@ Options
 |
 | --gen-fn={`yes,no`}
 |   Default: no
-|   Currently unsupported
+|   Sends function enter/exit events along with the function name
+|   Be sure to compile with less optimizations and debug flags for best results
 |
 
 

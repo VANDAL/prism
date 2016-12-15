@@ -85,13 +85,14 @@ typedef struct SglSyncEv SglSyncEv;
         union
         {
             Addr id;
+            char* name;
             struct
             {
                 uint32_t idx;
-                uint8_t  len; /* Implicit max length [256] */
-            } __attribute__ ((__packed__));
+                uint32_t len;
+            };
         } __attribute__ ((__packed__));
-    };
+    } __attribute__ ((__packed__));
 
     struct SglSyncEv
     {

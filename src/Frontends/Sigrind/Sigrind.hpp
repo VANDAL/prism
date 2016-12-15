@@ -46,7 +46,7 @@ auto sigrindReady() -> bool;
  * signature for Sigil2 to asynchronously request an EventBuffer
  * to process.
  * These operations are undefined if sigrindReady returns false. */
-auto acqBufferFromSigrind(unsigned idx) -> const EventBuffer*;
+auto acqBufferFromSigrind(unsigned idx) -> EventBuffer*;
 auto relBufferFromSigrind(unsigned idx) -> void;
 
 

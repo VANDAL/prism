@@ -1,5 +1,6 @@
 #include "Handler.hpp"
 #include "spdlog/spdlog.h"
+#include <iostream>
 #include <atomic>
 
 namespace

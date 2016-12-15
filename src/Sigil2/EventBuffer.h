@@ -4,7 +4,7 @@
 #include "Primitive.h"
 #include <stdlib.h>
 
-#define ARENA_BYTES (1UL << 22)
+#define POOL_BYTES (1UL << 22)
 #define MAX_EVENTS  (1UL << 22)
 
 #ifdef __cplusplus
@@ -13,6 +13,8 @@ extern "C" {
 typedef struct BufferedSglEv BufferedSglEv;
 typedef struct EventBuffer EventBuffer;
 #endif
+
+/* XXX Danger! potentional alignment errors on some architectures */
 
 struct BufferedSglEv
 {
@@ -30,9 +32,9 @@ struct BufferedSglEv
 struct EventBuffer
 {
     size_t events_used;
-    size_t arena_used;
+    size_t pool_used;
     BufferedSglEv events[MAX_EVENTS];
-    char arena[ARENA_BYTES];
+    char pool[POOL_BYTES];
 };
 
 #ifdef __cplusplus

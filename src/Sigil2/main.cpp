@@ -3,6 +3,7 @@
 
 #include "Frontends/Sigrind/Sigrind.hpp"
 #include "Backends/SynchroTraceGen/EventHandlers.hpp"
+#include "Backends/SimpleCount/Handler.hpp"
 
 auto prettyPrintSigil2() -> void
 {
@@ -21,7 +22,9 @@ auto prettyPrintSigil2() -> void
 
 int main(int argc, char* argv[])
 {
+#ifdef PRETTY_PRINT_TITLE
     prettyPrintSigil2();
+#endif
 
     auto config = Sigil2Config()
         .registerFrontend("valgrind",
@@ -34,6 +37,12 @@ int main(int argc, char* argv[])
                          {[]() {return std::make_shared<::STGen::EventHandlers>();},
                           ::STGen::onParse,
                           ::STGen::onExit,
+                          {},}
+                        )
+        .registerBackend("simplecount",
+                         {[]() {return std::make_shared<::SimpleCount::Handler>();},
+                          {},
+                          ::SimpleCount::cleanup,
                           {},}
                         )
         .parseCommandLine(argc, argv);

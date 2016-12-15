@@ -194,23 +194,18 @@ auto Sigrind::readSigrindEvents() -> void
     {
         /* Valgrind sends event buffer metadata */
         unsigned fromVG = readFullFifo();
-        emptied.P();
-
         unsigned idx;
-        unsigned used;
+        emptied.P();
 
         if (fromVG == SIGRIND_FINISHED)
         {
             /* Partial buffer possible */
             finished = true;
             idx = readFullFifo();
-            used = readFullFifo();
         }
         else
         {
-            /* full buffer */
             idx = fromVG;
-            used = MAX_EVENTS;
         }
 
         q.enqueue(idx);
@@ -508,7 +503,7 @@ auto sigrindReady() -> bool
 }
 
 
-auto acqBufferFromSigrind(unsigned idx) -> const EventBuffer*
+auto acqBufferFromSigrind(unsigned idx) -> EventBuffer*
 {
     /* atomic_load(shared_ptr*) doesn't appear implemented in gcc4.8 */
     // assert(std::atomic_load(&sigrindIface));

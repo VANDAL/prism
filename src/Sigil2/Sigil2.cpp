@@ -51,8 +51,45 @@ auto startSigil2(const Sigil2Config& config) -> int
 }
 
 
-#include <chrono>
-#include <iostream>
+auto inline flushToBackend(std::shared_ptr<BackendIface>& be, EventBuffer* buf) -> void
+{
+    for (decltype(buf->events_used) i = 0; i < buf->events_used; ++i)
+    {
+        BufferedSglEv &ev = buf->events[i];
+
+        switch (ev.tag)
+        {
+        case EvTagEnum::SGL_MEM_TAG:
+            be->onMemEv(ev.mem);
+            break;
+
+        case EvTagEnum::SGL_COMP_TAG:
+            be->onCompEv(ev.comp);
+            break;
+
+        case EvTagEnum::SGL_SYNC_TAG:
+            be->onSyncEv(ev.sync);
+            break;
+
+        case EvTagEnum::SGL_CXT_TAG:
+            /* pool index set by frontend, so convert addressto this memory space */
+            if (ev.cxt.type == SGLPRIM_CXT_FUNC_ENTER || ev.cxt.type == SGLPRIM_CXT_FUNC_EXIT)
+                ev.cxt.name = buf->pool + ev.cxt.idx;
+            be->onCxtEv(ev.cxt);
+            break;
+
+        case EvTagEnum::SGL_CF_TAG:
+            be->onCFEv(ev.cf);
+            break;
+
+        default:
+            fatal(std::string("Received unhandled event in ").append(__FILE__));
+        }
+    }
+
+}
+
+
 auto consumeEvents(BackendGenerator be, int idx,
                    FrontendBufferAcquire acq,
                    FrontendBufferRelease rel,
@@ -65,39 +102,10 @@ auto consumeEvents(BackendGenerator be, int idx,
     auto backend = be();
 
     /* consume events until there's nothing left */
-    const EventBuffer* buf = acq(idx);
+    EventBuffer* buf = acq(idx);
     while (buf != nullptr)
     {
-        for (decltype(buf->events_used) i = 0; i < buf->events_used; ++i)
-        {
-            const BufferedSglEv &ev = buf->events[i];
-
-            switch (ev.tag)
-            {
-            case EvTagEnum::SGL_MEM_TAG:
-                backend->onMemEv(ev.mem);
-                break;
-
-            case EvTagEnum::SGL_COMP_TAG:
-                backend->onCompEv(ev.comp);
-                break;
-
-            case EvTagEnum::SGL_SYNC_TAG:
-                backend->onSyncEv(ev.sync);
-                break;
-
-            case EvTagEnum::SGL_CXT_TAG:
-                backend->onCxtEv(ev.cxt);
-                break;
-
-            case EvTagEnum::SGL_CF_TAG:
-                backend->onCFEv(ev.cf);
-                break;
-
-            default:
-                fatal(std::string("Received unhandled event in ").append(__FILE__));
-            }
-        }
+        flushToBackend(backend, buf);
 
         /* acquire a new buffer */
         rel(idx);

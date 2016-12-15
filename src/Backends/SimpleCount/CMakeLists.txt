@@ -1,4 +1,3 @@
 set(SOURCES
-	Handler.cpp
-	)
+	Handler.cpp)
 add_library(SimpleCount STATIC ${SOURCES})
