@@ -1,20 +1,18 @@
 # Build destinations
 get_target_property(SIGIL2_BIN sigil2 RUNTIME_OUTPUT_DIRECTORY)
 set(VGINST_DIR ${SIGIL2_BIN}/vg)
-set(VGSRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/valgrind-3.11.0-Sigil2)
+set(VGSRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/valgrind-Sigil2)
 
 include_directories(
 	gcc-4.9.2
-	valgrind-3.11.0-Sigil2
-	valgrind-3.11.0-Sigil2/include
-	valgrind-3.11.0-Sigil2/VEX/pub)
+	valgrind-Sigil2
+	valgrind-Sigil2/include
+	valgrind-Sigil2/VEX/pub)
 
 # Function wrapper for intercepting multithreading libs
 # (pthread and openmp function calls)
 add_library(sglwrapper-shared SHARED sglwrapper.c)
 add_library(sglwrapper-static STATIC sglwrapper.c)
-target_compile_definitions(sglwrapper-shared PUBLIC -DVGO_linux=1)
-target_compile_definitions(sglwrapper-static PUBLIC -DVGO_linux=1)
 set_target_properties(sglwrapper-shared
 	PROPERTIES
 	LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin
@@ -23,6 +21,16 @@ set_target_properties(sglwrapper-static
 	PROPERTIES
 	ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin
 	OUTPUT_NAME sglwrapper)
+
+if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
+	set(VG_ARCH VGA_amd64)
+elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64")
+	set(VG_ARCH VGA_arm64)
+else()
+	message(FATAL_ERROR "Unsupported architecture")
+endif()
+target_compile_definitions(sglwrapper-shared PUBLIC -DVGO_linux=1 -D${VG_ARCH})
+target_compile_definitions(sglwrapper-static PUBLIC -DVGO_linux=1 -D${VG_ARCH})
 
 set(SOURCES Sigrind.cpp)
 add_library(Sigrind STATIC ${SOURCES})

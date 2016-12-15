@@ -13,6 +13,6 @@
 [submodule "src/Frontends/DrSigil/dynamorio"]
 	path = src/Frontends/DrSigil/dynamorio
 	url = https://github.com/mdlui/dynamorio
-[submodule "src/Frontends/Sigrind/valgrind-3.11.0-Sigil2"]
-	path = src/Frontends/Sigrind/valgrind-3.11.0-Sigil2
-	url = https://github.com/mdlui/valgrind-Sigil2
+[submodule "src/Frontends/Sigrind/valgrind-Sigil2"]
+	path = src/Frontends/Sigrind/valgrind-Sigil2
+	url = https://github.com/mikelui/valgrind-Sigil2
