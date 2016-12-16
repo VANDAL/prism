@@ -105,6 +105,10 @@ Applications that use a static Pthreads or OpenMP library must be manually linke
 Sigil2-Valgrind wrapper archive.
 This can be found in ``BUILD_DIR/bin/libsglwrapper.a``.
 
+For example: ::
+
+$CC $CFLAGS main.c -Wl,--whole-archive $BUILD_DIR/bin/libsglwrapper.a -Wl,--no-whole-archive
+
 ----
 
 DynamoRIO
