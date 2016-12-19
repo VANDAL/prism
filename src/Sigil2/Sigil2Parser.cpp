@@ -1,5 +1,8 @@
 #include "Sigil2Parser.hpp"
 
+using SigiLog::warn;
+using SigiLog::fatal;
+
 ////////////////////////////////////////////////////////
 // Sigil2Parser
 ////////////////////////////////////////////////////////
@@ -31,7 +34,7 @@ auto Sigil2Parser::threads() -> int
         threads = stoi(threadsArg);
 
         if (threads > 16 || threads < 1)
-            SigiLog::fatal("Invalid number of threads specified");
+            fatal("Invalid number of threads specified");
     }
 
     return threads;
@@ -89,7 +92,7 @@ auto ArgGroup::display_help() -> void
     for (const auto &option : required_groups)
         help += "--" + option + "=VALUE" + " [options] ";
 
-    SigiLog::warn(help);
+    warn(help);
 }
 
 
@@ -133,7 +136,7 @@ auto ArgGroup::tryGroup(const std::string &arg) -> bool
     /* a valid arg group requires '=argument' */
     if (eqidx == std::string::npos || eqidx == rem.size() - 1)
     {
-        SigiLog::fatal(arg + " missing argument");
+        fatal(arg + " missing argument");
         return false;
     }
 
@@ -142,7 +145,7 @@ auto ArgGroup::tryGroup(const std::string &arg) -> bool
 
     if (group_args.at(prev_group).empty() == false)
     {
-        SigiLog::fatal(arg + " is duplicate option");
+        fatal(arg + " is duplicate option");
     }
 
     /* initialize the group of args with this first argument */
@@ -168,7 +171,7 @@ auto ArgGroup::addArg(const std::string &arg) -> void
         /* only long opts valid */
         if (arg.substr(0, 2).compare("--") != 0)
         {
-            SigiLog::warn("unrecognized option: " + arg);
+            warn("unrecognized option: " + arg);
             return;
         }
 
@@ -178,7 +181,7 @@ auto ArgGroup::addArg(const std::string &arg) -> void
         /* a valid arg group requires '=argument' */
         if (eqidx == std::string::npos || eqidx == rem.size() - 1)
         {
-            SigiLog::warn("unrecognized option: " + arg);
+            warn("unrecognized option: " + arg);
             return;
         }
 
@@ -230,7 +233,7 @@ auto ArgGroup::parse(int argc, char* argv[]) -> bool
         if (group_args.at(group).empty())
         {
             display_help();
-            SigiLog::fatal("--" + group + "= is missing");
+            fatal("--" + group + "= is missing");
         }
     }
 

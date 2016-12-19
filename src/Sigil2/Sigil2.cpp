@@ -12,7 +12,7 @@ auto startSigil2(const Sigil2Config& config) -> int
     auto frontend = config.frontend();
 
     /* let the backend parse its args */
-    if (backend.args.size() > 1)
+    if (backend.args.size() > 0)
     {
         if (backend.parser)
         {

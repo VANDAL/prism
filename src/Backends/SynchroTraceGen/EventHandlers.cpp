@@ -9,6 +9,11 @@
 namespace STGen
 {
 
+using SigiLog::info;
+using SigiLog::warn;
+using SigiLog::error;
+using SigiLog::fatal;
+
 ////////////////////////////////////////////////////////////
 // Shared state
 ////////////////////////////////////////////////////////////
@@ -336,11 +341,11 @@ void onExit()
 
     if (pthread_file.fail() == true)
     {
-        SigiLog::fatal("Failed to open: " + pthread_metadata);
+        fatal("Failed to open: " + pthread_metadata);
     }
     else if (stats_file.fail() == true)
     {
-        SigiLog::fatal("Failed to open: " + stats_metadata);
+        fatal("Failed to open: " + stats_metadata);
     }
 
     spdlog::set_sync_mode();
@@ -354,7 +359,7 @@ void onExit()
     stats_logger->set_pattern("%v");
 
     /*********************************************************************/
-    SigiLog::info("Flushing thread metadata to: " + pthread_metadata);
+    info("Flushing thread metadata to: " + pthread_metadata);
 
     /* The order the threads were seen SHOULD match to
      * the order of thread_t values of the pthread_create
@@ -397,7 +402,7 @@ void onExit()
     /*********************************************************************/
 
     /*********************************************************************/
-    SigiLog::info("Flushing statistics to: " + stats_metadata);
+    info("Flushing statistics to: " + stats_metadata);
 
     StatCounter total_instr_count{0};
     for (auto &p : PerThreadStats::per_thread_counts)
@@ -507,7 +512,7 @@ void EventHandlers::initThreadLog(TID tid)
 
     if (thread_gz->fail() == true)
     {
-        SigiLog::fatal("Failed to open: " + key);
+        fatal("Failed to open: " + key);
     }
 
     auto ostream_sink = std::make_shared<spdlog::sinks::ostream_sink_st>(*thread_gz);
@@ -586,7 +591,7 @@ void onParse(Args args)
 
     if (unmatched > 0)
     {
-        SigiLog::fatal("unexpected synchrotracegen options");
+        fatal("unexpected synchrotracegen options");
     }
 
     if (matches['o'].empty() == false)
@@ -602,15 +607,15 @@ void onParse(Args args)
         }
         catch (std::invalid_argument &e)
         {
-            SigiLog::fatal(std::string("SynchroTraceGen compression level: invalid argument"));
+            fatal(std::string("SynchroTraceGen compression level: invalid argument"));
         }
         catch (std::out_of_range &e)
         {
-            SigiLog::fatal(std::string("SynchroTraceGen compression level: out_of_range"));
+            fatal(std::string("SynchroTraceGen compression level: out_of_range"));
         }
         catch (std::exception &e)
         {
-            SigiLog::fatal(std::string("SynchroTraceGen compression level: ").append(e.what()));
+            fatal(std::string("SynchroTraceGen compression level: ").append(e.what()));
         }
     }
 }
