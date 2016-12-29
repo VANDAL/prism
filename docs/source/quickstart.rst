@@ -8,11 +8,10 @@ Building Sigil2
 
 Clone and build |project| from source::
 
-  $ git clone --recursive https://github.com/mdlui/Sigil2
+  $ git clone https://github.com/mdlui/Sigil2
   $ cd Sigil2
-  $ mkdir build && cd build
-  $ cmake .. -DCMAKE_BUILD_TYPE=release
-  $ make -j<JOBS>
+  $ cmake . -Bbuild
+  $ cmake --build build -- -j<JOBS>
 
 This creates a ``build/bin`` folder containing the :program:`sigil2` executable.
 It can be run in place, or the entire ``bin`` folder can be moved,

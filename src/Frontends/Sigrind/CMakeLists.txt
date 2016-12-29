@@ -38,6 +38,7 @@ add_dependencies(Sigrind sglwrapper-shared sglwrapper-static)
 
 # valgrind build
 include(ExternalProject)
+execute_process(COMMAND git submodule update --init ${VGSRC_DIR})
 ExternalProject_Add(valgrind
 	PREFIX vg
 

@@ -20,6 +20,12 @@ use_cxx11()
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
 
+if(NOT CMAKE_BUILD_TYPE)
+	set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+		"Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel."
+		FORCE)
+endif(NOT CMAKE_BUILD_TYPE)
+
 ################################
 # Testing Framework uses Catch #
 ################################
@@ -35,16 +41,18 @@ include(CTest)
 # Include everything                              #
 # ...there's probably a cleaner way to do this... #
 ###################################################
-get_filename_component(SRC_SIGIL2 src/Sigil2 ABSOLUTE)
+get_filename_component(SRC_SIGIL2    src/Sigil2    ABSOLUTE)
 get_filename_component(SRC_FRONTENDS src/Frontends ABSOLUTE)
-get_filename_component(SRC_BACKENDS src/Backends ABSOLUTE)
+get_filename_component(SRC_BACKENDS  src/Backends  ABSOLUTE)
+get_filename_component(INCLUDES_DIR  include       ABSOLUTE)
 
-include_directories(include/Catch/include)
-include_directories(include/whereami/src)
-include_directories(include/spdlog/include)
-include_directories(include/spdlog/include/spdlog)
-include_directories(include/elfio-3.1)
-include_directories(include/zlib/contrib/iostream3)
+execute_process(COMMAND git submodule update --init ${INCLUDES_DIR})
+include_directories(${INCLUDES_DIR}/Catch/include)
+include_directories(${INCLUDES_DIR}/whereami/src)
+include_directories(${INCLUDES_DIR}/spdlog/include)
+include_directories(${INCLUDES_DIR}/spdlog/include/spdlog)
+include_directories(${INCLUDES_DIR}/elfio-3.1)
+include_directories(${INCLUDES_DIR}/zlib/contrib/iostream3)
 include_directories(src)
 include_directories(${SRC_FRONTENDS})
 include_directories(${SRC_BACKENDS})
