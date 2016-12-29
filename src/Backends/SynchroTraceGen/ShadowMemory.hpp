@@ -1,9 +1,10 @@
 #ifndef SHADOWMEMORY_H
 #define SHADOWMEMORY_H
 
-#include "Sigil2/Primitive.h" // Addr type
+#include "Sigil2/Primitive.h" // PtrVal type
 #include "Sigil2/SigiLog.hpp"
 
+#include <limits>
 #include <vector>
 #include <memory>
 
@@ -13,12 +14,15 @@
  * by Nicholas Nethercote and Julian Seward
  */
 
+using Addr = PtrVal;
+
 /* XXX: Setting {addr, pm} bits too large can cause bad_alloc errors */
 template <typename SO, unsigned ADDR_BITS = 38, unsigned PM_BITS = 16>
 class ShadowMemory
 {
     static_assert(ADDR_BITS > 0 && ADDR_BITS < 64, "Invalid address range");
     static_assert(PM_BITS > 0, "Invalid offset for primary map");
+    static_assert(sizeof(Addr)*CHAR_BIT >= ADDR_BITS, "Max address is too large for the platform");
 
   public:
     ShadowMemory()

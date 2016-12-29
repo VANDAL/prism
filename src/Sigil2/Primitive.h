@@ -44,7 +44,7 @@ typedef struct SglCxtEv SglCxtEv;
 typedef struct SglSyncEv SglSyncEv;
 #endif
 
-    typedef uintptr_t Addr; /* XXX Can cause type redefinition problems on 32-bit platforms */
+    typedef uintptr_t PtrVal;
     typedef uint16_t ByteCount;
     typedef intptr_t SyncID;
     typedef uint8_t MemType;
@@ -56,27 +56,25 @@ typedef struct SglSyncEv SglSyncEv;
     typedef uint8_t SyncType;
     typedef uint8_t EvTag;
 
-    /* XXX How will unaligned accesses affect RISC architectures?
-     * TODO Make sure no member accesses assume alignment */
     struct SglMemEv
     {
-        Addr          begin_addr;
-        ByteCount     size;
-        MemType       type;
+        PtrVal    begin_addr;
+        ByteCount size;
+        MemType   type;
     } __attribute__ ((__packed__));
 
     struct SglCompEv
     {
-        CompCostType  type;
-        CompArity     arity;
-        CompCostOp    op;
-        uint8_t       size;
+        CompCostType type;
+        CompArity    arity;
+        CompCostOp   op;
+        uint8_t      size;
     } __attribute__ ((__packed__));
 
-    /* XXX unimplemented */
+    /* unimplemented */
     struct SglCFEv
     {
-        CFType        type;
+        CFType type;
     } __attribute__ ((__packed__));
 
     struct SglCxtEv
@@ -84,20 +82,20 @@ typedef struct SglSyncEv SglSyncEv;
         CxtType type;
         union
         {
-            Addr id;
-            char* name;
+            PtrVal id;
+            char*  name;
             struct
             {
                 uint32_t idx;
                 uint32_t len;
             };
-        } __attribute__ ((__packed__));
+        };
     } __attribute__ ((__packed__));
 
     struct SglSyncEv
     {
-        SyncType      type;
-        SyncID        id;
+        SyncType type;
+        SyncID   id;
     } __attribute__ ((__packed__));
 
 #ifdef __cplusplus

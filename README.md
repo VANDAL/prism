@@ -14,11 +14,10 @@ Provides an extensible interface to  **architecture-agnostic** application event
 
 ## Install
 ```
-$ git clone --recursive https://github.com/mdlui/Sigil2 
+$ git clone https://github.com/mdlui/Sigil2
 $ cd Sigil2
-$ mkdir build && cd build
-$ cmake -DCMAKE_BUILD_TYPE=release ..
-$ make -j<JOBS>
+$ cmake . -Bbuild
+$ cmake --build build -- -j<JOBS>
 ```
 The executable will be put in `build/bin`. It can be run in place, or the folder can be moved to an install location.  
 
@@ -49,11 +48,11 @@ A third frontend argument can be supplied
 * `--frontend=dynamorio` is **_experimental_**
 
 ## Platform support
-| Linux                                          | OSX/macOS | Windows       |
-| ---------------------------------------------- | --------- | ------------- |
-| 64-bit **CentOS 7** (7.2.1511) on **x86\_64**  | untested  | not supported |
-| In Progress: 32-bit                            |           |               |
-| In Progress: ARM                               |           |               |
+| Linux                              | OSX/macOS | Windows       |
+| ---------------------------------- | --------- | ------------- |
+| 64-bit **CentOS 7** on **x86\_64** | untested  | not supported |
+| In Progress: 32-bit                |           |               |
+| In Progress: ARM                   |           |               |
 
 ## Documentation
 See the [docs](http://sigil2.readthedocs.io/en/latest)

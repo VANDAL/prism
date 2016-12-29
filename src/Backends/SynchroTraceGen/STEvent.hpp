@@ -9,8 +9,6 @@
 
 #include "MemoryPool.h"
 #include "spdlog/spdlog.h"
-
-#include "Sigil2/Primitive.h"
 #include "STShadowMemory.hpp"
 
 /*******************************************************************************
