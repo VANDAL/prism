@@ -41,7 +41,6 @@ get_filename_component(SRC_BACKENDS src/Backends ABSOLUTE)
 
 include_directories(include/Catch/include)
 include_directories(include/whereami/src)
-include_directories(include/optionparser-1.4/src)
 include_directories(include/spdlog/include)
 include_directories(include/spdlog/include/spdlog)
 include_directories(include/elfio-3.1)
