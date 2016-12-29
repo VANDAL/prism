@@ -46,7 +46,9 @@ get_filename_component(SRC_FRONTENDS src/Frontends ABSOLUTE)
 get_filename_component(SRC_BACKENDS  src/Backends  ABSOLUTE)
 get_filename_component(INCLUDES_DIR  include       ABSOLUTE)
 
-execute_process(COMMAND git submodule update --init ${INCLUDES_DIR})
+execute_process(
+	COMMAND git submodule update --init ${INCLUDES_DIR}
+	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 include_directories(${INCLUDES_DIR}/Catch/include)
 include_directories(${INCLUDES_DIR}/whereami/src)
 include_directories(${INCLUDES_DIR}/spdlog/include)

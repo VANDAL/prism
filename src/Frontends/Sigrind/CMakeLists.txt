@@ -38,7 +38,9 @@ add_dependencies(Sigrind sglwrapper-shared sglwrapper-static)
 
 # valgrind build
 include(ExternalProject)
-execute_process(COMMAND git submodule update --init ${VGSRC_DIR})
+execute_process(
+	COMMAND git submodule update --init ${VGSRC_DIR}
+	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 ExternalProject_Add(valgrind
 	PREFIX vg
 
