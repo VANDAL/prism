@@ -20,8 +20,6 @@ extern "C" {
 typedef struct SigrindSharedData SigrindSharedData;
 #endif
 
-    /* TODO all shared memory accesses should be atomic to guarantee avoiding
-     * race conditions */
     struct SigrindSharedData
     {
         EventBuffer sigrind_buf[NUM_BUFFERS];

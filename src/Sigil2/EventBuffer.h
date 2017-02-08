@@ -4,8 +4,8 @@
 #include "Primitive.h"
 #include <stdlib.h>
 
-#define POOL_BYTES (1UL << 22)
-#define MAX_EVENTS  (1UL << 22)
+#define SIGIL2_POOL_BYTES (1UL << 22)
+#define SIGIL2_MAX_EVENTS  (1UL << 22)
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,8 +33,8 @@ struct EventBuffer
 {
     size_t events_used;
     size_t pool_used;
-    BufferedSglEv events[MAX_EVENTS];
-    char pool[POOL_BYTES];
+    BufferedSglEv events[SIGIL2_MAX_EVENTS];
+    char pool[SIGIL2_POOL_BYTES];
 };
 
 #ifdef __cplusplus

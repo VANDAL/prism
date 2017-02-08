@@ -8,9 +8,7 @@ auto Handler::onSyncEv(const SglSyncEv &ev) -> void
     /* save the current entity so that it can
      * resume when the thread switches back */
     if(ev.type == SyncTypeEnum::SGLPRIM_SYNC_SWAP)
-    {
         cxt.setThreadContext(ev.id);
-    }
 }
 
 
@@ -54,10 +52,10 @@ auto Handler::onCxtEv(const SglCxtEv &ev) -> void
     switch(ev.type)
     {
       case CxtTypeEnum::SGLPRIM_CXT_FUNC_ENTER:
-        //cxt.enterEntity(ev.name);  
+        cxt.enterEntity(ev.name);
         break;
       case CxtTypeEnum::SGLPRIM_CXT_FUNC_EXIT:
-        cxt.exitEntity();  
+        cxt.exitEntity();
         break;
       default:
         break;
