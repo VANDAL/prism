@@ -14,8 +14,6 @@ typedef struct BufferedSglEv BufferedSglEv;
 typedef struct EventBuffer EventBuffer;
 #endif
 
-/* XXX Danger! potentional alignment errors on some architectures */
-
 struct BufferedSglEv
 {
     union
