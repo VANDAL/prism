@@ -78,7 +78,7 @@ void EventHandlers::onSyncEv(const SglSyncEv &ev)
     st_comp_ev.flush();
 
     if /*switching threads*/(ev.type == SyncTypeEnum::SGLPRIM_SYNC_SWAP &&
-                             curr_thread_id != static_cast<TID>(ev.id))
+                             curr_thread_id != static_cast<TID>(ev.id)) //XXX watch for narrowing
     {
         if /*new thread*/(event_ids.find(ev.id) == event_ids.cend())
         {
@@ -365,8 +365,11 @@ void onExit()
      * the order of thread_t values of the pthread_create
      * calls. For example, with the valgrind frontend,
      * the --fair-sched=yes option should make sure each
-     * thread is switched to in the order they were created */
-    assert(thread_spawns.size() == thread_creates.size());
+     * thread is switched to in the order they were created.
+     *
+     * NOTE that there is always one MORE thread create,
+     * because the initial thread is not created by a thread spawning API call */
+    assert(thread_spawns.size() == thread_creates.size()-1);
     int create_idx = 1; //skip the first idx, which is the initial thread
 
     for (auto &pair : thread_spawns)

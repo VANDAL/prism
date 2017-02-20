@@ -31,10 +31,6 @@
 namespace sgl
 {
 
-////////////////////////////
-// Async Sigil2 Interface //
-////////////////////////////
-
 /* Required by Sigil2 to begin event generation.
  * Each frontend requires this function signature.
  * Valgrind will be forked off as a separate process
@@ -42,9 +38,6 @@ namespace sgl
 auto startSigrind(FrontendStarterArgs args) -> FrontendIfaceGenerator;
 
 
-////////////////////////
-// Valgrind Interface //
-////////////////////////
 class Sem
 {
   public:
@@ -100,7 +93,7 @@ struct CircularQueue
 };
 
 
-class Sigrind: public FrontendIface
+class Sigrind : public FrontendIface
 {
     /* Handle interfacing the shared memory buffers to the Sigil2 core */
     using ResourceQueue = CircularQueue<int, NUM_BUFFERS>;

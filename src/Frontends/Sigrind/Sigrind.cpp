@@ -185,7 +185,7 @@ auto Sigrind::receiveValgrindEventsLoop() -> void
             idx = fromVG;
         }
 
-        assert(idx < decltype(idx){NUM_BUFFERS} && idx > 0);
+        assert(idx < decltype(idx){NUM_BUFFERS} && idx >= 0);
         q.enqueue(idx);
         filled.V();
     }
@@ -202,7 +202,7 @@ auto Sigrind::acquireBuffer() -> EventBuffer*
     lastBufferIdx = q.dequeue();
 
     /* can be negative to signal the end of the event stream */
-    assert(lastBufferIdx < decltype(idx){NUM_BUFFERS});
+    assert(lastBufferIdx < decltype(lastBufferIdx){NUM_BUFFERS});
 
     if (lastBufferIdx < 0)
         return nullptr;
@@ -216,7 +216,7 @@ auto Sigrind::releaseBuffer() -> void
     emptied.V();
 
     /* Tell Valgrind that the buffer is empty again */
-    assert(lastBufferIdx < decltype(lastBufferIdx){NUM_BUFFERS} && lastBufferIdx > 0);
+    assert(lastBufferIdx < decltype(lastBufferIdx){NUM_BUFFERS} && lastBufferIdx >= 0);
     writeEmptyFifo(lastBufferIdx);
 }
 
