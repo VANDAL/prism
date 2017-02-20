@@ -5,17 +5,12 @@
 #include <functional>
 #include <string>
 #include <vector>
+#include <memory>
 #include <cstdint>
 
 using ToolName = std::string;
 using Args = std::vector<std::string>;
 
-/* Frontend gets:
- * - the executable and its args
- * - args specifically for the frontend
- * - number of threads in the system */
-using FrontendStarterArgs = std::tuple<Args, Args, unsigned>;
-using FrontendStarter = std::function<void(FrontendStarterArgs)>;
 
 /* The Sigil2 core will asynchronously request an event buffer from the frontend
  * to send events to the backend. The ownership of this buffer is acquired by
@@ -25,18 +20,34 @@ using FrontendStarter = std::function<void(FrontendStarterArgs)>;
  * frontend is ready. When the frontend runs out of events, a null pointer is
  * returned. */
 struct EventBuffer;
-using FrontendBufferAcquire = std::function<EventBuffer*(unsigned idx)>;
-using FrontendBufferRelease = std::function<void(unsigned idx)>;
-using FrontendReady = std::function<bool(void)>;
-
-struct Frontend
+class FrontendIface
 {
-    FrontendStarter start;
-    FrontendBufferAcquire acq;
-    FrontendBufferRelease rel;
-    FrontendReady ready;
-    FrontendStarterArgs args;
+  public:
+    FrontendIface() : uid(uidCount++) {}
+    virtual ~FrontendIface() {}
+    virtual auto acquireBuffer() -> EventBuffer* = 0;
+    virtual auto releaseBuffer() -> void = 0;
+  protected:
+    const unsigned uid;
+  private:
+    static unsigned uidCount;
 };
+
+/* Frontend gets:
+ * - the executable and its args
+ * - args specifically for the frontend
+ * - number of threads in the system */
+using FrontendStarterArgs = std::tuple<Args, Args, unsigned>;
+using FrontendPtr = std::shared_ptr<FrontendIface>;
+
+/* The actual frontend must provide a 'starter' function that returns
+ * a function to generate interfaces to the frontend as defined above.
+ * In a multi-threaded frontend, each thread gets a separate interface
+ * instance which shall provide access to a buffer; the buffer will
+ * only be accessed by that instance/thread. */
+using FrontendIfaceGenerator = std::function<FrontendPtr(void)>;
+using FrontendStarter = std::function<FrontendIfaceGenerator(FrontendStarterArgs)>;
+using FrontendStarterWrapper = std::function<FrontendIfaceGenerator(void)>;
 
 class FrontendFactory
 {
@@ -44,16 +55,13 @@ class FrontendFactory
     FrontendFactory()  = default;
     ~FrontendFactory() = default;
 
-    auto create(ToolName name, FrontendStarterArgs args) const -> Frontend;
-    auto add(ToolName name, FrontendStarter start) -> void;
-    auto add(ToolName name, FrontendBufferAcquire acq) -> void;
-    auto add(ToolName name, FrontendBufferRelease rel) -> void;
-    auto add(ToolName name, FrontendReady ready) -> void;
-    auto exists(ToolName name) const -> bool;
-    auto available() const -> std::vector<std::string>;
+    auto create(ToolName name, FrontendStarterArgs args) const -> FrontendStarterWrapper;
+    auto add(ToolName name, FrontendStarter start)             -> void;
+    auto exists(ToolName name)                           const -> bool;
+    auto available()                                     const -> std::vector<std::string>;
 
   private:
-    std::map<ToolName, Frontend> registry;
+    std::map<ToolName, FrontendStarter> registry;
 };
 
 #endif

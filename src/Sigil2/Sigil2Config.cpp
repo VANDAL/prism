@@ -10,13 +10,10 @@ auto Sigil2Config::registerBackend(ToolName name, Backend be) -> Sigil2Config&
 }
 
 
-auto Sigil2Config::registerFrontend(ToolName name, Frontend fe) -> Sigil2Config&
+auto Sigil2Config::registerFrontend(ToolName name, FrontendStarter start) -> Sigil2Config&
 {
     std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-    feFactory.add(name, fe.start);
-    feFactory.add(name, fe.acq);
-    feFactory.add(name, fe.rel);
-    feFactory.add(name, fe.ready);
+    feFactory.add(name, start);
     return *this;
 }
 
@@ -40,7 +37,7 @@ auto Sigil2Config::parseCommandLine(int argc, char* argv[]) -> Sigil2Config&
     std::string feName;
     std::vector<std::string> feArgs;
     std::tie(feName, feArgs) = parser.frontend();
-    _frontend = feFactory.create(feName, std::make_tuple(execArgs, feArgs, _threads));
+    _startFrontend = feFactory.create(feName, std::make_tuple(execArgs, feArgs, _threads));
 
     return *this;
 }

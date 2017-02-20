@@ -7,17 +7,16 @@ using namespace SigiLog;
 
 auto startSigil2(const Sigil2Config& config) -> int
 {
-    auto threads  = config.threads();
-    auto backend  = config.backend();
-    auto frontend = config.frontend();
+    auto threads       = config.threads();
+    auto backend       = config.backend();
+    auto startFrontend = config.startFrontend();
 
     /* let the backend parse its args */
     if (backend.args.size() > 0)
     {
         if (backend.parser)
         {
-            backend.parser(backend.args);
-        }
+            backend.parser(backend.args); }
         else
         {
             error("Backend arguments provided, but Backend has no parser");
@@ -32,13 +31,13 @@ auto startSigil2(const Sigil2Config& config) -> int
         return EXIT_FAILURE;
     }
 
+    /* each backend interface needs a frontend interface to communicate with */
+    auto frontendIfaceGenerator = startFrontend();
     std::vector<std::thread> backends;
     for(auto i = 0; i < threads; ++i)
-        backends.emplace_back(std::thread(consumeEvents, backend.generator, i,
-                                          frontend.acq, frontend.rel, frontend.ready));
-
-    /* start frontend; return upon completion */
-    frontend.start(frontend.args);
+        backends.emplace_back(std::thread(consumeEvents,
+                                          backend.generator,
+                                          frontendIfaceGenerator));
 
     /* wait for backends to finish and then clean up */
     for(auto i = 0; i < threads; ++i)
@@ -51,6 +50,7 @@ auto startSigil2(const Sigil2Config& config) -> int
 }
 
 
+namespace{
 auto inline flushToBackend(std::shared_ptr<BackendIface>& be, EventBuffer* buf) -> void
 {
     for (decltype(buf->events_used) i = 0; i < buf->events_used; ++i)
@@ -86,29 +86,24 @@ auto inline flushToBackend(std::shared_ptr<BackendIface>& be, EventBuffer* buf) 
             fatal(std::string("Received unhandled event in ").append(__FILE__));
         }
     }
-
 }
+};
 
 
-auto consumeEvents(BackendGenerator be, int idx,
-                   FrontendBufferAcquire acq,
-                   FrontendBufferRelease rel,
-                   FrontendReady ready) -> void
+auto consumeEvents(BackendGenerator createBEIface, FrontendIfaceGenerator createFEIface) -> void
 {
-    /* wait for frontend to become available */
-    while(ready() == false);
+    /* per-thread frontend/backend interfaces */
+    auto frontendIface = createFEIface();
+    auto backendIface  = createBEIface();
 
-    /* new backend per thread */
-    auto backend = be();
-
-    /* consume events until there's nothing left */
-    EventBuffer* buf = acq(idx);
-    while (buf != nullptr)
+    EventBuffer* buf = nullptr;
+    buf = frontendIface->acquireBuffer();
+    while (buf != nullptr) // consume events until there's nothing left
     {
-        flushToBackend(backend, buf);
+        flushToBackend(backendIface, buf);
 
         /* acquire a new buffer */
-        rel(idx);
-        buf = acq(idx);
+        frontendIface->releaseBuffer();
+        buf = frontendIface->acquireBuffer();
     }
 }

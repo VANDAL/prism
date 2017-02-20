@@ -49,12 +49,12 @@ class BackendFactory
     BackendFactory()  = default;
     ~BackendFactory() = default;
 
-    auto create(ToolName name, Args args) const -> Backend;
+    auto create(ToolName name, Args args)         const -> Backend;
     auto add(ToolName name, BackendGenerator generator) -> void;
-    auto add(ToolName name, BackendParser parser) -> void;
-    auto add(ToolName name, BackendFinish finish) -> void;
-    auto exists(ToolName name) const -> bool;
-    auto available() const -> std::vector<std::string>;
+    auto add(ToolName name, BackendParser parser)       -> void;
+    auto add(ToolName name, BackendFinish finish)       -> void;
+    auto exists(ToolName name)                    const -> bool;
+    auto available()                              const -> std::vector<std::string>;
 
   private:
     std::map<ToolName, Backend> registry;

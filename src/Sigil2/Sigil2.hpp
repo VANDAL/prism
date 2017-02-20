@@ -6,9 +6,6 @@
 auto startSigil2(const Sigil2Config& config) -> int;
 
 /* Thread for moving tasks from frontend -> backend */
-auto consumeEvents(BackendGenerator be, int idx,
-                   FrontendBufferAcquire acq,
-                   FrontendBufferRelease rel,
-                   FrontendReady ready) -> void;
+auto consumeEvents(BackendGenerator createBEIface, FrontendIfaceGenerator createFEIface) -> void;
 
 #endif

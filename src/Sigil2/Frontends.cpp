@@ -2,7 +2,9 @@
 #include "SigiLog.hpp"
 #include <algorithm>
 
-auto FrontendFactory::create(ToolName name, FrontendStarterArgs args) const -> Frontend
+decltype(FrontendIface::uidCount) FrontendIface::uidCount{0};
+
+auto FrontendFactory::create(ToolName name, FrontendStarterArgs args) const -> FrontendStarterWrapper
 {
     /* default */
     if (name.empty() == true)
@@ -10,13 +12,8 @@ auto FrontendFactory::create(ToolName name, FrontendStarterArgs args) const -> F
 
     std::transform(name.begin(), name.end(), name.begin(), ::tolower);
 
-    if (exists(name) == true)
-    {
-        auto frontend = registry.find(name)->second;
-        frontend.args = args;
-        return frontend;
-    }
-    else
+    /* tool never registered */
+    if (exists(name) == false)
     {
         std::string error(" invalid frontend argument ");
         error.append(name + "\n");
@@ -27,38 +24,16 @@ auto FrontendFactory::create(ToolName name, FrontendStarterArgs args) const -> F
 
         SigiLog::fatal(error);
     }
+
+    auto start = registry.find(name)->second;
+    return [=]{ return start(args); };
 }
 
 
 auto FrontendFactory::add(ToolName name, FrontendStarter start) -> void
 {
     std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-    auto p = registry.emplace(name, Frontend());
-    p.first->second.start = start;
-}
-
-
-auto FrontendFactory::add(ToolName name, FrontendBufferAcquire acq) -> void
-{
-    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-    auto p = registry.emplace(name, Frontend());
-    p.first->second.acq = acq;
-}
-
-
-auto FrontendFactory::add(ToolName name, FrontendBufferRelease rel) -> void
-{
-    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-    auto p = registry.emplace(name, Frontend());
-    p.first->second.rel = rel;
-}
-
-
-auto FrontendFactory::add(ToolName name, FrontendReady ready) -> void
-{
-    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-    auto p = registry.emplace(name, Frontend());
-    p.first->second.ready = ready;
+    registry.emplace(name, start);
 }
 
 

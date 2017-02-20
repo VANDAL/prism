@@ -28,11 +28,7 @@ int main(int argc, char* argv[])
 
     auto config = Sigil2Config()
         .registerFrontend("valgrind",
-                          {sgl::startSigrind,
-                           sgl::acqBufferFromSigrind,
-                           sgl::relBufferFromSigrind,
-                           sgl::sigrindReady,
-                          })
+                          sgl::startSigrind)
         .registerBackend("stgen",
                          {[]() {return std::make_shared<::STGen::EventHandlers>();},
                           ::STGen::onParse,

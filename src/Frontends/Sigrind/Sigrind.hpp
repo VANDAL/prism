@@ -6,6 +6,7 @@
 
 #include <condition_variable>
 #include <atomic>
+#include <thread>
 
 /**
  * Sigil2 receives events from Valgrind via a set of shared memory buffers
@@ -38,16 +39,7 @@ namespace sgl
  * Each frontend requires this function signature.
  * Valgrind will be forked off as a separate process
  * and begin generating events to send to Sigil2. */
-auto startSigrind(FrontendStarterArgs args) -> void;
-auto sigrindReady() -> bool;
-
-/* Sigil2 asynchronously requests an EventBuffer to process.
- * Each frontend is required to provide an interface with this
- * signature for Sigil2 to asynchronously request an EventBuffer
- * to process.
- * These operations are undefined if sigrindReady returns false. */
-auto acqBufferFromSigrind(unsigned idx) -> EventBuffer*;
-auto relBufferFromSigrind(unsigned idx) -> void;
+auto startSigrind(FrontendStarterArgs args) -> FrontendIfaceGenerator;
 
 
 ////////////////////////
@@ -108,19 +100,17 @@ struct CircularQueue
 };
 
 
-/* TODO clean up interface to Sigil2 core */
-class Sigrind
+class Sigrind: public FrontendIface
 {
     /* Handle interfacing the shared memory buffers to the Sigil2 core */
-    using ResourceQueue = CircularQueue<unsigned, NUM_BUFFERS>;
+    using ResourceQueue = CircularQueue<int, NUM_BUFFERS>;
 
   public:
-    Sigrind(int num_threads, const std::string &ipc_dir);
+    Sigrind(const std::string &ipcDir);
     ~Sigrind();
-    auto acquire() -> EventBuffer*;
-    auto release() -> void;
-    auto readSigrindEvents() -> void;
-    auto isComplete() -> bool;
+    virtual auto acquireBuffer() -> EventBuffer* override;
+    virtual auto releaseBuffer() -> void override;
+
 
   private:
     /* Clean up actions if an unexpected quit happens */
@@ -144,12 +134,14 @@ class Sigrind
      * it with events */
     auto writeEmptyFifo(unsigned idx) -> void;
 
+    /* main event loop for managing event buffer */
+    auto receiveValgrindEventsLoop() -> void;
+    std::shared_ptr<std::thread> eventLoop;
+
     const std::string ipcDir;
     const std::string shmemName;
     const std::string emptyFifoName;
     const std::string fullFifoName;
-
-    std::atomic<bool> finished{false};
 
     /* IPC */
     int emptyfd;
@@ -158,12 +150,9 @@ class Sigrind
 
     ResourceQueue q;
     Sem filled{0}, emptied{NUM_BUFFERS};
-    size_t lastBufferIdx;
-
-    const int threads;
-    int idx;
+    int lastBufferIdx;
 };
 
-};
+}; //end namespace sgl
 
 #endif

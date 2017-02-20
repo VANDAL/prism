@@ -1,91 +1,56 @@
 #ifndef SGL_DRSIGIL_H
 #define SGL_DRSIGIL_H
 
+#include "Sigil2/Frontends.hpp"
+#include "DrSigilIPC.h"
+
 #include <vector>
 #include <string>
 #include <mutex>
-#include "DrSigilIPC.h"
-
-/* Sigil2 receives events from DynamoRIO via a set of shared memory buffers
- *
- * Because DynamoRIO is multithreaded,
- *
- */
+#include <thread>
 
 namespace sgl
 {
 
-/* TODO rename */
-class IPCcleanup
+class DrSigil : public FrontendIface
 {
-    std::vector<std::string> named_pipes;
-    std::vector<int> fds;
-    std::vector<std::string> shm_files;
-    std::mutex m;
-
+    using FrontendIface::uid;
   public:
-    std::string ipc_dir;
-    void cleanup();
-    void addNamedPipe(const std::string &pipe);
-    void addPipeFD(int fd);
-    void addShm(const std::string &shm);
-};
+    DrSigil(const std::string &ipcDir);
+    ~DrSigil();
+    virtual auto acquireBuffer() -> EventBuffer* override;
+    virtual auto releaseBuffer() -> void override;
 
-class DrSigil
-{
-    /* The 'backend' thread currently receiving events.
-     * Each DrSigil instance is tied to a backend thread */
-    const int ipc_idx;
+  private:
+    auto initShMem()                         -> void;
+    auto makeNewFifo(const char *path) const -> void;
+    auto readFullFifo()                const -> int;
+    auto writeEmptyFifo(unsigned idx)  const -> void;
+    auto connectDynamoRIO()                  -> void;
+    auto disconnectDynamoRIO()               -> void;
+
+    /* main event loop */
+    auto receiveDynamoRIOEventsLoop() -> void;
+    std::shared_ptr<std::thread> eventLoop;
+
+    /* IPC (meta)data */
+    const std::string shmemFile;
+    const std::string emptyFile;
+    const std::string fullFile;
+    int emptyfd;
+    int fullfd;
+    DrSigilSharedData *sharedMem;
 
     /* Current frontend thread id;
      * A different thread id in the event stream triggers a 'thread switch'
      * event to be generated for the backend */
-    int curr_thread_id;
-
-    /* Set when the event stream end is detected */
-    bool finished = false;
+    int currThreadID{-1};
 
     /* Thread context swaps are handled in this
      * frontend manager, not in DynamoRIO */
-    SglSyncEv thread_swap_event;
-
-    const std::string shmem_file;
-    const std::string empty_file;
-    const std::string full_file;
-
-    /* fifos */
-    int emptyfd;
-    int fullfd;
-    int full_data;
-
-    /* shared mem */
-    DrSigilSharedData *shared_mem;
-
-  public:
-    DrSigil(int ipc_idx, const std::string &ipc_dir);
-    void produceDynamoRIOEvents();
-
-    /* The start routine run by Sigil2 to begin event generation.
-     * Each frontend requires this function signature.
-     */
-
-    static int num_threads;
-    static void start(const std::vector<std::string> &user_exec,
-                      const std::vector<std::string> &args,
-                      const uint16_t num_threads);
-
-  private:
-    void initShMem();
-    void makeNewFifo(const char *path) const;
-    void connectDynamoRIO();
-    void disconnectDynamoRIO();
-
-    int readFullFifo();
-    void writeEmptyFifo(unsigned int idx);
-    void produceFromBuffer(unsigned int idx, unsigned int used);
+    SglSyncEv threadSwapEvent;
 };
 
-};
+}; //end namespace sgl
 
 #endif
-

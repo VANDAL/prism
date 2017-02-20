@@ -24,25 +24,18 @@ std::string shadow_ipcDir;
 std::string shadow_shmemName;
 std::string shadow_emptyFifoName;
 std::string shadow_fullFifoName;
-
-/* One interface to Valgrind */
-std::atomic<bool> _sigrindReady{false};
-std::shared_ptr<Sigrind> sigrindIface;
-Sem complete{0};
 };
 
 ////////////////////////////////////////////////////////////
 // Sigil2 - Valgrind IPC
 ////////////////////////////////////////////////////////////
-Sigrind::Sigrind(int threads, const std::string &ipcDir)
+Sigrind::Sigrind(const std::string &ipcDir)
     : ipcDir(ipcDir)
     , shmemName(ipcDir + "/" + SIGRIND_SHMEM_NAME)
     , emptyFifoName(ipcDir + "/" + SIGRIND_EMPTYFIFO_NAME)
     , fullFifoName (ipcDir + "/" + SIGRIND_FULLFIFO_NAME)
-    , threads(threads)
-    , idx(0)
 {
-    assert(threads == 1);
+    assert(uid == 0);
 
     shadow_ipcDir        = ipcDir;
     shadow_shmemName     = shmemName;
@@ -50,14 +43,19 @@ Sigrind::Sigrind(int threads, const std::string &ipcDir)
     shadow_emptyFifoName = emptyFifoName;
     setInterruptOrTermHandler();
 
+    initShMem();
     makeNewFifo(emptyFifoName.c_str());
     makeNewFifo(fullFifoName.c_str());
-    initShMem();
+    connectValgrind();
+
+    eventLoop = std::make_shared<std::thread>(&Sigrind::receiveValgrindEventsLoop, this);
 }
 
 
 Sigrind::~Sigrind()
 {
+    eventLoop->join();
+
     /* disconnect from Valgrind */
     munmap(shared, sizeof(SigrindSharedData));
     close(emptyfd);
@@ -68,9 +66,8 @@ Sigrind::~Sigrind()
         remove(emptyFifoName.c_str()) != 0 ||
         remove(fullFifoName.c_str())  != 0 ||
         remove(ipcDir.c_str())        != 0)
-    {
         warn(std::string("deleting IPC files -- ") + strerror(errno));
-    }
+
 }
 
 
@@ -79,7 +76,6 @@ auto Sigrind::initShMem() -> void
     std::unique_ptr<SigrindSharedData> init(new SigrindSharedData());
 
     FILE *fd = fopen(shmemName.c_str(), "wb+");
-
     if (fd == nullptr)
         fatal(std::string("sigrind shared memory file open failed -- ") + strerror(errno));
 
@@ -134,31 +130,16 @@ auto Sigrind::makeNewFifo(const char *path) const -> void
 
 auto Sigrind::connectValgrind() -> void
 {
-    constexpr unsigned max_tries = 8;
-    unsigned tries = 0;
-
-    do
-    {
-        emptyfd = open(emptyFifoName.c_str(), O_WRONLY | O_NONBLOCK);
-
-        if (emptyfd < 0)
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        else //connected
-            break;
-
-        ++tries;
-    }
-    while (tries < max_tries);
-
-    if (tries == max_tries || emptyfd < 0)
-        fatal("sigil2 failed to connect to valgrind");
-
-    /* XXX Sigil might get stuck blocking if Valgrind
+    /* XXX Sigil2 might get stuck blocking if Valgrind
      * unexpectedly exits before connecting at this point */
-    fullfd = open(fullFifoName.c_str(), O_RDONLY);
 
+    emptyfd = open(emptyFifoName.c_str(), O_WRONLY);
+    if (emptyfd < 0)
+        fatal(std::string("sigil2 failed to open valgrind fifo for writing -- ") + strerror(errno));
+
+    fullfd = open(fullFifoName.c_str(), O_RDONLY);
     if (fullfd < 0)
-        fatal(std::string("sigil2 failed to open valgrind fifos -- ") + strerror(errno));
+        fatal(std::string("sigil2 failed to open valgrind fifo for reading -- ") + strerror(errno));
 }
 
 
@@ -179,17 +160,14 @@ auto Sigrind::readFullFifo() -> int
 auto Sigrind::writeEmptyFifo(unsigned idx) -> void
 {
     auto res = write(emptyfd, &idx, sizeof(idx));
-
     if (res < 0)
         fatal(std::string("could not send valgrind empty buffer status -- ") + strerror(errno));
 }
 
 
-auto Sigrind::readSigrindEvents() -> void
+auto Sigrind::receiveValgrindEventsLoop() -> void
 {
-    /* Valgrind should have started by now */
-    connectValgrind();
-
+    bool finished = false;
     while (finished == false)
     {
         /* Valgrind sends event buffer metadata */
@@ -199,7 +177,6 @@ auto Sigrind::readSigrindEvents() -> void
 
         if (fromVG == SIGRIND_FINISHED)
         {
-            /* Partial buffer possible */
             finished = true;
             idx = readFullFifo();
         }
@@ -208,33 +185,39 @@ auto Sigrind::readSigrindEvents() -> void
             idx = fromVG;
         }
 
+        assert(idx < decltype(idx){NUM_BUFFERS} && idx > 0);
         q.enqueue(idx);
         filled.V();
     }
+
+    /* Signal the end of the event stream */
+    q.enqueue(-1);
+    filled.V();
 }
 
 
-auto Sigrind::acquire() -> EventBuffer*
+auto Sigrind::acquireBuffer() -> EventBuffer*
 {
     filled.P();
     lastBufferIdx = q.dequeue();
-    return &(shared->sigrind_buf[lastBufferIdx]);
+
+    /* can be negative to signal the end of the event stream */
+    assert(lastBufferIdx < decltype(idx){NUM_BUFFERS});
+
+    if (lastBufferIdx < 0)
+        return nullptr;
+    else
+        return &(shared->sigrind_buf[lastBufferIdx]);
 }
 
 
-auto Sigrind::release() -> void
+auto Sigrind::releaseBuffer() -> void
 {
     emptied.V();
 
     /* Tell Valgrind that the buffer is empty again */
+    assert(lastBufferIdx < decltype(lastBufferIdx){NUM_BUFFERS} && lastBufferIdx > 0);
     writeEmptyFifo(lastBufferIdx);
-
-    /* check if all buffers have been consumed */
-    if (finished == true && emptied.value() == NUM_BUFFERS)
-    {
-        _sigrindReady = false;
-        complete.V();
-    }
 }
 
 ////////////////////////////////////////////////////////////
@@ -313,7 +296,7 @@ auto configureWrapperEnv(std::string sigil2_path) -> void
 {
     /* check if function capture is available
      * (for multithreaded lib intercepts) */
-    std::string sglwrapper(sigil2_path.append("/libsglwrapper.so"));
+    std::string sglwrapper(sigil2_path + "/libsglwrapper.so");
     std::ifstream sofile(sglwrapper);
 
     if (sofile.good() == true)
@@ -324,7 +307,7 @@ auto configureWrapperEnv(std::string sigil2_path) -> void
         if (get_preload == nullptr)
             set_preload = sglwrapper;
         else
-            set_preload = std::string(get_preload).append(":").append(sglwrapper);
+            set_preload = std::string(get_preload) + ":" + sglwrapper;
 
         setenv("LD_PRELOAD", set_preload.c_str(), true);
     }
@@ -368,7 +351,7 @@ auto tokenizeOpts(const std::vector<std::string>& userExec,
                                                   thread dominate execution */
     vg_opts[i++] = strdup("--tool=sigrind");
 
-    vg_opts[i++] = strdup((std::string("--ipc-dir=").append(ipcDir)).c_str());
+    vg_opts[i++] = strdup(("--ipc-dir=" + ipcDir).c_str());
 
     /*sigrind defaults*/
     vg_opts[i++] = strdup("--gen-mem=yes");
@@ -426,23 +409,19 @@ auto configureValgrind(const std::vector<std::string>& userExec,
 }
 
 
-auto configureShmemPath() -> std::string
+auto configureIpcDir() -> std::string
 {
     /* check IPC path */
-    char *shm_path = strdup(getenv("SIGIL2_SHM_DIR") != nullptr ?
-                            getenv("SIGIL2_SHM_DIR") : "/dev/shm");
+    std::string shm_path = getenv("SIGIL2_SHM_DIR") != nullptr ?
+                           getenv("SIGIL2_SHM_DIR") : "/dev/shm";
 
     struct stat info;
-    if (stat(shm_path, &info) != 0)
+    if (stat(shm_path.c_str(), &info) != 0)
         fatal(std::string(shm_path) + " not found\n" +
               "\tset environment var 'SIGIL2_SHM_DIR' to a tmpfs mount");
 
-    size_t template_length = strlen(shm_path) + sizeof(DIR_TEMPLATE);
-    char shm_template[template_length];
-    snprintf(shm_template, template_length, "%s%s", shm_path, DIR_TEMPLATE);
-    delete[] shm_path;
-
-    if (mkdtemp(shm_template) == nullptr)
+    std::string shm_template = shm_path + DIR_TEMPLATE;
+    if (mkdtemp(&shm_template[0]) == nullptr)
         fatal(std::string("creating shm dir failed -- ") + strerror(errno));
 
     return shm_template;
@@ -453,7 +432,7 @@ auto configureShmemPath() -> std::string
 ////////////////////////////////////////////////////////////
 // Interface to Sigil2 core
 ////////////////////////////////////////////////////////////
-auto startSigrind(FrontendStarterArgs args) -> void
+auto startSigrind(FrontendStarterArgs args) -> FrontendIfaceGenerator
 {
     const auto& userExecArgs = std::get<0>(args);
     const auto& sigrindArgs  = std::get<1>(args);
@@ -464,68 +443,25 @@ auto startSigrind(FrontendStarterArgs args) -> void
 
     gccWarn(userExecArgs);
 
-    std::string shmemPath{configureShmemPath()};
+    std::string ipcDir = configureIpcDir();
 
     auto pid = fork();
     if (pid >= 0)
     {
         if (pid == 0)
         {
-            auto valgrindArgs = configureValgrind(userExecArgs, sigrindArgs, shmemPath);
+            auto valgrindArgs = configureValgrind(userExecArgs, sigrindArgs, ipcDir);
             int res = execvp(valgrindArgs.first.c_str(), valgrindArgs.second);
-
             if (res == -1)
                 fatal(std::string("starting valgrind failed -- ") + strerror(errno));
         }
-        else
-        {
-            sigrindIface = std::make_shared<Sigrind>(numThreads, shmemPath);
-            _sigrindReady = true;
-            sigrindIface->readSigrindEvents();
-
-            /* wait for Sigil2 to consume all buffers */
-            complete.P();
-
-            /* teardown the valgrind interface */
-            sigrindIface.reset();
-        }
     }
     else
-    {
         fatal(std::string("sigrind fork failed -- ") + strerror(errno));
-    }
+
+    return [=]{ return std::make_shared<Sigrind>(ipcDir); };
 }
 
-
-auto sigrindReady() -> bool
-{
-    return _sigrindReady;
-}
-
-
-auto acqBufferFromSigrind(unsigned idx) -> EventBuffer*
-{
-    /* atomic_load(shared_ptr*) doesn't appear implemented in gcc4.8 */
-    // assert(std::atomic_load(&sigrindIface));
-    if (idx != 0)
-        fatal("Valgrind frontend only has buffer index: 0");
-
-    if (sigrindReady() == false)
-        return nullptr;
-    else
-        return sigrindIface->acquire();
-}
-
-
-auto relBufferFromSigrind(unsigned idx) -> void
-{
-    /* atomic_load(shared_ptr*) doesn't appear implemented in gcc4.8 */
-    // assert(std::atomic_load(&sigrindIface));
-    if (idx != 0)
-        fatal("Valgrind frontend only has buffer index: 0");
-
-    sigrindIface->release();
-}
 
 namespace
 {
