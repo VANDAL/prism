@@ -1,7 +1,7 @@
 #include "Sigil2.hpp"
 #include <iostream>
 
-#include "Frontends/Sigrind/Sigrind.hpp"
+#include "Frontends/AvailableFrontends.hpp"
 #include "Backends/SynchroTraceGen/EventHandlers.hpp"
 #include "Backends/SimpleCount/Handler.hpp"
 
@@ -28,7 +28,9 @@ int main(int argc, char* argv[])
 
     auto config = Sigil2Config()
         .registerFrontend("valgrind",
-                          sgl::startSigrind)
+                          startSigrind)
+        .registerFrontend("dynamorio",
+                          startDrSigil)
         .registerBackend("stgen",
                          {[]() {return std::make_shared<::STGen::EventHandlers>();},
                           ::STGen::onParse,

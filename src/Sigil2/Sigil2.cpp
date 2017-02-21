@@ -96,8 +96,7 @@ auto consumeEvents(BackendGenerator createBEIface, FrontendIfaceGenerator create
     auto frontendIface = createFEIface();
     auto backendIface  = createBEIface();
 
-    EventBuffer* buf = nullptr;
-    buf = frontendIface->acquireBuffer();
+    EventBuffer* buf = frontendIface->acquireBuffer();
     while (buf != nullptr) // consume events until there's nothing left
     {
         flushToBackend(backendIface, buf);

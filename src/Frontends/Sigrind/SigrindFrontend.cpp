@@ -1,224 +1,14 @@
-#include "Sigrind.hpp"
+#include "AvailableFrontends.hpp"
+#include "DbiFrontend.hpp"
 #include "Sigil2/SigiLog.hpp"
-#include "whereami.h"
 #include "elfio/elfio.hpp"
+#include "whereami.h"
+#include "glob.h"
 
-#include <csignal>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
+#define DIR_TEMPLATE "/sgl2-dr-XXXXXX"
 
-#define DIR_TEMPLATE "/sgl2-vg-XXXXXX"
-
-namespace sgl
-{
-
-using SigiLog::warn;
 using SigiLog::fatal;
-
-namespace
-{
-/* signal handler needs this to know which files to clean up */
-std::string shadow_ipcDir;
-std::string shadow_shmemName;
-std::string shadow_emptyFifoName;
-std::string shadow_fullFifoName;
-};
-
-////////////////////////////////////////////////////////////
-// Sigil2 - Valgrind IPC
-////////////////////////////////////////////////////////////
-Sigrind::Sigrind(const std::string &ipcDir)
-    : ipcDir(ipcDir)
-    , shmemName(ipcDir + "/" + SIGRIND_SHMEM_NAME)
-    , emptyFifoName(ipcDir + "/" + SIGRIND_EMPTYFIFO_NAME)
-    , fullFifoName (ipcDir + "/" + SIGRIND_FULLFIFO_NAME)
-{
-    assert(uid == 0);
-
-    shadow_ipcDir        = ipcDir;
-    shadow_shmemName     = shmemName;
-    shadow_fullFifoName  = fullFifoName;
-    shadow_emptyFifoName = emptyFifoName;
-    setInterruptOrTermHandler();
-
-    initShMem();
-    makeNewFifo(emptyFifoName.c_str());
-    makeNewFifo(fullFifoName.c_str());
-    connectValgrind();
-
-    eventLoop = std::make_shared<std::thread>(&Sigrind::receiveValgrindEventsLoop, this);
-}
-
-
-Sigrind::~Sigrind()
-{
-    eventLoop->join();
-
-    /* disconnect from Valgrind */
-    munmap(shared, sizeof(SigrindSharedData));
-    close(emptyfd);
-    close(fullfd);
-
-    /* file cleanup */
-    if (remove(shmemName.c_str())     != 0 ||
-        remove(emptyFifoName.c_str()) != 0 ||
-        remove(fullFifoName.c_str())  != 0 ||
-        remove(ipcDir.c_str())        != 0)
-        warn(std::string("deleting IPC files -- ") + strerror(errno));
-
-}
-
-
-auto Sigrind::initShMem() -> void
-{
-    std::unique_ptr<SigrindSharedData> init(new SigrindSharedData());
-
-    FILE *fd = fopen(shmemName.c_str(), "wb+");
-    if (fd == nullptr)
-        fatal(std::string("sigrind shared memory file open failed -- ") + strerror(errno));
-
-    /* XXX From write(2) man pages:
-     *
-     * On Linux, write() (and similar system calls) will transfer at most
-     * 0x7ffff000 (2,147,479,552) bytes, returning the number of bytes
-     * actually transferred.  (This is true on both 32-bit and 64-bit
-     * systems.)
-     *
-     * fwrite doesn't have this limitation */
-    int count = fwrite(init.get(), sizeof(SigrindSharedData), 1, fd);
-
-    if (count != 1)
-    {
-        fclose(fd);
-        fatal(std::string("sigrind shared memory file write failed -- ") + strerror(errno));
-    }
-
-    shared = reinterpret_cast<SigrindSharedData *>
-                 (mmap(nullptr, sizeof(SigrindSharedData), PROT_READ | PROT_WRITE, MAP_SHARED, fileno(fd), 0));
-
-    if (shared == (void *) - 1)
-    {
-        fclose(fd);
-        fatal(std::string("sigrind mmap shared memory failed -- ") + strerror(errno));
-    }
-
-    fclose(fd);
-}
-
-
-auto Sigrind::makeNewFifo(const char *path) const -> void
-{
-    if (mkfifo(path, 0600) < 0)
-    {
-        if (errno == EEXIST)
-        {
-            if (remove(path) != 0)
-                fatal(std::string("sigil2 could not delete old fifos -- ") + strerror(errno));
-
-            if (mkfifo(path, 0600) < 0)
-                fatal(std::string("sigil2 failed to create valgrind fifos -- ") + strerror(errno));
-        }
-        else
-        {
-            fatal(std::string("sigil2 failed to create valgrind fifos -- ") + strerror(errno));
-        }
-    }
-}
-
-
-auto Sigrind::connectValgrind() -> void
-{
-    /* XXX Sigil2 might get stuck blocking if Valgrind
-     * unexpectedly exits before connecting at this point */
-
-    emptyfd = open(emptyFifoName.c_str(), O_WRONLY);
-    if (emptyfd < 0)
-        fatal(std::string("sigil2 failed to open valgrind fifo for writing -- ") + strerror(errno));
-
-    fullfd = open(fullFifoName.c_str(), O_RDONLY);
-    if (fullfd < 0)
-        fatal(std::string("sigil2 failed to open valgrind fifo for reading -- ") + strerror(errno));
-}
-
-
-auto Sigrind::readFullFifo() -> int
-{
-    int full_data;
-    int res = read(fullfd, &full_data, sizeof(full_data));
-
-    if (res == 0)
-        fatal("Unexpected end of fifo");
-    else if (res < 0)
-        fatal(std::string("could not read from valgrind full fifo -- ") + strerror(errno));
-
-    return full_data;
-}
-
-
-auto Sigrind::writeEmptyFifo(unsigned idx) -> void
-{
-    auto res = write(emptyfd, &idx, sizeof(idx));
-    if (res < 0)
-        fatal(std::string("could not send valgrind empty buffer status -- ") + strerror(errno));
-}
-
-
-auto Sigrind::receiveValgrindEventsLoop() -> void
-{
-    bool finished = false;
-    while (finished == false)
-    {
-        /* Valgrind sends event buffer metadata */
-        unsigned fromVG = readFullFifo();
-        unsigned idx;
-        emptied.P();
-
-        if (fromVG == SIGRIND_FINISHED)
-        {
-            finished = true;
-            idx = readFullFifo();
-        }
-        else
-        {
-            idx = fromVG;
-        }
-
-        assert(idx < decltype(idx){NUM_BUFFERS} && idx >= 0);
-        q.enqueue(idx);
-        filled.V();
-    }
-
-    /* Signal the end of the event stream */
-    q.enqueue(-1);
-    filled.V();
-}
-
-
-auto Sigrind::acquireBuffer() -> EventBuffer*
-{
-    filled.P();
-    lastBufferIdx = q.dequeue();
-
-    /* can be negative to signal the end of the event stream */
-    assert(lastBufferIdx < decltype(lastBufferIdx){NUM_BUFFERS});
-
-    if (lastBufferIdx < 0)
-        return nullptr;
-    else
-        return &(shared->sigrind_buf[lastBufferIdx]);
-}
-
-
-auto Sigrind::releaseBuffer() -> void
-{
-    emptied.V();
-
-    /* Tell Valgrind that the buffer is empty again */
-    assert(lastBufferIdx < decltype(lastBufferIdx){NUM_BUFFERS} && lastBufferIdx >= 0);
-    writeEmptyFifo(lastBufferIdx);
-}
+using SigiLog::warn;
 
 ////////////////////////////////////////////////////////////
 // Launching Valgrind
@@ -440,10 +230,8 @@ auto startSigrind(FrontendStarterArgs args) -> FrontendIfaceGenerator
 
     if (numThreads != 1)
         fatal("Valgrind frontend attempted with other than 1 thread");
-
     gccWarn(userExecArgs);
-
-    std::string ipcDir = configureIpcDir();
+    auto ipcDir = configureIpcDir();
 
     auto pid = fork();
     if (pid >= 0)
@@ -459,34 +247,5 @@ auto startSigrind(FrontendStarterArgs args) -> FrontendIfaceGenerator
     else
         fatal(std::string("sigrind fork failed -- ") + strerror(errno));
 
-    return [=]{ return std::make_shared<Sigrind>(ipcDir); };
+    return [=]{ return std::make_shared<DBIFrontend>(ipcDir); };
 }
-
-
-namespace
-{
-void sigrindHandler(int s)
-{
-    /* file cleanup */
-    remove(shadow_shmemName.c_str());
-    remove(shadow_emptyFifoName.c_str());
-    remove(shadow_fullFifoName.c_str());
-    remove(shadow_ipcDir.c_str());
-
-    /* set default and re-raise */
-    signal(s, SIG_DFL);
-    raise(s);
-}
-};
-
-void Sigrind::setInterruptOrTermHandler()
-{
-    struct sigaction sig_handler;
-    sig_handler.sa_handler = sigrindHandler;
-    sigemptyset(&sig_handler.sa_mask);
-    sig_handler.sa_flags = 0;
-    sigaction(SIGINT, &sig_handler, NULL);
-    sigaction(SIGTERM, &sig_handler, NULL);
-}
-
-}; //end namespace sgl

@@ -1,9 +1,12 @@
 # dynamorio frontend -- drsigil
-set(SOURCES
-	DrSigil.cpp)
-add_library(DrSigil STATIC ${SOURCES})
+set(SOURCES DrSigilFrontend.cpp)
+add_library(DrSigil OBJECT ${SOURCES})
 
 # DynamoRIO
+set(DR_PATH ${SRC_FRONTENDS}/DrSigil)
+execute_process(
+	COMMAND git submodule update --init ${DR_PATH}/dynamorio
+	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 include(ExternalProject)
 set(INSTALL_PREFIX ${PROJECT_BINARY_DIR}/bin/dr)
 ExternalProject_Add(dynamorio

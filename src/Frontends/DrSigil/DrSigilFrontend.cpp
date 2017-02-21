@@ -1,17 +1,20 @@
+#include "AvailableFrontends.hpp"
+#include "DbiFrontend.hpp"
 #include "Sigil2/SigiLog.hpp"
-#include "DrSigil.hpp"
-
 #include "whereami.h"
 #include "glob.h"
 
 #define DIR_TEMPLATE "/sgl2-dr-XXXXXX"
 
+using SigiLog::fatal;
 
+////////////////////////////////////////////////////////////
+// Launching DynamoRIO
+////////////////////////////////////////////////////////////
 namespace
 {
 using ExecArgs = char *const *;
 using Exec = std::pair<std::string, ExecArgs>;
-using SigiLog::fatal;
 
 auto tokenizeOpts(const std::vector<std::string> &user_exec,
                   const std::vector<std::string> &args,
@@ -112,15 +115,15 @@ auto configureIpcDir() -> std::string
 
     return shm_template;
 }
-
 }; //end namespace
 
-namespace sgl
-{
 
+////////////////////////////////////////////////////////////
+// Interface to Sigil2 core
+////////////////////////////////////////////////////////////
 auto startDrSigil(FrontendStarterArgs args) -> FrontendIfaceGenerator
 {
-    std::string ipcDir = configureIpcDir();
+    auto ipcDir = configureIpcDir();
 
     auto pid = fork();
     if (pid >= 0)
@@ -139,7 +142,5 @@ auto startDrSigil(FrontendStarterArgs args) -> FrontendIfaceGenerator
     else
         fatal(std::string("sigrind fork failed -- ") + strerror(errno));
 
-    return [=]{ return std::make_shared<DrSigil>(ipcDir); };
+    return [=]{ return std::make_shared<DBIFrontend>(ipcDir); };
 }
-
-}; //end namespace sgl

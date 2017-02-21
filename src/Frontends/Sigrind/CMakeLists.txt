@@ -32,8 +32,8 @@ endif()
 target_compile_definitions(sglwrapper-shared PUBLIC -DVGO_linux=1 -D${VG_ARCH})
 target_compile_definitions(sglwrapper-static PUBLIC -DVGO_linux=1 -D${VG_ARCH})
 
-set(SOURCES Sigrind.cpp)
-add_library(Sigrind STATIC ${SOURCES})
+set(SOURCES SigrindFrontend.cpp)
+add_library(Sigrind OBJECT ${SOURCES})
 add_dependencies(Sigrind sglwrapper-shared sglwrapper-static)
 
 # valgrind build

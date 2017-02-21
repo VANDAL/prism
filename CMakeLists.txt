@@ -91,18 +91,5 @@ target_link_libraries(sigil2 SimpleCount)
 ##########################
 # Interface to Frontends #
 ##########################
-# static or random event injector
-#add_subdirectory(${SRC_FRONTENDS}/Injector)
-#target_link_libraries(sigil2 Injector)
-
-# valgrind DBI -- default
-add_subdirectory(${SRC_FRONTENDS}/Sigrind)
-target_link_libraries(sigil2 Sigrind)
-
-# dynamorio DBI -- experimental
-if(ENABLE_DRSIGIL)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_DRSIGIL")
-
-	add_subdirectory(${SRC_FRONTENDS}/DrSigil)
-	target_link_libraries(sigil2 DrSigil)
-endif(ENABLE_DRSIGIL)
+add_subdirectory(${SRC_FRONTENDS})
+target_link_libraries(sigil2 frontends)
