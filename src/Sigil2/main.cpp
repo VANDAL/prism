@@ -2,8 +2,10 @@
 #include "EventBuffer.h"
 
 #include "Frontends/AvailableFrontends.hpp"
+
 #include "Backends/SynchroTraceGen/EventHandlers.hpp"
 #include "Backends/SimpleCount/Handler.hpp"
+#include "Backends/SigilClassic/Handler.hpp"
 
 #include <iostream>
 
@@ -35,14 +37,17 @@ int main(int argc, char* argv[])
                          {[]() {return std::make_shared<::STGen::EventHandlers>();},
                           ::STGen::onParse,
                           ::STGen::onExit,
-                          {},}
-                        )
+                          {},})
         .registerBackend("simplecount",
                          {[]() {return std::make_shared<::SimpleCount::Handler>();},
                           {},
                           ::SimpleCount::cleanup,
-                          {},}
-                        )
+                          {},})
+        .registerBackend("sigilclassic",
+                         {[]() {return std::make_shared<::SigilClassic::Handler>();},
+                          {},
+                          {},
+                          {},})
         .parseCommandLine(argc, argv);
 
 

@@ -31,7 +31,7 @@ auto Handler::onCompEv(const SglCompEv &ev) -> void
 
 auto Handler::onMemEv(const SglMemEv &ev) -> void
 {
-    /* - check shadow memoryi
+    /* - check shadow memory
      * - update the metadata for the current entity */
     switch(ev.type)
     {
@@ -49,6 +49,7 @@ auto Handler::onMemEv(const SglMemEv &ev) -> void
 
 auto Handler::onCxtEv(const SglCxtEv &ev) -> void
 {
+    /* Use function contexts as Sigil1 'entities' */
     switch(ev.type)
     {
       case CxtTypeEnum::SGLPRIM_CXT_FUNC_ENTER:

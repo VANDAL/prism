@@ -18,7 +18,6 @@ class Handler : public BackendIface
     SigilContext cxt;
 };
 
-
 }; //end namespace SigilClassic
 
 #endif

@@ -21,6 +21,10 @@ SigilContext::SigilContext()
     enterEntity("__BEGINNING_OF_SIGIL__");
 }
 
+SigilContext::~SigilContext()
+{
+    /* TODO Print out stats */
+}
 
 auto SigilContext::setThreadContext(TID tid) -> void
 {
@@ -45,9 +49,7 @@ auto SigilContext::enterEntity(std::string name) -> void
 
     /* count is not bounded, error if too many functions */
     if(INCR_EID_OVERFLOW(global_eid_cnt))
-    {
         SigiLog::fatal("SigilClassic detected overflow in entity count");
-    }
 
     EID caller = *cur_eid;
     *cur_eid = global_eid_cnt;
@@ -89,13 +91,9 @@ auto SigilContext::monitorRead(Addr addr, ByteCount bytes) -> void
 
         if/*local*/((writer == *cur_eid) ||
                     sm.isReaderFID(cur_addr, *cur_eid))
-        {
             cur_entity->local_bytes_read++;
-        }
         else/*unique*/
-        {
             cur_entity->comm_edges[writer]++;
-        }
     }
 }
 

@@ -6,7 +6,7 @@
 #include <string>
 #include <cstdint>
 
-#include "ShadowMemory.hpp"
+#include "SCShadowMemory.hpp"
 #include "Sigil2/Primitive.h"
 
 namespace SigilClassic
@@ -21,14 +21,10 @@ namespace SigilClassic
  */
 
 /* Entity/thread unique ID */
-using UInt = uint32_t;
-using Int = int32_t;
-
 using EID = Int;
-using TID = Int;
-
-constexpr TID INVL_TID{-1};
 constexpr EID INVL_EID{-1};
+using TID = Int;
+constexpr TID INVL_TID{-1};
 
 
 /* Keeps track of entity metadata */
@@ -66,6 +62,7 @@ struct TContext
 struct SigilContext
 {
     SigilContext();
+    ~SigilContext();
 
     /* Reset all the contexts to that of 'tid'.
      * Necessary because an entity (e.g. function) can be
@@ -83,14 +80,14 @@ struct SigilContext
     auto incrFLOPCost() -> void;
 
 
-    ShadowMemory sm;
+    SCShadowMemory sm;
     std::unordered_map<TID, TContext> thread_contexts;
 
     TID cur_tid{INVL_TID};
     EID global_eid_cnt{INVL_EID};
     TContext *cur_tcxt;
 
-    /* tcontext cache */
+    /* cache tcontext */
     decltype(TContext::cur_eid)     *cur_eid{nullptr};
     decltype(TContext::entity_ids)  *cur_entity_ids{nullptr};
     decltype(TContext::entity_data) *cur_entity_data{nullptr};
