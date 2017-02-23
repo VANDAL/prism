@@ -4,6 +4,11 @@
 #include "spdlog/sinks/ostream_sink.h"
 #include "Sigil2/SigiLog.hpp"
 
+/* DynamoRIO sometimes reports very high addresses.
+ * For now, allow these addresses until we figure
+ * out what to do with them */
+#define ALLOW_ADDRESS_OVERFLOW 1
+
 #include "EventHandlers.hpp"
 
 namespace STGen
@@ -46,18 +51,12 @@ void PerThreadStats::setThread(TID tid)
     std::lock_guard<std::mutex> lock(stats_mutex);
 
     if(curr_tid != INVL_TID)
-    {
         per_thread_counts[curr_tid] = curr_counts;
-    }
 
     if(per_thread_counts.find(tid) == per_thread_counts.cend())
-    {
         curr_counts = std::make_tuple(0,0,0,0,0);
-    }
     else
-    {
         curr_counts = per_thread_counts[tid];
-    }
 
     curr_tid = tid;
 }
@@ -73,10 +72,6 @@ std::vector<std::pair<Addr, std::set<TID>>> barrier_participants;
 
 void EventHandlers::onSyncEv(const SglSyncEv &ev)
 {
-    /* Flush any outstanding ST events */
-    st_comm_ev.flush();
-    st_comp_ev.flush();
-
     if /*switching threads*/(ev.type == SyncTypeEnum::SGLPRIM_SYNC_SWAP &&
                              curr_thread_id != static_cast<TID>(ev.id)) //XXX watch for narrowing
     {
@@ -125,46 +120,37 @@ void EventHandlers::onSyncEv(const SglSyncEv &ev)
             break;
 
         case ::SGLPRIM_SYNC_CREATE:
-        {
+            {
             std::lock_guard<std::mutex> lock(sync_event_mutex);
             thread_spawns.push_back(std::make_pair(curr_thread_id, ev.id));
-        }
-
-        type = 3;
-        break;
+            }
+            type = 3;
+            break;
 
         case ::SGLPRIM_SYNC_JOIN:
             type = 4;
             break;
 
         case ::SGLPRIM_SYNC_BARRIER:
-        {
+            {
             std::lock_guard<std::mutex> lock(sync_event_mutex);
 
             unsigned int idx = 0;
-
             for (auto &pair : barrier_participants)
             {
                 if (pair.first == (unsigned long)ev.id)
-                {
                     break;
-                }
-
                 ++idx;
             }
 
             if /*no matches found*/(idx == barrier_participants.size())
-            {
                 barrier_participants.push_back(make_pair(ev.id, std::set<TID>({curr_thread_id})));
-            }
             else
-            {
                 barrier_participants[idx].second.insert(curr_thread_id);
             }
-        }
 
-        type = 5;
-        break;
+            type = 5;
+            break;
 
         case ::SGLPRIM_SYNC_CONDWAIT:
             type = 6;
@@ -193,6 +179,9 @@ void EventHandlers::onSyncEv(const SglSyncEv &ev)
 
         if /*valid sync event*/(type > 0)
         {
+            /* Flush any outstanding ST events */
+            st_comm_ev.flush();
+            st_comp_ev.flush();
             st_sync_ev.flush(type, ev.id);
         }
     }
@@ -247,7 +236,7 @@ void EventHandlers::onMemEv(const SglMemEv &ev)
     }
 
     if (st_comp_ev.thread_local_store_cnt > (primitives_per_st_comp_ev - 1) ||
-        st_comp_ev.thread_local_load_cnt > (primitives_per_st_comp_ev - 1))
+        st_comp_ev.thread_local_load_cnt  > (primitives_per_st_comp_ev - 1))
     {
         st_comp_ev.flush();
     }
@@ -262,30 +251,36 @@ void EventHandlers::onLoad(const SglMemEv &ev)
     for /*each byte*/(decltype(ev.size) i = 0; i < ev.size; ++i)
     {
         Addr curr_addr = ev.begin_addr + i;
-        TID writer_thread = shad_mem.getWriterTID(curr_addr);
-        bool is_reader_thread = shad_mem.isReaderTID(curr_addr, curr_thread_id);
+        try
+        {
+            TID writer_thread = shad_mem.getWriterTID(curr_addr);
+            bool is_reader_thread = shad_mem.isReaderTID(curr_addr, curr_thread_id);
 
-        if (is_reader_thread == false)
-        {
-            shad_mem.updateReader(curr_addr, 1, curr_thread_id);
-        }
+            if (is_reader_thread == false)
+                shad_mem.updateReader(curr_addr, 1, curr_thread_id);
 
-        if /*comm edge*/((is_reader_thread == false) &&
-                         (writer_thread != curr_thread_id) &&
-                         (writer_thread != SO_UNDEF)) /* XXX treat a read/write
-                                                       * to an address with UNDEF thread
-                                                       * as a local compute event */
-        {
-            is_comm_edge = true;
-            st_comp_ev.flush();
-            st_comm_ev.addEdge(writer_thread, shad_mem.getWriterEID(curr_addr), curr_addr);
+            if /*comm edge*/((is_reader_thread == false) &&
+                             (writer_thread != curr_thread_id) &&
+                             (writer_thread != SO_UNDEF)) /* XXX treat a read/write
+                                                           * to an address with UNDEF thread
+                                                           * as a local compute event */
+            {
+                is_comm_edge = true;
+                st_comp_ev.flush();
+                st_comm_ev.addEdge(writer_thread, shad_mem.getWriterEID(curr_addr), curr_addr);
+            }
+            else/*local load, comp event*/
+            {
+                st_comm_ev.flush();
+                st_comp_ev.updateReads(curr_addr, 1);
+            }
         }
-        else/*local load, comp event*/
+        catch(std::out_of_range &e)
         {
-            st_comm_ev.flush();
+            /* treat as a local event */
+            warn(e.what());
             st_comp_ev.updateReads(curr_addr, 1);
         }
-
     }
 
     /* A situation when a singular memory event is both
@@ -295,9 +290,7 @@ void EventHandlers::onLoad(const SglMemEv &ev)
      * a communication event, and not as part of a
      * computation event */
     if (is_comm_edge == false)
-    {
         st_comp_ev.incReads();
-    }
 }
 
 
@@ -306,7 +299,14 @@ void EventHandlers::onStore(const SglMemEv &ev)
     st_comp_ev.incWrites();
     st_comp_ev.updateWrites(ev);
 
-    shad_mem.updateWriter(ev.begin_addr, ev.size, curr_thread_id, curr_event_id);
+    try
+    {
+        shad_mem.updateWriter(ev.begin_addr, ev.size, curr_thread_id, curr_event_id);
+    }
+    catch(std::out_of_range &e)
+    {
+        warn(e.what());
+    }
 }
 
 
@@ -317,9 +317,7 @@ void EventHandlers::onCxtEv(const SglCxtEv &ev)
 {
     /* Instruction address marker */
     if (ev.type == CxtTypeEnum::SGLPRIM_CXT_INSTR)
-    {
         ++(std::get<PerThreadStats::Type::Instr>(stats.curr_counts));
-    }
 }
 
 
@@ -340,13 +338,9 @@ void onExit()
     std::ofstream stats_file(stats_metadata, std::ios::trunc | std::ios::out);
 
     if (pthread_file.fail() == true)
-    {
         fatal("Failed to open: " + pthread_metadata);
-    }
     else if (stats_file.fail() == true)
-    {
         fatal("Failed to open: " + stats_metadata);
-    }
 
     spdlog::set_sync_mode();
     auto pthread_sink = std::make_shared<spdlog::sinks::ostream_sink_st>(pthread_file);
@@ -377,10 +371,8 @@ void onExit()
         /* SynchroTraceSim only supports threads
          * that were spawned from the original thread */
         if (pair.first == 1)
-        {
             pthread_logger->info("##" + std::to_string(pair.second) +
                                  "," + std::to_string(thread_creates[create_idx]));
-        }
 
         ++create_idx; //Skip past thread spawns that happened in other threads
     }
@@ -394,9 +386,7 @@ void onExit()
         ss << "**" << pair.first;
 
         for (auto &tid : pair.second)
-        {
             ss << "," << tid;
-        }
 
         pthread_logger->info(ss.str());
     }
@@ -467,9 +457,7 @@ EventHandlers::~EventHandlers()
 
     /* close streams */
     for (auto &ptr : gz_streams)
-    {
         ptr.reset();
-    }
 }
 
 
@@ -480,9 +468,7 @@ void EventHandlers::setThread(TID tid)
     stats.setThread(tid);
 
     if (curr_thread_id == tid)
-    {
         return;
-    }
 
     event_ids[curr_thread_id] = curr_event_id;
 
@@ -514,9 +500,7 @@ void EventHandlers::initThreadLog(TID tid)
     auto thread_gz = std::make_shared<gzofstream>(key.c_str(), std::ios::trunc | std::ios::out);
 
     if (thread_gz->fail() == true)
-    {
         fatal("Failed to open: " + key);
-    }
 
     auto ostream_sink = std::make_shared<spdlog::sinks::ostream_sink_st>(*thread_gz);
 
@@ -582,9 +566,7 @@ void onParse(Args args)
             }
 
             if /*no match*/(opt == options.cend())
-            {
                 ++unmatched;
-            }
         }
         else
         {
@@ -593,14 +575,10 @@ void onParse(Args args)
     }
 
     if (unmatched > 0)
-    {
         fatal("unexpected synchrotracegen options");
-    }
 
     if (matches['o'].empty() == false)
-    {
         EventHandlers::output_directory = matches['o'];
-    }
 
     if (matches['c'].empty() == false)
     {

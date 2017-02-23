@@ -68,7 +68,6 @@ set(SOURCES
 	${SRC_SIGIL2}/Frontends.cpp
 	${SRC_SIGIL2}/Sigil2Parser.cpp
 	${SRC_SIGIL2}/Sigil2Config.cpp
-	${SRC_SIGIL2}/Sigil2.cpp
 	${SRC_SIGIL2}/main.cpp)
 add_executable(sigil2 ${SOURCES})
 target_link_libraries(sigil2 pthread rt)

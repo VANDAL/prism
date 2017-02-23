@@ -181,9 +181,7 @@ void STCommEvent::flush()
         logger->info(logmsg);
 
         if(INCR_EID_OVERFLOW(event_id))
-        {
             SigiLog::fatal("SynchroTraceGen Event ID overflow");
-        }
 
         reset();
     }
@@ -278,9 +276,7 @@ void STSyncEvent::flush(const STSyncType type, const Addr sync_addr)
     logmsg.clear();
 
     if(INCR_EID_OVERFLOW(event_id))
-    {
         SigiLog::fatal("SynchroTraceGen Event ID overflow");
-    }
 }
 
 

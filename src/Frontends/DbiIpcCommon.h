@@ -15,7 +15,9 @@
 #define SIGIL2_DBI_BUFFERS        (8)
 
 #ifdef __cplusplus
-extern "C" {
+static_assert((SIGIL2_DBI_BUFFERS >= 2) &&
+              ((SIGIL2_DBI_BUFFERS & (SIGIL2_DBI_BUFFERS - 1)) == 0),
+              "SIGIL2_DBI_BUFFERS must be a power of 2");
 #else
 typedef struct Sigil2DBISharedData Sigil2DBISharedData;
 #endif
@@ -24,9 +26,5 @@ struct Sigil2DBISharedData
 {
     EventBuffer buf[SIGIL2_DBI_BUFFERS];
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

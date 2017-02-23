@@ -7,6 +7,7 @@
 #include <limits>
 #include <vector>
 #include <memory>
+#include <stdexcept>
 
 /* Shadow Memory tracks 'shadow state' for an address.
  * For further clarification, please read,
@@ -15,6 +16,8 @@
  */
 
 using Addr = PtrVal;
+using SigiLog::fatal;
+using SigiLog::warn;
 
 /* XXX: Setting {addr, pm} bits too large can cause bad_alloc errors */
 template <typename SO, unsigned ADDR_BITS = 38, unsigned PM_BITS = 16>
@@ -65,9 +68,13 @@ class ShadowMemory
         {
             char s_addr[32];
             sprintf(s_addr, "0x%lx", addr);
-            std::string msg("shadow memory max address limit [");
-            msg.append(s_addr).append("]");
-            SigiLog::fatal(msg);
+            auto msg = std::string("shadow memory max address limit [").append(s_addr).append("]");
+#ifdef ALLOW_ADDRESS_OVERFLOW
+            /* let the caller figure out what it wants to do */
+            throw std::out_of_range(msg);
+#else
+            fatal(msg);
+#endif
         }
     }
 

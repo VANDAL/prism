@@ -10,11 +10,11 @@
 #include <sys/mman.h>
 
 /**
- * Sigil2 receives events from a DBI tool via a set of shared memory buffers
- * that are filled by the DBI tool in a forked process. See DbiIpcCommon.h
- * for details of these buffers.
+ * Sigil2 receives events from a dynamic binary instrumentation (DBI) tool
+ * via a set of shared memory buffers that are filled by the DBI tool in a
+ * forked process. See DbiIpcCommon.h for details of these buffers.
  *
- * There should exist at least 2 buffers, so Valgrind can fill a buffer
+ * There should exist at least 2 buffers, so the DBI tool can fill a buffer
  * with events while Sigil2 reads from the other buffer. The optimal amount
  * of buffering done depends on the system resources and the variation in
  * event processing in the backend.
@@ -25,6 +25,10 @@
  * to read from (Sigil2 backend).
  * Otherwise each process would require less efficient synchronization methods
  * such as spinning.
+ *
+ * XXX The term 'full' buffer is for historical reasons. A buffer does not
+ * necessarily have to be full when used by Sigil2. There should be metadata
+ * available to let Sigil2 know how many valid events are in the buffer.
  */
 
 using SigiLog::warn;
@@ -52,9 +56,9 @@ class DBIFrontend : public FrontendIface
   public:
     DBIFrontend(const std::string &ipcDir)
         : ipcDir       (ipcDir)
-        , shmemName    (ipcDir + "/" + SIGIL2_DBI_SHMEM_NAME)
-        , emptyFifoName(ipcDir + "/" + SIGIL2_DBI_EMPTYFIFO_NAME)
-        , fullFifoName (ipcDir + "/" + SIGIL2_DBI_FULLFIFO_NAME)
+        , shmemName    (ipcDir + "/" + SIGIL2_DBI_SHMEM_NAME     + "-" + std::to_string(uid))
+        , emptyFifoName(ipcDir + "/" + SIGIL2_DBI_EMPTYFIFO_NAME + "-" + std::to_string(uid))
+        , fullFifoName (ipcDir + "/" + SIGIL2_DBI_FULLFIFO_NAME  + "-" + std::to_string(uid))
     {
         initShMem();
         makeNewFifo(emptyFifoName.c_str());
@@ -215,22 +219,17 @@ class DBIFrontend : public FrontendIface
         {
             /* DBI tool sends event buffer metadata */
             unsigned fromDBI = readFullFifo();
-            unsigned idx;
             emptied.P();
 
             if (fromDBI == SIGIL2_DBI_FINISHED)
-            {
                 finished = true;
-                idx = readFullFifo();
-            }
             else
             {
-                idx = fromDBI;
+                assert(fromDBI < decltype(fromDBI){SIGIL2_DBI_BUFFERS} &&
+                       fromDBI >= 0);
+                q.enqueue(fromDBI);
+                filled.V();
             }
-
-            assert(idx < decltype(idx){SIGIL2_DBI_BUFFERS} && idx >= 0);
-            q.enqueue(idx);
-            filled.V();
         }
 
         /* Signal the end of the event stream */

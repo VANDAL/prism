@@ -44,7 +44,7 @@ class STShadowMemory
         std::bitset<MAX_THREADS> last_readers;
     };
 
-    ShadowMemory<ShadowObject, 45, 27> sm;
+    ShadowMemory<ShadowObject, 48, 28> sm;
 };
 
 

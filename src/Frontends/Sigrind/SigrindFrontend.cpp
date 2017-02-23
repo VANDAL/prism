@@ -5,7 +5,7 @@
 #include "whereami.h"
 #include "glob.h"
 
-#define DIR_TEMPLATE "/sgl2-dr-XXXXXX"
+#define DIR_TEMPLATE "/sgl2-XXXXXX"
 
 using SigiLog::fatal;
 using SigiLog::warn;
