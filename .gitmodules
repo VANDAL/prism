@@ -3,7 +3,7 @@
 	url = https://github.com/philsquared/Catch
 [submodule "include/spdlog"]
 	path = include/spdlog
-	url = https://github.com/mdlui/spdlog
+	url = https://github.com/mikelui/spdlog
 [submodule "include/whereami"]
 	path = include/whereami
 	url = https://github.com/gpakosz/whereami
@@ -11,8 +11,8 @@
 	path = include/zlib
 	url = https://github.com/madler/zlib
 [submodule "src/Frontends/DrSigil/dynamorio"]
-	path = src/Frontends/DrSigil/dynamorio
-	url = https://github.com/mdlui/dynamorio
+	path = src/Frontends/DrSigil/dynamorio-Sigil2
+	url = https://github.com/VANDAL/dynamorio-Sigil2
 [submodule "src/Frontends/Sigrind/valgrind-Sigil2"]
 	path = src/Frontends/Sigrind/valgrind-Sigil2
-	url = https://github.com/mikelui/valgrind-Sigil2
+	url = https://github.com/VANDAL/valgrind-Sigil2

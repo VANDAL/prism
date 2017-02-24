@@ -5,7 +5,7 @@ add_library(DrSigil OBJECT ${SOURCES})
 # DynamoRIO
 set(DR_PATH ${SRC_FRONTENDS}/DrSigil)
 execute_process(
-	COMMAND git submodule update --init ${DR_PATH}/dynamorio
+	COMMAND git submodule update --init ${DR_PATH}/dynamorio-Sigil2
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 include(ExternalProject)
 set(INSTALL_PREFIX ${PROJECT_BINARY_DIR}/bin/dr)
@@ -16,7 +16,7 @@ ExternalProject_Add(dynamorio
 	DOWNLOAD_COMMAND ""
 
 	# CONFIGURE STEP
-	SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dynamorio
+	SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dynamorio-Sigil2
 	CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}
 	-DCMAKE_CXX_STANDARD=98
 	-DDISABLE_WARNINGS=ON # WErrors with gcc-6+
