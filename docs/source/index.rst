@@ -44,7 +44,7 @@ Contribute
 
 Source Code: https://git.io/sigil2
 
-Issue Tracker: https://github.com/mikelui/Sigil2/issues
+Issue Tracker: https://github.com/VANDAL/Sigil2/issues
 
 Support
 -------

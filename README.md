@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="https://cdn.rawgit.com/mdlui/Sigil2/master/docs/sigil2-torus.png" alt="mmmmmm">
+  <img src="https://cdn.rawgit.com/VANDAL/Sigil2/master/docs/sigil2-torus.png" alt="mmmmmm">
 </p>
 <p align="center"> <i>mmmmm...Sigil...</i>  </p>
 
 
 [![BSD licensed](https://img.shields.io/badge/license-BSD-blue.svg)](./COPYING)
-[![Build Status](https://travis-ci.org/mikelui/Sigil2.svg?branch=master)](https://travis-ci.org/mikelui/Sigil2)
+[![Build Status](https://travis-ci.org/VANDAL/Sigil2.svg?branch=master)](https://travis-ci.org/VANDAL/Sigil2)
 [![Docs Status](https://readthedocs.org/projects/sigil2/badge)](http://sigil2.readthedocs.io/en/latest)
 
 Provides an extensible interface to  **architecture-agnostic** application events.
@@ -35,7 +35,7 @@ Each event has specific attributes that are accessible via the Sigil2 API
 
 ## Example Usage
 * Valgrind is the *default* frontend for generating events, if no option is specified
-* [SynchroTraceGen](http://ece.drexel.edu/faculty/taskin/wiki/vlsilab/index.php/SynchroTrace) backend processing events into a special event trace  
+* [SynchroTraceGen](http://vlsi.ece.drexel.edu/index.php?title=SynchroTrace) backend processing events into a special event trace  
 
 `$ bin/sigil2 --backend=stgen --executable=./myprogram -with --args`
 
@@ -55,4 +55,4 @@ A third frontend argument can be supplied
 | In Progress: ARM                   |           |               |
 
 ## Documentation
-See the [docs](http://sigil2.readthedocs.io/en/latest)
+[Read the docs](http://sigil2.readthedocs.io/en/latest)
