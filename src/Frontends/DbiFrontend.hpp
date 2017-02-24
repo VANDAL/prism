@@ -179,9 +179,13 @@ class DBIFrontend : public FrontendIface
     {
         if (remove(shmemName.c_str()) != 0 ||
             remove(emptyFifoName.c_str()) != 0 ||
-            remove(fullFifoName.c_str())  != 0 ||
-            remove(ipcDir.c_str())    != 0)
+            remove(fullFifoName.c_str())  != 0)
             warn(std::string("error deleting IPC files -- ") + strerror(errno));
+
+        /* Don't check return code.
+         * This will error if there are still other threads keeping IPC files alive.
+         * Let the last thread close the the directory. */
+        remove(ipcDir.c_str());
     }
 
     /* Reads an int from 'full' fifo and returns the data.
