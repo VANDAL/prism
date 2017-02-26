@@ -24,36 +24,42 @@ namespace STGen
 {
 using StatCounter = unsigned long long;
 
-/* for speed, adapted from http://stackoverflow.com/a/33447587 */
+
+/* For speed, adapted from http://stackoverflow.com/a/33447587
+ * XXX hexStr MUST be at least (sizeof(I) * 2 + 3)
+ * Returns the beginning location of the hex string, 
+ * since the supplied char* will be truncated:
+ *     8BADF00D0xDEADBEEF\0
+ *             |----- the hex string starts here at 0x */
 template <typename I>
-inline const char *n2hexstr(const I &w)
+inline const char *n2hexstr(char *hexStr, const I &w)
 {
-    static constexpr int hex_len = sizeof(I) * 2;
+    static constexpr int hexLen = sizeof(I) * 2;
     static const char *digits = "0123456789abcdef";
-    thread_local static char rc[hex_len + 3]; //extra 3 slots are "0x" and null char
 
-    bool hex_MSB_found = false;
-    int hex_MSB = 2;
+    bool hexMSBfound = false;
+    int hexMSB = 2;
 
-    for (size_t i = 2, j = (hex_len - 1) * 4 ; i < hex_len + 2; ++i, j -= 4)
+    for (size_t i=2, j=(hexLen-1) * 4; i<hexLen+2; ++i, j-=4)
     {
-        rc[i] = digits[(w >> j) & 0x0f];
+        hexStr[i] = digits[(w >> j) & 0x0f];
 
-        if (hex_MSB_found == false && rc[i] != '0')
+        if (hexMSBfound == false && hexStr[i] != '0')
         {
-            hex_MSB_found = true;
-            hex_MSB = i;
+            hexMSBfound = true;
+            hexMSB = i;
         }
     }
 
     /* TODO if 'w' is 0, then this returns the full size hex string;
      * instead it should just return "0x0" */
 
-    rc[hex_MSB - 2] = '0';
-    rc[hex_MSB - 1] = 'x';
-    rc[hex_len + 2] = '\0';
-
-    return rc + (hex_MSB - 2);
+    /* Truncate the string if it doesn't need the full width
+     * This will save space in the ASCII formatted trace */
+    hexStr[hexMSB - 2] = '0';
+    hexStr[hexMSB - 1] = 'x';
+    hexStr[hexLen + 2] = '\0';
+    return hexStr + (hexMSB-2);
 }
 
 /* Helper class to track unique ranges of addresses */

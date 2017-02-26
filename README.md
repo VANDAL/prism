@@ -14,7 +14,7 @@ Provides an extensible interface to  **architecture-agnostic** application event
 
 ## Install
 ```
-$ git clone https://github.com/mdlui/Sigil2
+$ git clone https://github.com/VANDAL/Sigil2
 $ cd Sigil2
 $ cmake . -Bbuild
 $ cmake --build build -- -j<JOBS>

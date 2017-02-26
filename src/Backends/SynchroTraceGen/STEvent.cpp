@@ -39,14 +39,16 @@ void STCompEvent::flush()
         logmsg += std::to_string(thread_local_load_cnt).append(",");
         logmsg += std::to_string(thread_local_store_cnt);
 
+        char hexStr[sizeof(Addr)*2+3];
+
         /* log write addresses */
         for (auto &addr_pair : stores_unique.get())
         {
             assert(addr_pair.first <= addr_pair.second);
             logmsg += " $ ";
-            logmsg += n2hexstr(addr_pair.first);
+            logmsg += n2hexstr(hexStr, addr_pair.first);
             logmsg += " ";
-            logmsg += n2hexstr(addr_pair.second);
+            logmsg += n2hexstr(hexStr, addr_pair.second);
         }
 
         /* log read addresses */
@@ -54,9 +56,9 @@ void STCompEvent::flush()
         {
             assert(addr_pair.first <= addr_pair.second);
             logmsg += " * ";
-            logmsg += n2hexstr(addr_pair.first);
+            logmsg += n2hexstr(hexStr, addr_pair.first);
             logmsg += " ";
-            logmsg += n2hexstr(addr_pair.second);
+            logmsg += n2hexstr(hexStr, addr_pair.second);
         }
 
         logger->info(logmsg);
@@ -164,6 +166,7 @@ void STCommEvent::flush()
         assert(comms.empty() == false);
 
         /* log comm edges between current and other threads */
+        char hexStr[sizeof(Addr)*2+3];
         for (auto &edge : comms)
         {
             for (auto &addr_pair : std::get<2>(edge).get())
@@ -172,9 +175,9 @@ void STCommEvent::flush()
                 logmsg += " # ";
                 logmsg += std::to_string(std::get<0>(edge)).append(" ");
                 logmsg += std::to_string(std::get<1>(edge)).append(" ");
-                logmsg += n2hexstr(addr_pair.first);
+                logmsg += n2hexstr(hexStr, addr_pair.first);
                 logmsg += " ";
-                logmsg += n2hexstr(addr_pair.second);
+                logmsg += n2hexstr(hexStr, addr_pair.second);
             }
         }
 
@@ -232,8 +235,9 @@ STInstrEvent::STInstrEvent(const std::shared_ptr<spdlog::logger> &logger)
 
 void STInstrEvent::append_instr(Addr addr)
 {
+    char hexStr[sizeof(Addr)*2+3];
     instrs += "! ";
-    instrs += n2hexstr(addr);
+    instrs += n2hexstr(hexStr, addr);
     instrs += " ";
 
     is_empty = false;
@@ -268,10 +272,11 @@ STSyncEvent::STSyncEvent(TID &tid, EID &eid, const std::shared_ptr<spdlog::logge
 
 void STSyncEvent::flush(const STSyncType type, const Addr sync_addr)
 {
+    char hexStr[sizeof(Addr)*2+3];
     logmsg += std::to_string(event_id).append(",");
     logmsg += std::to_string(thread_id).append(",pth_ty:");
     logmsg += std::to_string(type).append("^");
-    logmsg += n2hexstr(sync_addr);
+    logmsg += n2hexstr(hexStr, sync_addr);
     logger->info(logmsg);
     logmsg.clear();
 
