@@ -18,8 +18,6 @@ endmacro(use_cxx11)
 use_cxx11()
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
-
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE "Release" CACHE STRING
 		"Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel."
@@ -74,6 +72,9 @@ target_link_libraries(sigil2 pthread rt)
 set_target_properties(sigil2
 	PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
+set(SIGIL2_CXX_FLAGS_RELEASE -s -fno-rtti -ffunction-sections -fdata-sections -Wl,--gc-sections)
+target_compile_options(sigil2 PUBLIC
+					   "$<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:${SIGIL2_RELEASE_FLAGS}>")
 
 ###################
 # Plugin Backends #

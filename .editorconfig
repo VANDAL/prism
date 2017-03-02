@@ -16,3 +16,8 @@ indent_size = 4
 # Tab indentation (no size specified)
 [Makefile]
 indent_style = tab
+
+# Tab indentation (no size specified)
+[CMakeLists.txt]
+indent_style = tab
+indent_size = 4

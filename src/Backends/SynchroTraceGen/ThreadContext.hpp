@@ -34,7 +34,7 @@ class ThreadContext
     {
         /* current shadow memory limit */
         assert(tid <= 128);
-        assert(primsPerStCompEv <= 100);
+        assert(primsPerStCompEv > 0 && primsPerStCompEv <= 100);
     }
 
     ~ThreadContext()
@@ -82,12 +82,10 @@ class ThreadContext
                 /* XXX treat a read/write to an address with UNDEF thread as a local compute event */
                 {
                     isCommEdge = true;
-                    compFlushIfActive();
                     stComm.addEdge(writer, shadow.getWriterEID(addr), addr);
                 }
                 else/*local load, comp event*/
                 {
-                    commFlushIfActive();
                     stComp.updateReads(addr, 1);
                 }
             }
@@ -99,14 +97,20 @@ class ThreadContext
             }
         }
 
-        /* A situation when a singular memory event is both
-         * a communication edge and a local thread read is
-         * rare and not robustly accounted for. A single address
-         * that is a communication edge counts the whole event as
-         * a communication event, and not as part of a
-         * computation event */
+        /* A situation when a singular memory event is both a communication edge
+         * and a local thread read is rare and not robustly accounted for.
+         * A single address that is a communication edge counts the whole event
+         * as a communication event, and not as part of a computation event
+         * Some loss of granularity can occur in this situation */
         if (isCommEdge == false)
+        {
+            commFlushIfActive();
             stComp.incReads();
+        }
+        else
+        {
+            compFlushIfActive();
+        }
 
         checkCompFlushLimit();
         ++std::get<READ>(stats);

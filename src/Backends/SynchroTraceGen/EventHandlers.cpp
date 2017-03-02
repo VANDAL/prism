@@ -113,6 +113,8 @@ auto onExit() -> void
 ////////////////////////////////////////////////////////////
 auto EventHandlers::onSwapTCxt(TID newTID) -> void
 {
+    assert(newTID > 0);
+
     if (currentTID != newTID)
     {
         std::lock_guard<std::mutex> lock(gMtx);
@@ -136,6 +138,9 @@ auto EventHandlers::onSwapTCxt(TID newTID) -> void
         assert(tcxts.find(currentTID) != tcxts.cend());
         cachedTCxt = &tcxts.at(currentTID);
     }
+
+    assert(currentTID = newTID);
+    assert(cachedTCxt != nullptr);
 }
 
 auto EventHandlers::onCreate(Addr data) -> void

@@ -75,13 +75,20 @@ class TextLogger
         /* gzofstream destructor closes gzfile  */
     }
 
+    /* Log a SynchroTrace aggregate Compute Event */
     auto flush(const STCompEvent& ev, const EID eid, const TID tid) -> void
     {
-        logMsg += std::to_string(eid).append(",");
-        logMsg += std::to_string(tid).append(",");
-        logMsg += std::to_string(ev.iops).append(",");
-        logMsg += std::to_string(ev.flops).append(",");
-        logMsg += std::to_string(ev.reads).append(",");
+        /* http://stackoverflow.com/a/18892355 */
+        logMsg += std::to_string(eid);
+        logMsg += ",";
+        logMsg += std::to_string(tid);
+        logMsg += ",";
+        logMsg += std::to_string(ev.iops);
+        logMsg += ",";
+        logMsg += std::to_string(ev.flops);
+        logMsg += ",";
+        logMsg += std::to_string(ev.reads);
+        logMsg += ",";
         logMsg += std::to_string(ev.writes);
 
         char hexStr[sizeof(Addr)*2+3];
@@ -107,10 +114,12 @@ class TextLogger
         logMsg.clear();
     }
 
+    /* Log a SynchroTrace Communication Event */
     auto flush(const STCommEvent& ev, const EID eid, const TID tid) -> void
     {
         assert(ev.comms.empty() == false);
-        logMsg += std::to_string(eid).append(",");
+        logMsg += std::to_string(eid);
+        logMsg += ",";
         logMsg += std::to_string(tid);
 
         char hexStr[sizeof(Addr)*2+3];
@@ -120,8 +129,10 @@ class TextLogger
             {
                 assert(p.first <= p.second);
                 logMsg += " # ";
-                logMsg += std::to_string(std::get<0>(edge)).append(" ");
-                logMsg += std::to_string(std::get<1>(edge)).append(" ");
+                logMsg += std::to_string(std::get<0>(edge));
+                logMsg += " ";
+                logMsg += std::to_string(std::get<1>(edge));
+                logMsg += " ";
                 logMsg += n2hexstr(hexStr, p.first);
                 logMsg += " ";
                 logMsg += n2hexstr(hexStr, p.second);
@@ -132,13 +143,17 @@ class TextLogger
         logMsg.clear();
     }
 
+    /* Log a SynchroTrace Synchronization Event */
     auto flush(const unsigned char syncType, const Addr syncAddr,
                const EID eid, const TID tid) -> void
     {
         char hexStr[sizeof(Addr)*2+3];
-        logMsg += std::to_string(eid).append(",");
-        logMsg += std::to_string(tid).append(",pth_ty:");
-        logMsg += std::to_string(syncType).append("^");
+        logMsg += std::to_string(eid);
+        logMsg += ",";
+        logMsg += std::to_string(tid);
+        logMsg += ",pth_ty:";
+        logMsg += std::to_string(syncType);
+        logMsg += "^";
         logMsg += n2hexstr(hexStr, syncAddr);
         logger->info(logMsg);
         logMsg.clear();
