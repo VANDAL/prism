@@ -23,8 +23,11 @@
 #ifndef MEMORY_POOL_H
 #define MEMORY_POOL_H
 
+#include <utility>
 #include <climits>
 #include <cstddef>
+#include <cstdint>
+#include <type_traits>
 
 template <typename T, size_t BlockSize = 4096>
 class MemoryPool

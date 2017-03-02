@@ -2,6 +2,7 @@
 #define STGEN_SHADOWMEMORY_H
 
 #include "ShadowMemory.hpp"
+#include "STTypes.hpp"
 
 #include <cstdint>
 #include <bitset>
@@ -13,16 +14,10 @@
 namespace STGen
 {
 
-/* XXX Thread ID (TID) and Event ID (EID)
- * set to 16-bits and 32-bits for memory usage considerations.
- * Increasing the sizes may be required in the future. */
-using TID = int16_t;
-using EID = uint32_t;
 constexpr TID SO_UNDEF = -1;
 constexpr TID MAX_THREADS = 128;
 static_assert((MAX_THREADS > 0) && !(MAX_THREADS & (MAX_THREADS-1)),
               "MAX_THREADS must be a power of 2");
-
 
 class STShadowMemory
 {
@@ -90,7 +85,6 @@ inline auto STShadowMemory::getWriterEID(Addr addr) -> EID
 {
     return sm[addr].last_writer_event;
 }
-
 
 }; //end namespace STGen
 

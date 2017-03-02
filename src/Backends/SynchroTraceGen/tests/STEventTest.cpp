@@ -6,7 +6,6 @@
 using STGen::EventHandlers;
 using STGen::STCompEvent;
 using STGen::STCommEvent;
-using STGen::STSyncEvent;
 
 TEST_CASE("SynchroTrace Events", "[STEvent init]")
 {
