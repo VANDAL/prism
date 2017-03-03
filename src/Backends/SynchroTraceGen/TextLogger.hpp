@@ -1,5 +1,5 @@
-#ifndef STGEN_TEXTLOGGER_H
-#define STGEN_TEXTLOGGER_H
+#ifndef STGEN_TEXT_LOGGER_H
+#define STGEN_TEXT_LOGGER_H
 
 #include "STEvent.hpp"
 #include "STTypes.hpp"
@@ -69,6 +69,7 @@ class TextLogger
         std::tie(logger, gzfile) = getGzLogger(filePath);
     }
 
+    TextLogger(const TextLogger& other) = delete;
     ~TextLogger()
     {
         blockingLoggerFlush(logger);

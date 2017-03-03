@@ -68,7 +68,7 @@ set(SOURCES
 	${SRC_SIGIL2}/Sigil2Config.cpp
 	${SRC_SIGIL2}/main.cpp)
 add_executable(sigil2 ${SOURCES})
-target_link_libraries(sigil2 pthread rt)
+target_link_libraries(sigil2 pthread rt kj capnp)
 set_target_properties(sigil2
 	PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)

@@ -1,5 +1,5 @@
-#ifndef STGEN_THREADCONTEXT_H
-#define STGEN_THREADCONTEXT_H
+#ifndef STGEN_THREAD_CONTEXT_H
+#define STGEN_THREAD_CONTEXT_H
 
 #include "STEvent.hpp"
 #include "TextLogger.hpp"
