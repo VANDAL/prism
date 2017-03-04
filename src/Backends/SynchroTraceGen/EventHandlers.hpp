@@ -14,7 +14,7 @@ namespace STGen
 void onParse(Args args);
 void onExit();
 
-using TCxt = ThreadContext<CapnLogger>;
+using TCxt = ThreadContext<TextLogger>;
 class EventHandlers : public BackendIface
 {
   public:
