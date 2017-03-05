@@ -76,10 +76,6 @@ target_link_libraries(sigil2 pthread rt
 set_target_properties(sigil2
 	PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
-#set(SIGIL2_CXX_FLAGS_RELEASE -s -fno-rtti -ffunction-sections -fdata-sections -Wl,--gc-sections)
-set(SIGIL2_CXX_FLAGS_RELEASE )
-target_compile_options(sigil2 PUBLIC
-					   "$<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:${SIGIL2_RELEASE_FLAGS}>")
 
 ###################
 # Plugin Backends #

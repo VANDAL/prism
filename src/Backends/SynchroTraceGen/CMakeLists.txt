@@ -28,8 +28,6 @@ add_library(STGen STATIC ${SOURCES})
 target_link_libraries(STGen z
 	${THIRD_PARTY}/capnproto/lib/libcapnp.a
 	${THIRD_PARTY}/capnproto/lib/libkj.a)
-target_compile_options(STGen PUBLIC
-					   "$<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:${SIGIL2_RELEASE_FLAGS}>")
 add_dependencies(STGen capnproto)
 
 add_subdirectory(tests)

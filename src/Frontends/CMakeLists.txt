@@ -14,5 +14,3 @@ set(FRONTEND_TARGETS ${FRONTEND_TARGETS} $<TARGET_OBJECTS:DrSigil>)
 #target_link_libraries(sigil2 Injector)
 
 add_library(frontends STATIC ${FRONTEND_TARGETS})
-target_compile_options(frontends PUBLIC
-					   "$<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:${SIGIL2_RELEASE_FLAGS}>")
