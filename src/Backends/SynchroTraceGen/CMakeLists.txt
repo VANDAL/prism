@@ -32,5 +32,4 @@ target_compile_options(STGen PUBLIC
 					   "$<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:${SIGIL2_RELEASE_FLAGS}>")
 add_dependencies(STGen capnproto)
 
-# TODO make some meaningful tests
-#add_subdirectory(tests)
+add_subdirectory(tests)
