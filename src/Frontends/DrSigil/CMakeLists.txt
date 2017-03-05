@@ -11,13 +11,11 @@ include(ExternalProject)
 set(INSTALL_PREFIX ${PROJECT_BINARY_DIR}/bin/dr)
 ExternalProject_Add(dynamorio
 	PREFIX dr
-
-	# DOWNLOAD STEP
-	DOWNLOAD_COMMAND ""
-
-	# CONFIGURE STEP
+# -- Download step ------------
+# -- Update step --------------
+# -- Configure step -----------
 	SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dynamorio-Sigil2
-	CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}
+	CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${INSTALL_PREFIX}
 	-DCMAKE_CXX_STANDARD=98
 	-DDISABLE_WARNINGS=ON # WErrors with gcc-6+
 	-DDEBUG=OFF
@@ -27,7 +25,8 @@ ExternalProject_Add(dynamorio
 	-DBUILD_TESTS=OFF
 	CONFIGURE_ALWAYS 0
 	
-	# BUILD STEP
+# -- Build step ---------------
+# -- Install step -------------
 	BUILD_ALWAYS 0) # change 'STEP_ALWAYS 1' when testing DynamoRIO changes
 
 # HACK to silence 32+64-bit install check warnings:

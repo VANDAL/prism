@@ -39,20 +39,21 @@ include(CTest)
 # Include everything                              #
 # ...there's probably a cleaner way to do this... #
 ###################################################
-get_filename_component(SRC_SIGIL2    src/Sigil2    ABSOLUTE)
-get_filename_component(SRC_FRONTENDS src/Frontends ABSOLUTE)
-get_filename_component(SRC_BACKENDS  src/Backends  ABSOLUTE)
-get_filename_component(INCLUDES_DIR  include       ABSOLUTE)
+get_filename_component(SRC_SIGIL2    src/Sigil2          ABSOLUTE)
+get_filename_component(SRC_FRONTENDS src/Frontends       ABSOLUTE)
+get_filename_component(SRC_BACKENDS  src/Backends        ABSOLUTE)
+get_filename_component(THIRD_PARTY   third_party         ABSOLUTE)
 
 execute_process(
 	COMMAND git submodule update --init ${INCLUDES_DIR}
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-include_directories(${INCLUDES_DIR}/Catch/include)
-include_directories(${INCLUDES_DIR}/whereami/src)
-include_directories(${INCLUDES_DIR}/spdlog/include)
-include_directories(${INCLUDES_DIR}/spdlog/include/spdlog)
-include_directories(${INCLUDES_DIR}/elfio-3.1)
-include_directories(${INCLUDES_DIR}/zlib/contrib/iostream3)
+include_directories(${THIRD_PARTY}/Catch/include)
+include_directories(${THIRD_PARTY}/whereami/src)
+include_directories(${THIRD_PARTY}/spdlog/include)
+include_directories(${THIRD_PARTY}/spdlog/include/spdlog)
+include_directories(${THIRD_PARTY}/elfio-3.1)
+include_directories(${THIRD_PARTY}/zlib/contrib/iostream3)
+include_directories(${THIRD_PARTY}/capnproto/include)
 include_directories(src)
 include_directories(${SRC_FRONTENDS})
 include_directories(${SRC_BACKENDS})
@@ -61,18 +62,22 @@ include_directories(${SRC_BACKENDS})
 # Build Sigil2 #
 ################
 set(SOURCES
-	include/whereami/src/whereami.c
+	${THIRD_PARTY}/whereami/src/whereami.c
 	${SRC_SIGIL2}/Backends.cpp
 	${SRC_SIGIL2}/Frontends.cpp
 	${SRC_SIGIL2}/Sigil2Parser.cpp
 	${SRC_SIGIL2}/Sigil2Config.cpp
 	${SRC_SIGIL2}/main.cpp)
 add_executable(sigil2 ${SOURCES})
-target_link_libraries(sigil2 pthread rt kj capnp)
+target_link_libraries(sigil2 pthread rt
+	# the following won't be created until build time
+	${THIRD_PARTY}/capnproto/lib/libcapnp.a
+	${THIRD_PARTY}/capnproto/lib/libkj.a)
 set_target_properties(sigil2
 	PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
-set(SIGIL2_CXX_FLAGS_RELEASE -s -fno-rtti -ffunction-sections -fdata-sections -Wl,--gc-sections)
+#set(SIGIL2_CXX_FLAGS_RELEASE -s -fno-rtti -ffunction-sections -fdata-sections -Wl,--gc-sections)
+set(SIGIL2_CXX_FLAGS_RELEASE )
 target_compile_options(sigil2 PUBLIC
 					   "$<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:${SIGIL2_RELEASE_FLAGS}>")
 

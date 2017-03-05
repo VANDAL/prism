@@ -1,14 +1,14 @@
 [submodule "include/Catch"]
-	path = include/Catch
+	path = third_party/Catch
 	url = https://github.com/philsquared/Catch
 [submodule "include/spdlog"]
-	path = include/spdlog
+	path = third_party/spdlog
 	url = https://github.com/mikelui/spdlog
 [submodule "include/whereami"]
-	path = include/whereami
+	path = third_party/whereami
 	url = https://github.com/gpakosz/whereami
 [submodule "include/zlib"]
-	path = include/zlib
+	path = third_party/zlib
 	url = https://github.com/madler/zlib
 [submodule "src/Frontends/DrSigil/dynamorio"]
 	path = src/Frontends/DrSigil/dynamorio-Sigil2
@@ -16,3 +16,6 @@
 [submodule "src/Frontends/Sigrind/valgrind-Sigil2"]
 	path = src/Frontends/Sigrind/valgrind-Sigil2
 	url = https://github.com/VANDAL/valgrind-Sigil2
+[submodule "src/Backends/SynchroTraceGen/capnproto"]
+	path = src/Backends/SynchroTraceGen/capnproto
+	url = https://github.com/sandstorm-io/capnproto/
