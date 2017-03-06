@@ -154,7 +154,7 @@ class ThreadContext
         /* #define P_BARRIER_WT            5 */
         if (syncType == 1)
             barrierStats.incLocks();
-        else if (syncType == 1)
+        else if (syncType == 5)
             barrierStats.barrier(syncAddr);
 
         logger.flush(syncType, syncAddr, events, tid);

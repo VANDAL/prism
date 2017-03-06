@@ -95,10 +95,8 @@ EventHandlers::~EventHandlers()
 {
     std::lock_guard<std::mutex> lock(gMtx);
     for (auto& p : tcxts)
-    {
         allThreadsStats.emplace(p.first, std::make_pair(p.second.getStats(),
                                                         p.second.getBarrierStats()));
-    }
 }
 
 auto onExit() -> void
