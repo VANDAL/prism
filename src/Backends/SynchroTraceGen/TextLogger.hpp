@@ -160,6 +160,12 @@ class TextLogger
         logMsg.clear();
     }
 
+    /* Place a marker in the trace after 'limit' instructions */
+    auto instrMarker(int limit) -> void
+    {
+        logger->info("! " + std::to_string(limit));
+    }
+
     static auto flushPthread(std::string filePath,
                              ThreadList newThreadsInOrder,
                              SpawnList threadSpawns,

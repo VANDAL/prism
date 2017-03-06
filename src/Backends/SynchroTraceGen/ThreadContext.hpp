@@ -164,6 +164,11 @@ class ThreadContext
     {
         ++std::get<INSTR>(stats);
         barrierStats.incInstrs();
+
+        /* add marker every 2**N instructions */
+        constexpr int limit = 1 << 12;
+        if (((limit-1) & std::get<INSTR>(stats)) == 0)
+            logger.instrMarker(limit);
     }
 
     auto checkCompFlushLimit() -> void
