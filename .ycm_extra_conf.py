@@ -25,8 +25,7 @@
 # OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 # ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
-#
-# For more information, please refer to <http://unlicense.org/>
+# # For more information, please refer to <http://unlicense.org/>
 
 import os
 import ycm_core
@@ -71,15 +70,17 @@ flags = [
 '-isystem',
 '/usr/lib/gcc/x86_64-pc-linux-gnu/6.3.1/include-fixed',
 '-I',
-'include/spdlog/include',
+'third_party/spdlog/include',
 '-I',
-'include/Catch/include',
+'third_party/Catch/include',
 '-I',
-'include/whereami/src',
+'third_party/whereami/src',
 '-I',
-'include/elfio-3.1',
+'third_party/elfio-3.1',
 '-I',
-'include/zlib/contrib/iostream3',
+'third_party/zlib/contrib/iostream3',
+'-I',
+'third_party/capnproto/include',
 '-I',
 'src',
 '-I',

@@ -48,6 +48,11 @@ int main(int argc, char* argv[])
                           {},
                           {},
                           {},})
+        .registerBackend("null",
+                         {[]() {return std::make_shared<::BackendIface>();},
+                          {},
+                          {},
+                          {},})
         .parseCommandLine(argc, argv);
 
 

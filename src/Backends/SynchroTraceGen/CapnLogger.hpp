@@ -7,9 +7,48 @@
 #include "STEventTrace.capnp.h"
 #include <capnp/message.h>
 #include <capnp/serialize-packed.h>
+#include <zlib.h>
 #include <fcntl.h>
 
 using SigiLog::fatal;
+
+namespace kj
+{
+
+/* Based off of FdOutputStream in capnproto library */
+class GzOutputStream : public OutputStream
+{
+  public:
+    explicit GzOutputStream(gzFile fz) : fz(fz) {}
+    KJ_DISALLOW_COPY(GzOutputStream);
+    ~GzOutputStream() noexcept(false) {}
+
+    virtual void write(const void* buffer, size_t size) override
+    {
+        int ret = gzwrite(fz, buffer, size);
+        if (ret == 0)
+            fatal("error writing gzipped capnproto serializaton");
+    }
+
+  private:
+    gzFile fz;
+};
+
+}; //end namespace kj
+
+
+namespace capnp
+{
+
+/* Based off of writePackedMessageToFd in capnproto library */
+inline void writePackedMessageToGz(gzFile fz, MessageBuilder &message)
+{
+    kj::GzOutputStream output(fz);
+    writePackedMessage(output, message.getSegmentsForOutput());
+}
+
+}; //end nampespace capnp
+
 namespace STGen
 {
 
@@ -29,11 +68,10 @@ class CapnLogger
 
         orphanage = std::make_shared<::capnp::MallocMessageBuilder>();
 
-        auto filePath = outputPath + "/sigil.events.out-" + std::to_string(tid) + ".capn.bin";
-        fd = open(filePath.c_str(), O_CREAT | O_TRUNC | O_WRONLY,
-                  S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
-        if (fd < 0)
-            fatal("Could not open file " + outputPath + " -- " + strerror(errno));
+        auto filePath = outputPath + "/sigil.events.out-" + std::to_string(tid) + ".capn.bin.gz";
+        fz = gzopen(filePath.c_str(), "wb");
+        if (fz == NULL)
+            fatal(std::string("opening gzfile: ") + strerror(errno));
     }
 
     ~CapnLogger()
@@ -44,7 +82,9 @@ class CapnLogger
             events = 0;
         }
 
-        close(fd);
+        int ret = gzclose(fz);
+        if (ret != Z_OK)
+            fatal(std::string("closing gzfile: ") + strerror(errno));
     }
 
     /* Log a SynchroTrace aggregate Compute Event */
@@ -131,7 +171,7 @@ class CapnLogger
     {
         (void)eid;
         (void)tid;
-        
+
         auto orphan = orphanage->getOrphanage().newOrphan<Event>();
         auto syncBuilder = orphan.get().initSync();
 
@@ -194,18 +234,16 @@ class CapnLogger
             auto reader = orphans[i].getReader();
             eventsBuilder.setWithCaveats(i, reader);
         }
-        //    eventsBuilder.adoptWithCaveats(i, std::move(orphans[i]));
 
         orphans.clear();
-        ::capnp::writePackedMessageToFd(fd, message);
-
+        ::capnp::writePackedMessageToGz(fz, message);
         orphanage = std::make_shared<::capnp::MallocMessageBuilder>();
     }
 
   private:
     std::shared_ptr<::capnp::MallocMessageBuilder> orphanage;
     std::vector<::capnp::Orphan<Event>> orphans;
-    int fd{-1};
+    gzFile fz;
     unsigned events{0};
 };
 

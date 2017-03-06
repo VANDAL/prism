@@ -39,10 +39,10 @@ include(CTest)
 # Include everything                              #
 # ...there's probably a cleaner way to do this... #
 ###################################################
-get_filename_component(SRC_SIGIL2    src/Sigil2          ABSOLUTE)
-get_filename_component(SRC_FRONTENDS src/Frontends       ABSOLUTE)
-get_filename_component(SRC_BACKENDS  src/Backends        ABSOLUTE)
-get_filename_component(THIRD_PARTY   third_party         ABSOLUTE)
+get_filename_component(SRC_SIGIL2    src/Sigil2    ABSOLUTE)
+get_filename_component(SRC_FRONTENDS src/Frontends ABSOLUTE)
+get_filename_component(SRC_BACKENDS  src/Backends  ABSOLUTE)
+get_filename_component(THIRD_PARTY   third_party   ABSOLUTE)
 
 execute_process(
 	COMMAND git submodule update --init ${INCLUDES_DIR}
