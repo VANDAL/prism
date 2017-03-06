@@ -16,7 +16,6 @@ using EID = uint32_t;
 using StatCounter = unsigned long long;
 using Stats = std::tuple<StatCounter, StatCounter, StatCounter, StatCounter, StatCounter>;
 enum StatsType {IOP=0, FLOP, READ, WRITE, INSTR};
-using ThreadStatMap = std::map<TID, Stats>;
 
 /** Synchronization **/
 
@@ -33,6 +32,43 @@ using ThreadList = std::vector<TID>;
  * - participating threads
  * Order is important */
 using BarrierList = std::vector<std::pair<Addr, std::set<TID>>>;
+
+/* XXX added for SynchroLearn™ */
+struct BarrierStats
+{
+    StatCounter iops{0};
+    StatCounter flops{0};
+    StatCounter instrs{0};
+    StatCounter memAccesses{0};
+    StatCounter locks{0};
+    auto iopsPerMemAccess() -> float { return static_cast<float>(iops)/memAccesses; }
+    auto flopsPerMemAccess() -> float { return static_cast<float>(flops)/memAccesses; }
+    auto locksPerIopsPlusFlops() -> float { return static_cast<float>(locks)/(iops + flops); }
+};
+
+using AllBarriersStats = std::vector<std::pair<Addr, BarrierStats>>;
+class PerThreadBarrierStats
+{
+  public:
+    auto incIOPs() -> void { ++current.iops; }
+    auto incFLOPs() -> void { ++current.flops; }
+    auto incInstrs() -> void { ++current.instrs; }
+    auto incMemAccesses() -> void { ++current.memAccesses; }
+    auto incLocks() -> void { ++current.locks; }
+    auto barrier(Addr id) -> void
+    {
+        barriers.push_back(std::make_pair(id, current));
+        current = BarrierStats{};
+    }
+
+    auto getAllBarriersStats() const -> AllBarriersStats { return barriers; }
+
+  private:
+    AllBarriersStats barriers;
+    BarrierStats current;
+};
+
+using ThreadStatMap = std::map<TID, std::pair<Stats, AllBarriersStats>>;
 
 };
 

@@ -13,7 +13,7 @@ std::string outputPath{"."};
 unsigned primsPerStCompEv{100};
 
 std::mutex gMtx;
-ThreadStatMap perThreadStats;
+ThreadStatMap allThreadsStats;
 SpawnList threadSpawns;
 ThreadList newThreadsInOrder;
 BarrierList barrierParticipants;
@@ -95,7 +95,10 @@ EventHandlers::~EventHandlers()
 {
     std::lock_guard<std::mutex> lock(gMtx);
     for (auto& p : tcxts)
-        perThreadStats.emplace(p.first, p.second.getStats());
+    {
+        allThreadsStats.emplace(p.first, std::make_pair(p.second.getStats(),
+                                                        p.second.getBarrierStats()));
+    }
 }
 
 auto onExit() -> void
@@ -104,7 +107,7 @@ auto onExit() -> void
     spdlog::set_sync_mode();
     TextLogger::flushPthread(outputPath + "/sigil.pthread.out",
                              newThreadsInOrder, threadSpawns, barrierParticipants);
-    TextLogger::flushStats(outputPath + "/sigil.stats.out", perThreadStats);
+    TextLogger::flushStats(outputPath + "/sigil.stats.out", allThreadsStats);
 }
 
 

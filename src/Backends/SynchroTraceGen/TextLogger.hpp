@@ -206,22 +206,40 @@ class TextLogger
     }
 
     static auto flushStats(std::string filePath,
-                           ThreadStatMap perThreadStats) -> void
+                           ThreadStatMap allThreadsStats) -> void
     {
         auto loggerPair = getFileLogger(filePath);
         auto logger = std::move(loggerPair.first);
         info("Flushing statistics to: " + logger->name());
 
-        StatCounter totalInstrs{0};
-        for (auto &p : perThreadStats)
-        {
-            logger->info("thread : " + std::to_string(p.first));
-            logger->info("\tIOPS  : " + std::to_string(std::get<IOP>(p.second)));
-            logger->info("\tFLOPS : " + std::to_string(std::get<FLOP>(p.second)));
-            logger->info("\tReads : " + std::to_string(std::get<READ>(p.second)));
-            logger->info("\tWrites: " + std::to_string(std::get<WRITE>(p.second)));
 
-            totalInstrs += std::get<INSTR>(p.second);
+        StatCounter totalInstrs{0};
+        for (auto &p : allThreadsStats)
+        {
+            TID tid = p.first;
+            Stats &stats = p.second.first;
+            AllBarriersStats &barrierStats = p.second.second;
+
+            logger->info("thread : " + std::to_string(tid));
+            logger->info("\tIOPS  : " + std::to_string(std::get<IOP>(stats)));
+            logger->info("\tFLOPS : " + std::to_string(std::get<FLOP>(stats)));
+            logger->info("\tReads : " + std::to_string(std::get<READ>(stats)));
+            logger->info("\tWrites: " + std::to_string(std::get<WRITE>(stats)));
+
+            for (auto &p : barrierStats)
+            {
+                logger->info("\tBarrier: " + std::to_string(p.first));
+                logger->info("\t\tIOPs: " + std::to_string(p.second.iops));
+                logger->info("\t\tFLOPs: " + std::to_string(p.second.flops));
+                logger->info("\t\tInstrs: " + std::to_string(p.second.instrs));
+                logger->info("\t\tMemAccesses: " + std::to_string(p.second.memAccesses));
+                logger->info("\t\tlocks: " + std::to_string(p.second.locks));
+                logger->info("\t\tIOPs/Mem: " + std::to_string(p.second.iopsPerMemAccess()));
+                logger->info("\t\tFLOPs/Mem: " + std::to_string(p.second.flopsPerMemAccess()));
+                logger->info("\t\tlocks/OPs: " + std::to_string(p.second.locksPerIopsPlusFlops()));
+            }
+
+            totalInstrs += std::get<INSTR>(stats);
         }
 
         logger->info("Total instructions: " + std::to_string(totalInstrs));

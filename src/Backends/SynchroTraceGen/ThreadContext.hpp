@@ -48,18 +48,27 @@ class ThreadContext
         return stats;
     }
 
+    auto getBarrierStats() const -> AllBarriersStats
+    {
+        return barrierStats.getAllBarriersStats();
+    }
+
     auto onIop() -> void
     {
         commFlushIfActive();
         stComp.incIOP();
+
         ++std::get<IOP>(stats);
+        barrierStats.incIOPs();
     }
 
     auto onFlop() -> void
     {
         commFlushIfActive();
         stComp.incFLOP();
+
         ++std::get<FLOP>(stats);
+        barrierStats.incFLOPs();
     }
 
     auto onRead(const Addr start, const Addr bytes) -> void
@@ -114,6 +123,7 @@ class ThreadContext
 
         checkCompFlushLimit();
         ++std::get<READ>(stats);
+        barrierStats.incMemAccesses();
     }
 
     auto onWrite(const Addr start, const Addr bytes) -> void
@@ -132,18 +142,28 @@ class ThreadContext
 
         checkCompFlushLimit();
         ++std::get<WRITE>(stats);
+        barrierStats.incMemAccesses();
     }
 
     auto onSync(unsigned char syncType, Addr syncAddr) -> void
     {
         compFlushIfActive();
         commFlushIfActive();
+
+        /* #define P_MUTEX_LK              1 */
+        /* #define P_BARRIER_WT            5 */
+        if (syncType == 1)
+            barrierStats.incLocks();
+        else if (syncType == 1)
+            barrierStats.barrier(syncAddr);
+
         logger.flush(syncType, syncAddr, events, tid);
     }
 
     auto onInstr() -> void
     {
         ++std::get<INSTR>(stats);
+        barrierStats.incInstrs();
     }
 
     auto checkCompFlushLimit() -> void
@@ -200,7 +220,8 @@ class ThreadContext
     /* statistics */
     Stats stats{0,0,0,0,0};
     StatCounter events{0};
-}; //end ThreadContext
+    PerThreadBarrierStats barrierStats;
+}; //end class ThreadContext
 
 template <class LoggerStrategy>
 STShadowMemory ThreadContext<LoggerStrategy>::shadow;
