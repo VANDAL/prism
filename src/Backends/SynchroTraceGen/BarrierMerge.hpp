@@ -6,7 +6,10 @@
 namespace STGen
 {
 
-/* Because the barriers may not line up nicely, we do some ugly merging */
+/* Required to merge per-barrier statistics across threads.
+ * Each thread holds a list of aggregate stats for each barrier it comes across.
+ * Because the barriers may not line up nicely between threads,
+ * we do some ugly merging */
 struct BarrierMerge
 {
     /* Find the first element of 'from', that matches 'to'.
@@ -100,7 +103,7 @@ struct BarrierMerge
         /* no matches found previously */
         if (from.current == from.end)
         {
-            to.mergedStats.insert(from.begin, from.end, to.previous);
+            to.mergedStats.insert(to.previous, from.begin, from.end);
             return;
         }
 
@@ -120,7 +123,7 @@ struct BarrierMerge
             match->second.locks += from.current->second.locks;
 
             if (from.begin != from.current)
-                to.mergedStats.insert(from.begin, from.current, match);
+                to.mergedStats.insert(match, from.begin, from.current);
 
             /* continue with the rest of the barriers */
             assert(match != to.mergedStats.end());

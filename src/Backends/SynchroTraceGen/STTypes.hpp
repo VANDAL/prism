@@ -47,8 +47,9 @@ struct BarrierStats
     auto locksPerIopsPlusFlops() -> float { return static_cast<float>(locks)/(iops + flops); }
 };
 
+/* TODO these names are confusing; change them */
 using AllBarriersStats = std::list<std::pair<Addr, BarrierStats>>;
-class PerThreadBarrierStats
+class PerBarrierStats
 {
   public:
     auto incIOPs() -> void { ++current.iops; }

@@ -225,7 +225,7 @@ class ThreadContext
     /* statistics */
     Stats stats{0,0,0,0,0};
     StatCounter events{0};
-    PerThreadBarrierStats barrierStats;
+    PerBarrierStats barrierStats;
 }; //end class ThreadContext
 
 template <class LoggerStrategy>
