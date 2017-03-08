@@ -66,12 +66,13 @@ struct BarrierMerge
      */
 
     using BarrierIt = AllBarriersStats::iterator;
+    using ConstBarrierIt = AllBarriersStats::const_iterator;
 
     struct FromState
     {
-        BarrierIt begin;
-        BarrierIt current;
-        BarrierIt end;
+        ConstBarrierIt begin;
+        ConstBarrierIt current;
+        ConstBarrierIt end;
     };
 
     struct ToState
@@ -82,7 +83,7 @@ struct BarrierMerge
     };
 
 
-    static auto merge(AllBarriersStats &from, AllBarriersStats &to) -> void
+    static auto merge(const AllBarriersStats &from, AllBarriersStats &to) -> void
     {
         if (from.empty())
             return;
@@ -136,7 +137,7 @@ struct BarrierMerge
         }
     }
 
-    static auto findMatchTo(BarrierIt from, BarrierIt to, BarrierIt toEnd) -> BarrierIt
+    static auto findMatchTo(ConstBarrierIt from, BarrierIt to, BarrierIt toEnd) -> BarrierIt
     {
         if (from->first == to->first || to == toEnd)
             return to;

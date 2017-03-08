@@ -43,32 +43,23 @@ class ThreadContext
         commFlushIfActive();
     }
 
-    auto getStats() const -> Stats
+    auto getStats() const -> PerThreadStats
     {
         return stats;
-    }
-
-    auto getBarrierStats() const -> AllBarriersStats
-    {
-        return barrierStats.getAllBarriersStats();
     }
 
     auto onIop() -> void
     {
         commFlushIfActive();
         stComp.incIOP();
-
-        ++std::get<IOP>(stats);
-        barrierStats.incIOPs();
+        stats.incIOPs();
     }
 
     auto onFlop() -> void
     {
         commFlushIfActive();
         stComp.incFLOP();
-
-        ++std::get<FLOP>(stats);
-        barrierStats.incFLOPs();
+        stats.incFLOPs();
     }
 
     auto onRead(const Addr start, const Addr bytes) -> void
@@ -122,8 +113,7 @@ class ThreadContext
         }
 
         checkCompFlushLimit();
-        ++std::get<READ>(stats);
-        barrierStats.incMemAccesses();
+        stats.incReads();
     }
 
     auto onWrite(const Addr start, const Addr bytes) -> void
@@ -141,8 +131,7 @@ class ThreadContext
         }
 
         checkCompFlushLimit();
-        ++std::get<WRITE>(stats);
-        barrierStats.incMemAccesses();
+        stats.incWrites();
     }
 
     auto onSync(unsigned char syncType, Addr syncAddr) -> void
@@ -150,24 +139,17 @@ class ThreadContext
         compFlushIfActive();
         commFlushIfActive();
 
-        /* #define P_MUTEX_LK              1 */
-        /* #define P_BARRIER_WT            5 */
-        if (syncType == 1)
-            barrierStats.incLocks();
-        else if (syncType == 5)
-            barrierStats.barrier(syncAddr);
-
+        stats.incSyncs(syncType, syncAddr);
         logger.flush(syncType, syncAddr, events, tid);
     }
 
     auto onInstr() -> void
     {
-        ++std::get<INSTR>(stats);
-        barrierStats.incInstrs();
+        stats.incInstrs();
 
         /* add marker every 2**N instructions */
         constexpr int limit = 1 << 12;
-        if (((limit-1) & std::get<INSTR>(stats)) == 0)
+        if (((limit-1) & stats.getTotalInstrs()) == 0)
             logger.instrMarker(limit);
     }
 
@@ -222,10 +204,9 @@ class ThreadContext
     LoggerStrategy logger;
     static STShadowMemory shadow; // Shadow memory is shared amongst all threads
 
-    /* statistics */
-    Stats stats{0,0,0,0,0};
+    /* track statistics */
     StatCounter events{0};
-    PerBarrierStats barrierStats;
+    PerThreadStats stats;
 }; //end class ThreadContext
 
 template <class LoggerStrategy>

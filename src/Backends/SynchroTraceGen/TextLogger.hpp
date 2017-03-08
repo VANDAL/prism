@@ -211,8 +211,7 @@ class TextLogger
         blockingLoggerFlush(logger);
     }
 
-    static auto flushStats(std::string filePath,
-                           ThreadStatMap allThreadsStats) -> void
+    static auto flushStats(std::string filePath, ThreadStatMap allThreadsStats) -> void
     {
         auto loggerPair = getFileLogger(filePath);
         auto logger = std::move(loggerPair.first);
@@ -222,7 +221,7 @@ class TextLogger
         for (auto &p : allThreadsStats)
         {
             TID tid = p.first;
-            Stats &stats = p.second.first;
+            Stats stats = p.second.getTotalStats();
 
             logger->info("thread : " + std::to_string(tid));
             logger->info("\tIOPS  : " + std::to_string(std::get<IOP>(stats)));
@@ -232,7 +231,7 @@ class TextLogger
 
             totalInstrs += std::get<INSTR>(stats);
 
-            AllBarriersStats &barrierStatsForThread = p.second.second;
+            AllBarriersStats barrierStatsForThread = p.second.getBarrierStats();
             for (auto &p : barrierStatsForThread)
             {
                 /* Log per thread, per barrier */
@@ -251,7 +250,7 @@ class TextLogger
         /* Merge barrier statistics across threads */
         AllBarriersStats mergedBarrierStats;
         for (auto &p : allThreadsStats)
-            BarrierMerge::merge(p.second.second, mergedBarrierStats);
+            BarrierMerge::merge(p.second.getBarrierStats(), mergedBarrierStats);
 
         /* Print merged barrier statistics */
         logger->info("Barrier statistics for all threads:");

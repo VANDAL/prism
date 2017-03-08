@@ -2,6 +2,7 @@
 #define STGEN_TYPES_H
 
 #include "ShadowMemory.hpp" //Addr
+#include "STStats.hpp"
 #include <set>
 #include <list>
 
@@ -14,12 +15,7 @@ namespace STGen
 using TID = int16_t;
 using EID = uint32_t;
 
-using StatCounter = unsigned long long;
-using Stats = std::tuple<StatCounter, StatCounter, StatCounter, StatCounter, StatCounter>;
-enum StatsType {IOP=0, FLOP, READ, WRITE, INSTR};
-
 /** Synchronization **/
-
 /* Vector of:
  * - spawner
  * - address of spawnee thread_t */
@@ -34,44 +30,8 @@ using ThreadList = std::vector<TID>;
  * Order is important */
 using BarrierList = std::vector<std::pair<Addr, std::set<TID>>>;
 
-/* XXX added for SynchroLearn™ */
-struct BarrierStats
-{
-    StatCounter iops{0};
-    StatCounter flops{0};
-    StatCounter instrs{0};
-    StatCounter memAccesses{0};
-    StatCounter locks{0};
-    auto iopsPerMemAccess() -> float { return static_cast<float>(iops)/memAccesses; }
-    auto flopsPerMemAccess() -> float { return static_cast<float>(flops)/memAccesses; }
-    auto locksPerIopsPlusFlops() -> float { return static_cast<float>(locks)/(iops + flops); }
-};
-
-/* TODO these names are confusing; change them */
-using AllBarriersStats = std::list<std::pair<Addr, BarrierStats>>;
-class PerBarrierStats
-{
-  public:
-    auto incIOPs() -> void { ++current.iops; }
-    auto incFLOPs() -> void { ++current.flops; }
-    auto incInstrs() -> void { ++current.instrs; }
-    auto incMemAccesses() -> void { ++current.memAccesses; }
-    auto incLocks() -> void { ++current.locks; }
-    auto barrier(Addr id) -> void
-    {
-        barriers.push_back(std::make_pair(id, current));
-        current = BarrierStats{};
-    }
-
-    auto getAllBarriersStats() const -> AllBarriersStats { return barriers; }
-
-  private:
-    AllBarriersStats barriers;
-    BarrierStats current;
-};
-
-using ThreadStatMap = std::map<TID, std::pair<Stats, AllBarriersStats>>;
-
+/* Metrics per thread */
+using ThreadStatMap = std::map<TID, PerThreadStats>;
 };
 
 #endif
