@@ -3,6 +3,7 @@
 
 #include "ShadowMemory.hpp" //Addr
 #include <set>
+#include <list>
 
 namespace STGen
 {
@@ -46,7 +47,7 @@ struct BarrierStats
     auto locksPerIopsPlusFlops() -> float { return static_cast<float>(locks)/(iops + flops); }
 };
 
-using AllBarriersStats = std::vector<std::pair<Addr, BarrierStats>>;
+using AllBarriersStats = std::list<std::pair<Addr, BarrierStats>>;
 class PerThreadBarrierStats
 {
   public:
