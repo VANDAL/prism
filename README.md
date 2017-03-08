@@ -16,10 +16,11 @@ Provides an extensible interface to  **architecture-agnostic** application event
 ```
 $ git clone https://github.com/VANDAL/Sigil2
 $ cd Sigil2
-$ cmake . -Bbuild
-$ cmake --build build -- -j<JOBS>
+$ mkdir build && cd build
+$ cmake ..
+$ make -j
 ```
-The executable will be put in `build/bin`. It can be run in place, or the folder can be moved to an install location.  
+The executable will be put in `build/bin`. It can be run in place, or the folder can be moved to an install location.
 
 ## What is it?
 

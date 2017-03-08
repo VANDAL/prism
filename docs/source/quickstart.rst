@@ -10,8 +10,9 @@ Clone and build |project| from source::
 
   $ git clone https://github.com/mdlui/Sigil2
   $ cd Sigil2
-  $ cmake . -Bbuild
-  $ cmake --build build -- -j<JOBS>
+  $ mkdir build && cd build
+  $ cmake ..
+  $ make -j
 
 This creates a ``build/bin`` folder containing the :program:`sigil2` executable.
 It can be run in place, or the entire ``bin`` folder can be moved,
