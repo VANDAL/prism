@@ -106,6 +106,7 @@ class ThreadContext
         {
             commFlushIfActive();
             stComp.incReads();
+            stats.incComm();
         }
         else
         {

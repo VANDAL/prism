@@ -21,11 +21,30 @@ struct BarrierStats
     StatCounter iops{0};
     StatCounter flops{0};
     StatCounter instrs{0};
+    StatCounter communication{0};
     StatCounter memAccesses{0};
     StatCounter locks{0};
     auto iopsPerMemAccess() -> float { return static_cast<float>(iops)/memAccesses; }
     auto flopsPerMemAccess() -> float { return static_cast<float>(flops)/memAccesses; }
     auto locksPerIopsPlusFlops() -> float { return static_cast<float>(locks)/(iops + flops); }
+
+    BarrierStats& operator+=(const BarrierStats &rhs)
+    {
+        this->iops += rhs.iops;
+        this->flops += rhs.flops;
+        this->instrs += rhs.instrs;
+        this->communication += rhs.communication;
+        this->memAccesses += rhs.memAccesses;
+        this->locks += rhs.locks;
+        return *this;
+    }
+
+    BarrierStats operator+(const BarrierStats &rhs)
+    {
+        BarrierStats ret{*this};
+        ret += rhs;
+        return ret;
+    }
 };
 
 struct LockStats
@@ -35,6 +54,7 @@ struct LockStats
     StatCounter flops{0};
     StatCounter instrs{0};
     StatCounter memAccesses{0};
+    StatCounter communication{0};
 };
 
 using AllBarriersStats = std::list<std::pair<Addr, BarrierStats>>;
@@ -45,13 +65,13 @@ class PerBarrierStats
     auto incFLOPs() -> void { ++current.flops; }
     auto incInstrs() -> void { ++current.instrs; }
     auto incMemAccesses() -> void { ++current.memAccesses; }
+    auto incComm() -> void { ++current.communication; }
     auto incLocks() -> void { ++current.locks; }
     auto barrier(Addr id) -> void
     {
         barriers.push_back(std::make_pair(id, current));
         current = BarrierStats{};
     }
-
     auto getAllBarriersStats() const -> AllBarriersStats { return barriers; }
 
   private:
@@ -68,6 +88,7 @@ class PerLockStats
     auto incFLOPs() -> void { if (active == true) ++current.flops; }
     auto incInstrs() -> void { if (active == true) ++current.instrs; }
     auto incMemAccesses() -> void { if (active == true) ++current.memAccesses; }
+    auto incComm() -> void { if (active == true) ++current.communication; }
     auto lock() -> void { active = true; }
     auto unlock(Addr id) -> void
     {
@@ -75,6 +96,7 @@ class PerLockStats
         current = LockStats{};
         active = false;
     }
+    auto getAllLocksStats() const -> AllLocksStats { return locks; }
 
   private:
     AllLocksStats locks;
@@ -125,6 +147,12 @@ class PerThreadStats
         lockStats.incMemAccesses();
     }
 
+    auto incComm() -> void
+    {
+        barrierStats.incComm();
+        lockStats.incComm();
+    }
+
     auto incSyncs(unsigned char type, Addr id) -> void
     {
         /* #define P_MUTEX_LK              1 */
@@ -156,9 +184,9 @@ class PerThreadStats
         return barrierStats.getAllBarriersStats();
     }
 
-    auto getLockStats() -> PerLockStats
+    auto getLockStats() -> AllLocksStats
     {
-        return lockStats;
+        return lockStats.getAllLocksStats();
     }
 
   private:

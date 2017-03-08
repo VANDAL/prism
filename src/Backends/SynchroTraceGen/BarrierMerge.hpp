@@ -117,12 +117,7 @@ struct BarrierMerge
         else /* matched a barrier */
         {
             /* merge current and insert any previous barriers */
-            match->second.iops += from.current->second.iops;
-            match->second.flops += from.current->second.flops;
-            match->second.instrs += from.current->second.instrs;
-            match->second.memAccesses += from.current->second.memAccesses;
-            match->second.locks += from.current->second.locks;
-
+            match->second += from.current->second;
             if (from.begin != from.current)
                 to.mergedStats.insert(match, from.begin, from.current);
 

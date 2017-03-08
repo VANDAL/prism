@@ -220,6 +220,7 @@ class TextLogger
         StatCounter totalInstrs{0};
         for (auto &p : allThreadsStats)
         {
+            /* per thread */
             TID tid = p.first;
             Stats stats = p.second.getTotalStats();
 
@@ -234,28 +235,39 @@ class TextLogger
             AllBarriersStats barrierStatsForThread = p.second.getBarrierStats();
             for (auto &p : barrierStatsForThread)
             {
-                /* Log per thread, per barrier */
+                /* per barrier region */
                 logger->info("\tBarrier: " + std::to_string(p.first));
                 logger->info("\t\tIOPs: " + std::to_string(p.second.iops));
                 logger->info("\t\tFLOPs: " + std::to_string(p.second.flops));
                 logger->info("\t\tInstrs: " + std::to_string(p.second.instrs));
                 logger->info("\t\tMemAccesses: " + std::to_string(p.second.memAccesses));
+                logger->info("\t\tCommunication: " + std::to_string(p.second.communication));
                 logger->info("\t\tlocks: " + std::to_string(p.second.locks));
                 logger->info("\t\tIOPs/Mem: " + std::to_string(p.second.iopsPerMemAccess()));
                 logger->info("\t\tFLOPs/Mem: " + std::to_string(p.second.flopsPerMemAccess()));
                 logger->info("\t\tlocks/OPs: " + std::to_string(p.second.locksPerIopsPlusFlops()));
             }
+
+            AllLocksStats lockStatsForThread = p.second.getLockStats();
+            for (auto &p : lockStatsForThread)
+            {
+                /* per lock region */
+                logger->info("\tLock: " + std::to_string(p.first));
+                logger->info("\t\tIOPs: " + std::to_string(p.second.iops));
+                logger->info("\t\tFLOPs: " + std::to_string(p.second.flops));
+                logger->info("\t\tInstrs: " + std::to_string(p.second.instrs));
+                logger->info("\t\tMemAccesses: " + std::to_string(p.second.memAccesses));
+                logger->info("\t\tCommunication: " + std::to_string(p.second.communication));
+            }
         }
 
-        /* Merge barrier statistics across threads */
+        logger->info("Barrier statistics for all threads:");
         AllBarriersStats mergedBarrierStats;
         for (auto &p : allThreadsStats)
             BarrierMerge::merge(p.second.getBarrierStats(), mergedBarrierStats);
-
-        /* Print merged barrier statistics */
-        logger->info("Barrier statistics for all threads:");
         for (auto &p : mergedBarrierStats)
         {
+            /* per barrier region, all threads */
             logger->info("Barrier: " + std::to_string(p.first));
             logger->info("\tIOPs: " + std::to_string(p.second.iops));
             logger->info("\tFLOPs: " + std::to_string(p.second.flops));
