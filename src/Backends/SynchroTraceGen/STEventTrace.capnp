@@ -17,24 +17,24 @@ struct Event {
   }
 
   enum SyncType {
-	spawn         @0;
-	join          @1;
-	barrier       @2;
-	sync          @3;
-	lock          @4;
-	unlock        @5;
-	condWait      @6;
-	condSignal    @7;
-	condBroadcast @8;
-	spinLock      @9;
-	spinUnlock    @10;
+    spawn         @0;
+    join          @1;
+    barrier       @2;
+    sync          @3;
+    lock          @4;
+    unlock        @5;
+    condWait      @6;
+    condSignal    @7;
+    condBroadcast @8;
+    spinLock      @9;
+    spinUnlock    @10;
   }
 
   # A SynchroTrace event
   union {
     comp :group {
       # computation event
-      # aggregate of one or more of type: 
+      # aggregate of one or more of type:
       # - integer operation
       # - floating point operation
       # - memory operation
@@ -59,6 +59,11 @@ struct Event {
       # synchronization event
       type @7 :SyncType;
       id   @8 :UInt64;
+    }
+
+    marker :group {
+      # instruction marker
+      count @9 :UInt16;
     }
   }
 }

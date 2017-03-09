@@ -23,18 +23,27 @@
 namespace STGen
 {
 
-template <class LoggerStrategy>
+using LogGenerator = std::function<std::unique_ptr<STLogger>(TID, std::string)>;
+
+template <class T>
+auto LogGeneratorFactory(TID tid, std::string outputPath) -> std::unique_ptr<STLogger>
+{
+    return std::unique_ptr<STLogger>(new T{tid, outputPath});
+}
+
 class ThreadContext
 {
   public:
-    ThreadContext(TID tid, unsigned primsPerStCompEv, std::string outputPath)
+    ThreadContext(TID tid, unsigned primsPerStCompEv,
+                  std::string outputPath, LogGenerator genLog)
         : tid(tid)
         , primsPerStCompEv(primsPerStCompEv)
-        , logger(tid, outputPath)
     {
         /* current shadow memory limit */
         assert(tid <= 128);
         assert(primsPerStCompEv > 0 && primsPerStCompEv <= 100);
+
+        logger = genLog(tid, outputPath);
     }
 
     ~ThreadContext()
@@ -141,7 +150,7 @@ class ThreadContext
         commFlushIfActive();
 
         stats.incSyncs(syncType, syncAddr);
-        logger.flush(syncType, syncAddr, events, tid);
+        logger->flush(syncType, syncAddr, events, tid);
     }
 
     auto onInstr() -> void
@@ -151,7 +160,7 @@ class ThreadContext
         /* add marker every 2**N instructions */
         constexpr int limit = 1 << 12;
         if (((limit-1) & stats.getTotalInstrs()) == 0)
-            logger.instrMarker(limit);
+            logger->instrMarker(limit);
     }
 
     auto checkCompFlushLimit() -> void
@@ -167,7 +176,7 @@ class ThreadContext
     {
         if (stComp.isActive == true)
         {
-            logger.flush(stComp, events, tid);
+            logger->flush(stComp, events, tid);
             stComp.reset();
             if (INCR_EID_OVERFLOW(events))
                 fatal("Event ID overflow detected in thread: " + std::to_string(tid));
@@ -179,7 +188,7 @@ class ThreadContext
     {
         if (stComm.isActive == true)
         {
-            logger.flush(stComm, events, tid);
+            logger->flush(stComm, events, tid);
             stComm.reset();
             if (INCR_EID_OVERFLOW(events))
                 fatal("Event ID overflow detected in thread: " + std::to_string(tid));
@@ -202,16 +211,13 @@ class ThreadContext
 
     TID tid;
     unsigned primsPerStCompEv; // compression level of events
-    LoggerStrategy logger;
+    std::unique_ptr<STLogger> logger;
     static STShadowMemory shadow; // Shadow memory is shared amongst all threads
 
     /* track statistics */
     StatCounter events{0};
     PerThreadStats stats;
 }; //end class ThreadContext
-
-template <class LoggerStrategy>
-STShadowMemory ThreadContext<LoggerStrategy>::shadow;
 
 }; //end namespace STGen
 

@@ -6,11 +6,14 @@ using namespace SigiLog; // console logging
 namespace STGen
 {
 
+STShadowMemory ThreadContext::shadow;
+
 /* Global to all threads */
 namespace
 {
 std::string outputPath{"."};
 unsigned primsPerStCompEv{100};
+LogGenerator genLog;
 
 std::mutex gMtx;
 ThreadStatMap allThreadsStats;
@@ -98,6 +101,7 @@ EventHandlers::~EventHandlers()
         allThreadsStats.emplace(p.first, p.second.getStats());
 }
 
+
 auto onExit() -> void
 {
     std::lock_guard<std::mutex> lock(gMtx);
@@ -125,7 +129,8 @@ auto EventHandlers::onSwapTCxt(TID newTID) -> void
             newThreadsInOrder.push_back(newTID);
             tcxts.emplace(std::piecewise_construct,
                           std::forward_as_tuple(newTID),
-                          std::forward_as_tuple(newTID, primsPerStCompEv, outputPath));
+                          std::forward_as_tuple(newTID, primsPerStCompEv,
+                                                outputPath, genLog));
         }
 
         if (cachedTCxt != nullptr)
@@ -235,6 +240,7 @@ auto EventHandlers::convertAndFlush(SyncType type, Addr data) -> void
 ////////////////////////////////////////////////////////////
 // Option Parsing
 ////////////////////////////////////////////////////////////
+
 auto onParse(Args args) -> void
 {
     /* only accept short options */
@@ -243,6 +249,7 @@ auto onParse(Args args) -> void
 
     options.insert('o'); // -o OUTPUT_DIRECTORY
     options.insert('c'); // -c COMPRESSION_VALUE
+    options.insert('l'); // -l {text,capnp}
 
     int unmatched = 0;
 
@@ -285,6 +292,26 @@ auto onParse(Args args) -> void
 
     if (matches['o'].empty() == false)
         outputPath = matches['o'];
+
+    if (matches['l'].empty() == false)
+    {
+        std::transform(matches['l'].begin(), matches['l'].end(),
+                       matches['l'].begin(), ::tolower);
+
+        if (matches['l'] == "text")
+            genLog = LogGeneratorFactory<TextLogger>;
+        else if (matches['l'] == "capnp")
+            genLog = LogGeneratorFactory<CapnLogger>;
+        else if (matches['l'] == "null")
+            genLog = LogGeneratorFactory<NullLogger>;
+        else
+            fatal("unexpected synchrotracegen options: -l " + matches['l']);
+    }
+    else
+    {
+        genLog = [](TID tid, std::string outputPath) -> std::unique_ptr<STLogger>
+            {return std::unique_ptr<STLogger>(new TextLogger(tid, outputPath));};
+    }
 
     if (matches['c'].empty() == false)
     {

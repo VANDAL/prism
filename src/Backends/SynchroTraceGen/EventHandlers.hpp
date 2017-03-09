@@ -14,7 +14,6 @@ namespace STGen
 void onParse(Args args);
 void onExit();
 
-using TCxt = ThreadContext<TextLogger>;
 class EventHandlers : public BackendIface
 {
   public:
@@ -36,9 +35,9 @@ class EventHandlers : public BackendIface
     auto onBarrier(Addr data) -> void;
     auto convertAndFlush(SyncType type, Addr data) -> void;
 
-    std::unordered_map<TID, TCxt> tcxts;
+    std::unordered_map<TID, ThreadContext> tcxts;
     TID currentTID{SO_UNDEF};
-    TCxt *cachedTCxt{nullptr};
+    ThreadContext *cachedTCxt{nullptr};
 };
 
 }; //end namespace STGen

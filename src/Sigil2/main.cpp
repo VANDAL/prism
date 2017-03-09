@@ -55,7 +55,6 @@ int main(int argc, char* argv[])
                           {},})
         .parseCommandLine(argc, argv);
 
-
     return startSigil2(config);
 }
 
@@ -123,17 +122,10 @@ auto startSigil2(const Sigil2Config& config) -> int
     auto backend       = config.backend();
     auto startFrontend = config.startFrontend();
 
-    /* let the backend parse its args */
-    if (backend.args.size() > 0)
-    {
-        if (backend.parser)
-            backend.parser(backend.args);
-        else
-        {
-            error("Backend arguments provided, but Backend has no parser");
-            return EXIT_FAILURE;
-        }
-    }
+    if (backend.parser)
+        backend.parser(backend.args);
+    else if (backend.args.size() > 0)
+        fatal("Backend arguments provided, but Backend has no parser");
 
     /* start async backend event processing */
     if (threads < 1)

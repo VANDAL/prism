@@ -35,6 +35,7 @@ CAPNP_DECLARE_ENUM(SyncType, b01b7b96c008717c);
 CAPNP_DECLARE_SCHEMA(8c582edbb56ff4d1);
 CAPNP_DECLARE_SCHEMA(a7796f360e02eea2);
 CAPNP_DECLARE_SCHEMA(94f66f91a5feee75);
+CAPNP_DECLARE_SCHEMA(b6176ac92d133b7e);
 CAPNP_DECLARE_SCHEMA(bac698225ac8c0d0);
 
 }  // namespace schemas
@@ -51,6 +52,7 @@ struct Event {
     COMP,
     COMM,
     SYNC,
+    MARKER,
   };
   struct AddrRange;
   struct CommEdge;
@@ -59,6 +61,7 @@ struct Event {
   struct Comp;
   struct Comm;
   struct Sync;
+  struct Marker;
 
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(87ac4540ededb107, 3, 2)
@@ -143,6 +146,21 @@ struct Event::Sync {
   };
 };
 
+struct Event::Marker {
+  Marker() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(b6176ac92d133b7e, 3, 2)
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand = &schema->defaultBrand;
+    #endif  // !CAPNP_LITE
+  };
+};
+
 struct EventStream {
   EventStream() = delete;
 
@@ -187,6 +205,9 @@ public:
   inline bool isSync() const;
   inline Sync::Reader getSync() const;
 
+  inline bool isMarker() const;
+  inline Marker::Reader getMarker() const;
+
 private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -227,6 +248,10 @@ public:
   inline bool isSync();
   inline Sync::Builder getSync();
   inline Sync::Builder initSync();
+
+  inline bool isMarker();
+  inline Marker::Builder getMarker();
+  inline Marker::Builder initMarker();
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -699,6 +724,82 @@ private:
 };
 #endif  // !CAPNP_LITE
 
+class Event::Marker::Reader {
+public:
+  typedef Marker Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand);
+  }
+#endif  // !CAPNP_LITE
+
+  inline  ::uint16_t getCount() const;
+
+private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class Event::Marker::Builder {
+public:
+  typedef Marker Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
+  inline operator Reader() const { return Reader(_builder.asReader()); }
+  inline Reader asReader() const { return *this; }
+
+  inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
+
+  inline  ::uint16_t getCount();
+  inline void setCount( ::uint16_t value);
+
+private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class Event::Marker::Pipeline {
+public:
+  typedef Marker Pipelines;
+
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {}
+
+private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
 class EventStream::Reader {
 public:
   typedef EventStream Reads;
@@ -860,6 +961,28 @@ inline Event::Sync::Builder Event::Builder::initSync() {
   _builder.setDataField< ::uint16_t>(0 * ::capnp::ELEMENTS, 0);
   _builder.setDataField< ::uint64_t>(2 * ::capnp::ELEMENTS, 0);
   return Event::Sync::Builder(_builder);
+}
+inline bool Event::Reader::isMarker() const {
+  return which() == Event::MARKER;
+}
+inline bool Event::Builder::isMarker() {
+  return which() == Event::MARKER;
+}
+inline Event::Marker::Reader Event::Reader::getMarker() const {
+  KJ_IREQUIRE(which() == Event::MARKER,
+              "Must check which() before get()ing a union member.");
+  return Event::Marker::Reader(_reader);
+}
+inline Event::Marker::Builder Event::Builder::getMarker() {
+  KJ_IREQUIRE(which() == Event::MARKER,
+              "Must check which() before get()ing a union member.");
+  return Event::Marker::Builder(_builder);
+}
+inline Event::Marker::Builder Event::Builder::initMarker() {
+  _builder.setDataField<Event::Which>(
+      4 * ::capnp::ELEMENTS, Event::MARKER);
+  _builder.setDataField< ::uint16_t>(0 * ::capnp::ELEMENTS, 0);
+  return Event::Marker::Builder(_builder);
 }
 inline  ::uint64_t Event::AddrRange::Reader::getStart() const {
   return _reader.getDataField< ::uint64_t>(
@@ -1127,6 +1250,20 @@ inline  ::uint64_t Event::Sync::Builder::getId() {
 inline void Event::Sync::Builder::setId( ::uint64_t value) {
   _builder.setDataField< ::uint64_t>(
       2 * ::capnp::ELEMENTS, value);
+}
+
+inline  ::uint16_t Event::Marker::Reader::getCount() const {
+  return _reader.getDataField< ::uint16_t>(
+      0 * ::capnp::ELEMENTS);
+}
+
+inline  ::uint16_t Event::Marker::Builder::getCount() {
+  return _builder.getDataField< ::uint16_t>(
+      0 * ::capnp::ELEMENTS);
+}
+inline void Event::Marker::Builder::setCount( ::uint16_t value) {
+  _builder.setDataField< ::uint16_t>(
+      0 * ::capnp::ELEMENTS, value);
 }
 
 inline bool EventStream::Reader::hasEvents() const {

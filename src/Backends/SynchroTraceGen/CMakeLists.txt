@@ -21,6 +21,8 @@ ExternalProject_Add(capnproto
 # SynchroTraceGen Backend
 set(SOURCES
 	EventHandlers.cpp
+	TextLogger.cpp
+	CapnLogger.cpp
 	STEvent.cpp
 	STEventTrace.capnp.c++
 	${THIRD_PARTY}/zlib/contrib/iostream3/zfstream.cc)
