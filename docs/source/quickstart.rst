@@ -33,7 +33,7 @@ events into a special event trace that is used in SynchroTrace_.
 More information on backends are in :ref:`backends`.
 
 .. _SynchroTrace:
-   http://ece.drexel.edu/faculty/taskin/wiki/vlsilab/index.php/SynchroTrace
+   http://vlsi.ece.drexel.edu/index.php/SynchroTrace
 
 A third option ``frontend`` will change the underlying method
 for observing the application. By default, this is Valgrind_: ::

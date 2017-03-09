@@ -6,8 +6,6 @@
 Welcome to |project|
 ====================
 
-.. note:: This documentation is still a WIP
-
 |project| is a framework for observing and analyzing applications.
 
 .. toctree::

@@ -53,5 +53,17 @@ Options
 |  -o `PATH`
 |    Default: '.'
 |    All SynchroTraceGen output will be put in `PATH`
+|
+|  -l `{text,capnp,null}`
+|    Default: 'text'
+|    Choose which logging framework to use.
+|    Regardless of which logger is chosen, a sigil.pthread.out and sigil.stats.out
+|      file will be output.
+|    'text'  will output an ASCII formatted trace in gzipped files.
+|    'capnp' will output a packed CapnProto_ serialized trace in gzipped files.
+|    'null'  will not output anything.
+
+.. _CapnProto:
+   https://capnproto.org/
 
 ----
