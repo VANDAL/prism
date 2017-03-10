@@ -50,9 +50,9 @@ inline auto n2hexstr(char (&hexStr)[sizeof(I)*2+3], const I &w) -> const char*
         }
     }
 
-    /* TODO if 'w' is '0' then this returns the full size hex string, instead of just "0x0" */
-    /* Truncate the string if it doesn't need the full width
-     * This will save space in the ASCII formatted trace */
+    /* TODO MDL20170309
+     * If 'w' is '0' then this returns the full size hex string instead of just "0x0".
+     * We can truncate the string to "0x0" to save space, but afaik this is very rare */
     hexStr[hexMSB - 2] = '0';
     hexStr[hexMSB - 1] = 'x';
     hexStr[hexLen + 2] = '\0';
@@ -310,7 +310,7 @@ auto TextLogger::blockingLoggerFlush(std::shared_ptr<spdlog::logger> &logger) ->
     /* Destructor calls a blocking flush in case of asynchronous logging. */
     logger->flush();
     spdlog::drop(logger->name()); // remove from global registry
-    logger.reset();
+    logger.reset(); // be explicit for clarity
 }
 
 }; //end namespace STGen

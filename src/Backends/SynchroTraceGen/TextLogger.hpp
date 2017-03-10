@@ -22,7 +22,7 @@ class TextLogger : public STLogger
   public:
     TextLogger(TID tid, std::string outputPath);
     TextLogger(const TextLogger& other) = delete;
-    ~TextLogger();
+    ~TextLogger() override final;
 
     auto flush(const STCompEvent& ev, EID eid, TID tid) -> void override final;
     auto flush(const STCommEvent& ev, EID eid, TID tid) -> void override final;

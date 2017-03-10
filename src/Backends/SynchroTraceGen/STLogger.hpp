@@ -10,6 +10,8 @@ namespace STGen
 class STLogger
 {
   public:
+    virtual ~STLogger() {}
+
     /* Log a SynchroTrace aggregate Compute Event */
     virtual auto flush(const STCompEvent& ev, EID eid, TID tid) -> void = 0;
 

@@ -4,10 +4,10 @@
 #include "STLogger.hpp"
 #include "Sigil2/SigiLog.hpp"
 #include "STEventTrace.capnp.h"
+#include <future>
 #include <capnp/message.h>
 #include <capnp/serialize-packed.h>
 #include <zlib.h>
-#include <fcntl.h>
 
 using SigiLog::fatal;
 
@@ -23,7 +23,7 @@ class CapnLogger : public STLogger
   public:
     CapnLogger(TID tid, std::string outputPath);
     CapnLogger(const CapnLogger &other) = delete;
-    ~CapnLogger();
+    ~CapnLogger() override final;
 
     auto flush(const STCompEvent& ev, EID eid, TID tid) -> void override final;
     auto flush(const STCommEvent& ev, EID eid, TID tid) -> void override final;
@@ -31,13 +31,23 @@ class CapnLogger : public STLogger
     auto instrMarker(int limit) -> void override final;
 
   private:
-    auto flushOrphans() -> void;
+    auto flushOrphansOnMaxEvents() -> void;
+    auto flushOrphansNow() -> void;
+    auto flushOrphansAsync() -> void;
+    auto flushOrphans(std::vector<::capnp::Orphan<Event>> flushedOrphans,
+                      std::unique_ptr<::capnp::MallocMessageBuilder> flushedOrphanage) -> bool;
 
-    static constexpr unsigned eventsPerMessage = 100000;
-    std::shared_ptr<::capnp::MallocMessageBuilder> orphanage;
+    static constexpr unsigned maxEventsPerMessage = 100000;
+
+    /* use an orphanage because we don't know the event count ahead of time */
+    std::unique_ptr<::capnp::MallocMessageBuilder> orphanage;
     std::vector<::capnp::Orphan<Event>> orphans;
     gzFile fz;
     unsigned events{0};
+
+    /* Use as a barrier to ensure one capnproto
+     * message gets copied at a time */
+    std::future<bool> doneCopying;
 };
 
 }; //end namespace STGen

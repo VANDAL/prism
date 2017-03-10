@@ -40,6 +40,10 @@ inline void writePackedMessageToGz(gzFile fz, MessageBuilder &message)
 
 }; //end nampespace capnp
 
+
+////////////////////////////////////////////////////////////
+// CapnProto Logging
+////////////////////////////////////////////////////////////
 namespace STGen
 {
 
@@ -47,7 +51,11 @@ CapnLogger::CapnLogger(TID tid, std::string outputPath)
 {
     assert(tid >= 1);
 
-    orphanage = std::make_shared<::capnp::MallocMessageBuilder>();
+    /* initialize orphanage */
+    orphanage.reset(new ::capnp::MallocMessageBuilder{});
+
+    /* nothing being copied yet */
+    doneCopying = std::async([]{return true;});
 
     auto filePath = outputPath + "/sigil.events.out-" + std::to_string(tid) + ".capn.bin.gz";
     fz = gzopen(filePath.c_str(), "wb");
@@ -58,9 +66,7 @@ CapnLogger::CapnLogger(TID tid, std::string outputPath)
 
 CapnLogger::~CapnLogger()
 {
-    if (events > 0)
-        flushOrphans();
-
+    flushOrphansNow();
     int ret = gzclose(fz);
     if (ret != Z_OK)
         fatal(std::string("closing gzfile: ") + strerror(errno));
@@ -102,11 +108,7 @@ auto CapnLogger::flush(const STCompEvent& ev, const EID eid, const TID tid) -> v
     }
 
     orphans.emplace_back(std::move(orphan));
-    if (++events == eventsPerMessage)
-    {
-        flushOrphans();
-        events = 0;
-    }
+    flushOrphansOnMaxEvents();
 }
 
 
@@ -135,11 +137,7 @@ auto CapnLogger::flush(const STCommEvent& ev, const EID eid, const TID tid) -> v
     }
 
     orphans.emplace_back(std::move(orphan));
-    if (++events == eventsPerMessage)
-    {
-        flushOrphans();
-        events = 0;
-    }
+    flushOrphansOnMaxEvents();
 }
 
 
@@ -192,11 +190,7 @@ auto CapnLogger::flush(const unsigned char syncType, const Addr syncAddr,
     syncBuilder.setId(syncAddr);
 
     orphans.emplace_back(std::move(orphan));
-    if (++events == eventsPerMessage)
-    {
-        flushOrphans();
-        events = 0;
-    }
+    flushOrphansOnMaxEvents();
 }
 
 
@@ -207,29 +201,70 @@ auto CapnLogger::instrMarker(int limit) -> void
     markerBuilder.setCount(limit);
 
     orphans.emplace_back(std::move(orphan));
-    if (++events == eventsPerMessage)
+    flushOrphansOnMaxEvents();
+}
+
+
+auto CapnLogger::flushOrphansOnMaxEvents() -> void
+{
+    assert(events <= maxEventsPerMessage);
+    if (++events == maxEventsPerMessage)
     {
-        flushOrphans();
+        flushOrphansAsync();
         events = 0;
     }
 }
 
 
-auto CapnLogger::flushOrphans() -> void
+auto CapnLogger::flushOrphansNow() -> void
 {
+    assert(events <= maxEventsPerMessage);
+    if (events > 0)
+    {
+        flushOrphansAsync();
+        doneCopying.get(); // blocking flush
+        events = 0;
+    }
+}
+
+
+auto CapnLogger::flushOrphansAsync() -> void
+{
+    /* asynchronously copy orphans and flush */
+    assert(doneCopying.valid());
+    doneCopying.get();
+    doneCopying = std::async(std::launch::async,
+                             &CapnLogger::flushOrphans, this,
+                             std::move(orphans), std::move(orphanage));
+
+    /* start a new orphanage */
+    orphans.clear();
+    orphanage.reset(new ::capnp::MallocMessageBuilder{});
+}
+
+
+auto CapnLogger::flushOrphans(std::vector<::capnp::Orphan<Event>> flushedOrphans,
+                              std::unique_ptr<::capnp::MallocMessageBuilder> flushedOrphanage)
+    -> bool
+{
+    /* need to keep the orphanage alive until it's flushed */
+    (void)flushedOrphanage;
+
+    /* create the message now that we have a fixed length */
     ::capnp::MallocMessageBuilder message;
     auto eventStreamBuilder = message.initRoot<EventStream>();
-    auto eventsBuilder = eventStreamBuilder.initEvents(events);
+    auto eventsBuilder = eventStreamBuilder.initEvents(flushedOrphans.size());
 
-    for (unsigned i=0; i<events; ++i)
+    for (unsigned i=0; i<flushedOrphans.size(); ++i)
     {
-        auto reader = orphans[i].getReader();
+        auto reader = flushedOrphans[i].getReader();
         eventsBuilder.setWithCaveats(i, reader);
     }
 
-    orphans.clear();
     ::capnp::writePackedMessageToGz(fz, message);
-    orphanage = std::make_shared<::capnp::MallocMessageBuilder>();
+
+    /* burn down the orphanage */
+    return true;
 }
 
 }; //end namespace STGen
