@@ -1,5 +1,8 @@
 #include "EventHandlers.hpp"
 #include "STTypes.hpp"
+#include "TextLogger.hpp"
+#include "CapnLogger.hpp"
+#include "NullLogger.hpp"
 #include <cassert>
 
 using namespace SigiLog; // console logging

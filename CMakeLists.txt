@@ -53,7 +53,6 @@ include_directories(${THIRD_PARTY}/spdlog/include)
 include_directories(${THIRD_PARTY}/spdlog/include/spdlog)
 include_directories(${THIRD_PARTY}/elfio-3.1)
 include_directories(${THIRD_PARTY}/zlib/contrib/iostream3)
-include_directories(${THIRD_PARTY}/capnproto/include)
 include_directories(src)
 include_directories(${SRC_FRONTENDS})
 include_directories(${SRC_BACKENDS})
@@ -69,10 +68,7 @@ set(SOURCES
 	${SRC_SIGIL2}/Sigil2Config.cpp
 	${SRC_SIGIL2}/main.cpp)
 add_executable(sigil2 ${SOURCES})
-target_link_libraries(sigil2 pthread rt
-	# the following won't be created until build time
-	${THIRD_PARTY}/capnproto/lib/libcapnp.a
-	${THIRD_PARTY}/capnproto/lib/libkj.a)
+target_link_libraries(sigil2 pthread rt)
 set_target_properties(sigil2
 	PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
@@ -81,7 +77,8 @@ set_target_properties(sigil2
 # Plugin Backends #
 ###################
 add_subdirectory(${SRC_BACKENDS}/SynchroTraceGen)
-target_link_libraries(sigil2 STGen)
+add_dependencies(sigil2 STGen)
+target_link_libraries(sigil2 ${STGEN_LIB} z)
 
 add_subdirectory(${SRC_BACKENDS}/SimpleCount)
 target_link_libraries(sigil2 SimpleCount)

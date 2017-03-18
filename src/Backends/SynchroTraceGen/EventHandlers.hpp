@@ -3,9 +3,6 @@
 
 #include "Sigil2/Backends.hpp"
 #include "ThreadContext.hpp"
-#include "TextLogger.hpp"
-#include "CapnLogger.hpp"
-#include "NullLogger.hpp"
 
 namespace STGen
 {

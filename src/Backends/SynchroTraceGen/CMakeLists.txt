@@ -17,6 +17,7 @@ ExternalProject_Add(capnproto
 # -- Build step ---------------
 # -- Install step -------------
 	)
+include_directories(${THIRD_PARTY}/capnproto/include)
 
 # SynchroTraceGen Backend
 set(SOURCES
@@ -26,10 +27,20 @@ set(SOURCES
 	STEvent.cpp
 	STEventTrace.capnp.c++
 	${THIRD_PARTY}/zlib/contrib/iostream3/zfstream.cc)
-add_library(STGen STATIC ${SOURCES})
-target_link_libraries(STGen z
-	${THIRD_PARTY}/capnproto/lib/libcapnp.a
-	${THIRD_PARTY}/capnproto/lib/libkj.a)
-add_dependencies(STGen capnproto)
+add_library(STGenCore STATIC ${SOURCES})
 
+# Link CapnProto w/ SynchroTraceGen
+set(KJ_LIB ${THIRD_PARTY}/capnproto/lib/libkj.a)
+set(CAPNP_LIB ${THIRD_PARTY}/capnproto/lib/libcapnp.a)
+set(STGEN_LIB ${CMAKE_CURRENT_BINARY_DIR}/libSTGen.a)
+set(STGEN_LIB ${STGEN_LIB} PARENT_SCOPE) 
+add_custom_target(STGen ALL
+	COMMAND ar -x $<TARGET_FILE:STGenCore>
+	COMMAND ar -x ${KJ_LIB}
+	COMMAND ar -x ${CAPNP_LIB}
+	COMMAND ar -qc ${STGEN_LIB} *.o)
+add_dependencies(STGenCore capnproto)
+add_dependencies(STGen STGenCore)
+
+# tests
 add_subdirectory(tests)
