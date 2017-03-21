@@ -1,55 +1,34 @@
 #!/bin/python
-"""
-This script demonstrates parsing a CapnProto SynchroTrace event trace.
-The 'STEventTrace.capnp' file must exist in the sys.path.
-Add its directory to the PYTHONPATH environmental variable or
-copy it to the current working directory.
-
-The pycapnp library is required:
-See http://jparyani.github.io/pycapnp/install.html for further details.
-
-Generate the *.capnp.bin file with:
-    bin/sigil2 --backend=stgen -l capnp --executable=...
-
-Run this script as:
-    ./stgen_capnp_parser.py sigil.events-#.capnp.bin.gz
-                          OR
-    gunzip sigil.events-#.capnp.bin.gz
-    ./stgen_capnp_parser.py sigil.events-#.capnp.bin
-"""
 
 import sys
 import os
 from warnings import warn
 import capnp
-import STEventTrace_capnp
+import STEventTraceUncompressed_capnp
 
 
 def processSTEventTrace(file):
-    for stream in (STEventTrace_capnp.EventStream
+    for stream in (STEventTraceUncompressed_capnp.EventStream
                    .read_multiple_packed(file, traversal_limit_in_words=2**63)):
         for event in stream.events:
             which = event.which()
             if which == 'comp':
                 event.comp.iops    # IOPs value
                 event.comp.flops   # FLOPs value
-                event.comp.writes  # writes value
-                event.comp.reads   # reads value
-                for write in event.comp.writeAddrs:
-                    write.start  # start of address range
-                    write.end    # end of address range
-                for read in event.comp.writeAddrs:
-                    read.start  # start of address range
-                    read.end    # end of address range
+                if event.comp.mem == 'write':
+                    # address range written
+                    event.comp.startAddr
+                    event.comp.endAddr
+                elif event.comp.mem == 'read':
+                    # address range read
+                    event.comp.startAddr
+                    event.comp.endAddr
             elif which == 'comm':
-                for edge in event.comm.edges:
-                    # the thread-event tuple that generated
-                    # this communication edge
-                    edge.producerThread
-                    edge.producerEvent
-                    for addr in edge.addrs:
-                        addr.start  # start of address range
-                        addr.end    # end of address range
+                # communication edge
+                event.comm.producerThread
+                event.comm.producerEvent
+                event.comm.startAddr
+                event.comm.endAddr
             elif which == 'sync':
                 if event.sync.type == 'spawn':
                     event.sync.id  # spawned thread id

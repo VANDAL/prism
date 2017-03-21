@@ -6,43 +6,43 @@ namespace STGen
 ////////////////////////////////////////////////////////////
 // SynchroTrace - Compute Event
 ////////////////////////////////////////////////////////////
-void STCompEvent::updateWrites(const Addr begin, const Addr size)
+auto STCompEventCompressed::updateWrites(const Addr begin, const Addr size) -> void
 {
     isActive = true;
     uniqueWriteAddrs.insert(std::make_pair(begin, begin + size - 1));
 }
 
-void STCompEvent::updateReads(const Addr begin, const Addr size)
+auto STCompEventCompressed::updateReads(const Addr begin, const Addr size) -> void
 {
     isActive = true;
     uniqueReadAddrs.insert(std::make_pair(begin, begin + size - 1));
 }
 
-void STCompEvent::incWrites()
+auto STCompEventCompressed::incWrites() -> void
 {
     isActive = true;
     ++writes;
 }
 
-void STCompEvent::incReads()
+auto STCompEventCompressed::incReads() -> void
 {
     isActive = true;
     ++reads;
 }
 
-void STCompEvent::incIOP()
+auto STCompEventCompressed::incIOP() -> void
 {
     isActive = true;
     ++iops;
 }
 
-void STCompEvent::incFLOP()
+auto STCompEventCompressed::incFLOP() -> void
 {
     isActive = true;
     ++flops;
 }
 
-void STCompEvent::reset()
+auto STCompEventCompressed::reset() -> void
 {
     isActive = false;
     iops = 0;
@@ -54,10 +54,32 @@ void STCompEvent::reset()
 }
 
 
+auto STCompEventUncompressed::incIOP() -> void
+{
+    isActive = true;
+    ++iops;
+}
+
+auto STCompEventUncompressed::incFLOP() -> void
+{
+    isActive = true;
+    ++flops;
+}
+
+auto STCompEventUncompressed::reset() -> void
+{
+    isActive = false;
+    iops = 0;
+    flops = 0;
+}
+
+
+
 ////////////////////////////////////////////////////////////
 // SynchroTrace - Communication Event
 ////////////////////////////////////////////////////////////
-void STCommEvent::addEdge(const TID writer, const EID writer_event, const Addr addr)
+auto STCommEventCompressed::addEdge(const TID writer, const EID writer_event,
+                                    const Addr addr) -> void
 {
     isActive = true;
 
@@ -81,26 +103,10 @@ void STCommEvent::addEdge(const TID writer, const EID writer_event, const Addr a
 }
 
 
-void STCommEvent::reset()
+auto STCommEventCompressed::reset() -> void
 {
     isActive = false;
     comms.clear();
-}
-
-
-////////////////////////////////////////////////////////////
-// SynchroTrace - Context Event (Instruction)
-////////////////////////////////////////////////////////////
-void STInstrEvent::append(Addr addr)
-{
-    isActive = true;
-    addrs.push_back(addr);
-}
-
-void STInstrEvent::reset()
-{
-    isActive = false;
-    addrs.clear();
 }
 
 }; //end namespace STGen

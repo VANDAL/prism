@@ -1,8 +1,6 @@
 #include "EventHandlers.hpp"
 #include "STTypes.hpp"
 #include "TextLogger.hpp"
-#include "CapnLogger.hpp"
-#include "NullLogger.hpp"
 #include <cassert>
 
 using namespace SigiLog; // console logging
@@ -11,12 +9,35 @@ namespace STGen
 
 STShadowMemory ThreadContext::shadow;
 
+template <typename T>
+struct FunctionSignature;
+
+template <typename R, typename... Args>
+struct FunctionSignature<R (Args...)>
+{
+    using type = R(Args...);
+};
+
+template <class TCxtType>
+auto ThreadContextGenerator(TID tid,
+                            unsigned primsPerStCompEv,
+                            std::string outputPath,
+                            std::string loggerType) -> std::unique_ptr<ThreadContext>
+{
+    return std::unique_ptr<ThreadContext>(new TCxtType{tid,
+                                                       primsPerStCompEv,
+                                                       outputPath,
+                                                       loggerType});
+}
+using TCxtGenerator = std::function<decltype(ThreadContextGenerator<ThreadContextCompressed>)>;
+
 /* Global to all threads */
 namespace
 {
 std::string outputPath{"."};
 unsigned primsPerStCompEv{100};
-LogGenerator genLog;
+std::string loggerType;
+TCxtGenerator genTCxt;
 
 std::mutex gMtx;
 ThreadStatMap allThreadsStats;
@@ -101,7 +122,7 @@ EventHandlers::~EventHandlers()
 {
     std::lock_guard<std::mutex> lock(gMtx);
     for (auto& p : tcxts)
-        allThreadsStats.emplace(p.first, p.second.getStats());
+        allThreadsStats.emplace(p.first, p.second->getStats());
 }
 
 
@@ -109,9 +130,9 @@ auto onExit() -> void
 {
     std::lock_guard<std::mutex> lock(gMtx);
     spdlog::set_sync_mode();
-    TextLogger::flushPthread(outputPath + "/sigil.pthread.out",
-                             newThreadsInOrder, threadSpawns, barrierParticipants);
-    TextLogger::flushStats(outputPath + "/sigil.stats.out", allThreadsStats);
+    flushPthread(outputPath + "/sigil.pthread.out", newThreadsInOrder,
+                 threadSpawns, barrierParticipants);
+    flushStats(outputPath + "/sigil.stats.out", allThreadsStats);
 }
 
 
@@ -132,19 +153,16 @@ auto EventHandlers::onSwapTCxt(TID newTID) -> void
             newThreadsInOrder.push_back(newTID);
             tcxts.emplace(std::piecewise_construct,
                           std::forward_as_tuple(newTID),
-                          std::forward_as_tuple(newTID, primsPerStCompEv,
-                                                outputPath, genLog));
+                          std::forward_as_tuple(genTCxt(newTID, primsPerStCompEv,
+                                                        outputPath, loggerType)));
         }
 
         if (cachedTCxt != nullptr)
-        {
-            cachedTCxt->compFlushIfActive();
-            cachedTCxt->commFlushIfActive();
-        }
+            cachedTCxt->flushAll();
 
         currentTID = newTID;
         assert(tcxts.find(currentTID) != tcxts.cend());
-        cachedTCxt = &tcxts.at(currentTID);
+        cachedTCxt = tcxts.at(currentTID).get();
     }
 
     assert(currentTID = newTID);
@@ -243,19 +261,10 @@ auto EventHandlers::convertAndFlush(SyncType type, Addr data) -> void
 ////////////////////////////////////////////////////////////
 // Option Parsing
 ////////////////////////////////////////////////////////////
-
-auto onParse(Args args) -> void
+auto parseAll(const Args &args, const std::set<char> &options) -> std::map<char, std::string>
 {
-    /* only accept short options */
-    std::set<char> options;
     std::map<char, std::string> matches;
-
-    options.insert('o'); // -o OUTPUT_DIRECTORY
-    options.insert('c'); // -c COMPRESSION_VALUE
-    options.insert('l'); // -l {text,capnp}
-
     int unmatched = 0;
-
     for (auto arg = args.cbegin(); arg != args.cend(); ++arg)
     {
         if /*opt found, '-<char>'*/(((*arg).substr(0, 1).compare("-") == 0) &&
@@ -293,48 +302,80 @@ auto onParse(Args args) -> void
     if (unmatched > 0)
         fatal("unexpected synchrotracegen options");
 
-    if (matches['o'].empty() == false)
-        outputPath = matches['o'];
+    return matches;
+}
 
-    if (matches['l'].empty() == false)
+
+auto parseLogger(std::string loggerArg) -> std::string
+{
+    if (loggerArg.empty() == true)
+        return "text";
+
+    std::transform(loggerArg.begin(), loggerArg.end(), loggerArg.begin(), ::tolower);
+    if (loggerArg != "text" &&
+        loggerArg != "capnp" &&
+        loggerArg != "null")
+        fatal("unexpected synchrotracegen options: -l " + loggerArg);
+
+    return loggerArg;
+}
+
+
+auto parseCompression(std::string compression) -> int
+{
+    if (compression.empty() == true)
+        return 100; // default
+
+    try
     {
-        std::transform(matches['l'].begin(), matches['l'].end(),
-                       matches['l'].begin(), ::tolower);
-
-        if (matches['l'] == "text")
-            genLog = LogGeneratorFactory<TextLogger>;
-        else if (matches['l'] == "capnp")
-            genLog = LogGeneratorFactory<CapnLogger>;
-        else if (matches['l'] == "null")
-            genLog = LogGeneratorFactory<NullLogger>;
-        else
-            fatal("unexpected synchrotracegen options: -l " + matches['l']);
+        int ret = std::stoi(compression);
+        if (ret < 1)
+            fatal("SynchroTraceGen compression level: invalid argument");
+        return ret;
     }
+    catch (std::invalid_argument &e)
+    {
+        fatal("SynchroTraceGen compression level: invalid argument");
+    }
+    catch (std::out_of_range &e)
+    {
+        fatal("SynchroTraceGen compression level: out_of_range");
+    }
+    catch (std::exception &e)
+    {
+        fatal(std::string("SynchroTraceGen compression level: ").append(e.what()));
+    }
+}
+
+
+auto parseOutputPath(std::string outputPath) -> std::string
+{
+    if (outputPath.empty() == true)
+        return "."; //default
     else
-    {
-        genLog = [](TID tid, std::string outputPath) -> std::unique_ptr<STLogger>
-            {return std::unique_ptr<STLogger>(new TextLogger(tid, outputPath));};
-    }
+        return outputPath;
+}
 
-    if (matches['c'].empty() == false)
-    {
-        try
-        {
-            primsPerStCompEv = std::stoi(matches['c']);
-        }
-        catch (std::invalid_argument &e)
-        {
-            fatal(std::string("SynchroTraceGen compression level: invalid argument"));
-        }
-        catch (std::out_of_range &e)
-        {
-            fatal(std::string("SynchroTraceGen compression level: out_of_range"));
-        }
-        catch (std::exception &e)
-        {
-            fatal(std::string("SynchroTraceGen compression level: ").append(e.what()));
-        }
-    }
+
+auto onParse(Args args) -> void
+{
+    /* only accept short options */
+    std::set<char> options;
+    options.insert('o'); // -o OUTPUT_DIRECTORY
+    options.insert('c'); // -c COMPRESSION_VALUE
+    options.insert('l'); // -l {text,capnp}
+    auto matches = parseAll(args, options);
+
+    outputPath = parseOutputPath(matches['o']);
+    loggerType = parseLogger(matches['l']);
+    primsPerStCompEv = parseCompression(matches['c']);
+
+    if (primsPerStCompEv == 1)
+        genTCxt = ThreadContextGenerator<ThreadContextUncompressed>;
+    else if (primsPerStCompEv > 1)
+        genTCxt = ThreadContextGenerator<ThreadContextCompressed>;
+    else
+        fatal("SynchroTraceGen: Invalid compression level detected");
 }
 
 }; //end namespace STGen

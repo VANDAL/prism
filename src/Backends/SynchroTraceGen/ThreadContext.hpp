@@ -23,201 +23,102 @@
 namespace STGen
 {
 
-using LogGenerator = std::function<std::unique_ptr<STLogger>(TID, std::string)>;
-
-template <class T>
-auto LogGeneratorFactory(TID tid, std::string outputPath) -> std::unique_ptr<STLogger>
-{
-    return std::unique_ptr<STLogger>(new T{tid, outputPath});
-}
+template <class LoggerType>
+using LogGenerator = std::function<std::unique_ptr<LoggerType>(TID, std::string)>;
 
 class ThreadContext
 {
-  public:
-    ThreadContext(TID tid, unsigned primsPerStCompEv,
-                  std::string outputPath, LogGenerator genLog)
-        : tid(tid)
-        , primsPerStCompEv(primsPerStCompEv)
-    {
-        /* current shadow memory limit */
-        assert(tid <= 128);
-        assert(primsPerStCompEv > 0 && primsPerStCompEv <= 100);
-
-        logger = genLog(tid, outputPath);
-    }
-
-    ~ThreadContext()
-    {
-        compFlushIfActive();
-        commFlushIfActive();
-    }
-
-    auto getStats() const -> PerThreadStats
-    {
-        return stats;
-    }
-
-    auto onIop() -> void
-    {
-        commFlushIfActive();
-        stComp.incIOP();
-        stats.incIOPs();
-    }
-
-    auto onFlop() -> void
-    {
-        commFlushIfActive();
-        stComp.incFLOP();
-        stats.incFLOPs();
-    }
-
-    auto onRead(const Addr start, const Addr bytes) -> void
-    {
-        bool isCommEdge = false;
-
-        /* Each byte of the read may have been touched by a different thread */
-        for (Addr i = 0; i < bytes; ++i)
-        {
-            Addr addr = start + i;
-            try
-            {
-                TID writer = shadow.getWriterTID(addr);
-                bool isReader= shadow.isReaderTID(addr, tid);
-
-                if (isReader == false)
-                    shadow.updateReader(addr, 1, tid);
-
-                if /*comm edge*/((isReader == false) && (writer != tid) && (writer != SO_UNDEF))
-                /* XXX treat a read/write to an address with UNDEF thread as a local compute event */
-                {
-                    isCommEdge = true;
-                    stComm.addEdge(writer, shadow.getWriterEID(addr), addr);
-                }
-                else/*local load, comp event*/
-                {
-                    stComp.updateReads(addr, 1);
-                }
-            }
-            catch(std::out_of_range &e)
-            {
-                /* treat as a local event */
-                warn(e.what());
-                stComp.updateReads(addr, 1);
-            }
-        }
-
-        /* A situation when a singular memory event is both a communication edge
-         * and a local thread read is rare and not robustly accounted for.
-         * A single address that is a communication edge counts the whole event
-         * as a communication event, and not as part of a computation event
-         * Some loss of granularity can occur in this situation */
-        if (isCommEdge == false)
-        {
-            commFlushIfActive();
-            stComp.incReads();
-            stats.incComm();
-        }
-        else
-        {
-            compFlushIfActive();
-        }
-
-        checkCompFlushLimit();
-        stats.incReads();
-    }
-
-    auto onWrite(const Addr start, const Addr bytes) -> void
-    {
-        stComp.incWrites();
-        stComp.updateWrites(start, bytes);
-
-        try
-        {
-            shadow.updateWriter(start, bytes, tid, events);
-        }
-        catch(std::out_of_range &e)
-        {
-            warn(e.what());
-        }
-
-        checkCompFlushLimit();
-        stats.incWrites();
-    }
-
-    auto onSync(unsigned char syncType, Addr syncAddr) -> void
-    {
-        compFlushIfActive();
-        commFlushIfActive();
-
-        stats.incSyncs(syncType, syncAddr);
-        logger->flush(syncType, syncAddr, events, tid);
-    }
-
-    auto onInstr() -> void
-    {
-        stats.incInstrs();
-
-        /* add marker every 2**N instructions */
-        constexpr int limit = 1 << 12;
-        if (((limit-1) & stats.getTotalInstrs()) == 0)
-            logger->instrMarker(limit);
-    }
-
-    auto checkCompFlushLimit() -> void
-    {
-        if ((stComp.writes >= primsPerStCompEv) || (stComp.reads >= primsPerStCompEv))
-            compFlushIfActive();
-
-        assert(stComp.isActive == false ||
-               ((stComp.writes < primsPerStCompEv) && (stComp.reads < primsPerStCompEv)));
-    }
-
-    auto compFlushIfActive() -> void
-    {
-        if (stComp.isActive == true)
-        {
-            logger->flush(stComp, events, tid);
-            stComp.reset();
-            if (INCR_EID_OVERFLOW(events))
-                fatal("Event ID overflow detected in thread: " + std::to_string(tid));
-        }
-        assert(stComp.isActive == false);
-    }
-
-    auto commFlushIfActive() -> void
-    {
-        if (stComm.isActive == true)
-        {
-            logger->flush(stComm, events, tid);
-            stComm.reset();
-            if (INCR_EID_OVERFLOW(events))
-                fatal("Event ID overflow detected in thread: " + std::to_string(tid));
-        }
-        assert(stComm.isActive == false);
-    }
-
-  private:
     /* SynchroTraceGen makes use of 3 SynchroTrace events,
      * i.e. Computation, Communication, and Synchronization.
      *
      * An event aggregates metadata and is eventually flushed to a log.
-     * Because there might be trillions or more of SynchroTrace
-     * events, each event state is cached here, and reset upon flushing
-     *
      * Synchronization events are immediately flushed,
      * so no event state needs to be tracked */
-    STCompEvent stComp;
-    STCommEvent stComm;
+  public:
+    virtual ~ThreadContext() {}
+    virtual auto getStats() const -> PerThreadStats = 0;
+    virtual auto onIop() -> void = 0;
+    virtual auto onFlop() -> void = 0;
+    virtual auto onRead(const Addr start, const Addr bytes) -> void = 0;
+    virtual auto onWrite(const Addr start, const Addr bytes) -> void = 0;
+    virtual auto onSync(unsigned char syncType, Addr syncAddr) -> void = 0;
+    virtual auto onInstr() -> void = 0;
+    virtual auto flushAll() -> void = 0;
+
+  protected:
+    static STShadowMemory shadow; // Shadow memory is shared amongst all threads
+};
+
+
+class ThreadContextCompressed : public ThreadContext
+{
+    using LogPtr = std::unique_ptr<STLoggerCompressed>;
+  public:
+    ThreadContextCompressed(TID tid, unsigned primsPerStCompEv,
+                            std::string outputPath, std::string loggerType);
+    ~ThreadContextCompressed();
+
+    auto getStats() const -> PerThreadStats override final;
+    auto onIop() -> void override final;
+    auto onFlop() -> void override final;
+    auto onRead(Addr start, Addr bytes) -> void override final;
+    auto onWrite(Addr start, Addr bytes) -> void override final;
+    auto onSync(unsigned char syncType, Addr syncAddr) -> void override final;
+    auto onInstr() -> void override final;
+    auto flushAll() -> void override final;
+
+  private:
+    auto checkCompFlushLimit() -> void;
+    auto compFlushIfActive() -> void;
+    auto commFlushIfActive() -> void;
+    static auto getLogger(TID tid, std::string outputPath, std::string loggerType) -> LogPtr;
+
+    STCompEventCompressed stComp;
+    STCommEventCompressed stComm;
 
     TID tid;
     unsigned primsPerStCompEv; // compression level of events
-    std::unique_ptr<STLogger> logger;
-    static STShadowMemory shadow; // Shadow memory is shared amongst all threads
+    LogPtr logger;
 
     /* track statistics */
     StatCounter events{0};
     PerThreadStats stats;
-}; //end class ThreadContext
+};
+
+
+class ThreadContextUncompressed : public ThreadContext
+{
+    using LogPtr = std::unique_ptr<STLoggerUncompressed>;
+  public:
+    ThreadContextUncompressed(TID tid, unsigned primsPerStCompEv,
+                              std::string outputPath, std::string loggerType);
+    ~ThreadContextUncompressed();
+
+    auto getStats() const -> PerThreadStats override final;
+    auto onIop() -> void override final;
+    auto onFlop() -> void override final;
+    auto onRead(Addr start, Addr bytes) -> void override final;
+    auto onWrite(Addr start, Addr bytes) -> void override final;
+    auto onSync(unsigned char syncType, Addr syncAddr) -> void override final;
+    auto onInstr() -> void override final;
+    auto flushAll() -> void override final;
+
+  private:
+    auto compFlushIfActive() -> void;
+    auto compFlush(STCompEventUncompressed::MemType type, Addr start, Addr end) -> void;
+    auto commFlush(EID producerEID, TID producerTID, Addr start, Addr end) -> void;
+    static auto getLogger(TID tid, std::string outputPath, std::string loggerType) -> LogPtr;
+
+    STCompEventUncompressed stComp;
+
+    TID tid;
+    unsigned primsPerStCompEv; // compression level of events
+    LogPtr logger;
+
+    /* track statistics */
+    StatCounter events{0};
+    PerThreadStats stats;
+};
 
 }; //end namespace STGen
 

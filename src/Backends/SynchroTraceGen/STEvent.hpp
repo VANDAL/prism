@@ -3,6 +3,7 @@
 
 #include "AddrSet.hpp"
 #include "STTypes.hpp" // Addr, TID, EID
+#include "STEventTraceUncompressed.capnp.h"
 #include "spdlog/spdlog.h"
 #include <vector>
 
@@ -13,28 +14,12 @@
  * in the SynchroTraceSim CMP simulator.
  *
  * See Section 2.B in the SynchroTrace paper for further clarification.
+ *
+ * TODO MDL20170321 Clean up uncompressed event interface
  ******************************************************************************/
 
 namespace STGen
 {
-
-/**
- * XXX MDL20161104
- * Instruction address not currenlty utilized
- * SynchroTrace tracks instruction addresses for future work to increase
- * simulation accuracy. The addresses can be used to simulate an I-cache
- * and any associated latencies
- */
-struct STInstrEvent
-{
-    void append(Addr addr);
-    void reset();
-
-    /* all active addresses */
-    std::vector<Addr> addrs;
-    bool isActive{false};
-};
-
 
 /**
  * A SynchroTrace Compute Event.
@@ -48,15 +33,16 @@ struct STInstrEvent
  * thread swap, a communication edge between threads, or at an
  * arbitrary number of iops/flops/reads/writes.
  */
-struct STCompEvent
+
+struct STCompEventCompressed
 {
-    void updateWrites(Addr begin, Addr size);
-    void updateReads(Addr begin, Addr size);
-    void incWrites();
-    void incReads();
-    void incIOP();
-    void incFLOP();
-    void reset();
+    auto updateWrites(Addr begin, Addr size) -> void;
+    auto updateReads(Addr begin, Addr size) -> void;
+    auto incWrites() -> void;
+    auto incReads() -> void;
+    auto incIOP() -> void;
+    auto incFLOP() -> void;
+    auto reset() -> void;
 
     StatCounter iops{0};
     StatCounter flops{0};
@@ -74,6 +60,22 @@ struct STCompEvent
     bool isActive{false};
 };
 
+struct STCompEventUncompressed
+{
+    auto incIOP() -> void;
+    auto incFLOP() -> void;
+    auto reset() -> void;
+
+    StatCounter iops{0};
+    StatCounter flops{0};
+
+    /* one read or write per event,
+     * and the address range */
+    using MemType = EventStreamUncompressed::Event::MemType;
+
+    bool isActive{false};
+};
+
 
 /**
  * A SynchroTrace Communication Event.
@@ -84,7 +86,8 @@ struct STCompEvent
  * to that data by the same thread is not considered a communication
  * edge. Another thread that writes to the same address resets this process.
  */
-struct STCommEvent
+
+struct STCommEventCompressed
 {
     /**
      * Adds communication edges originated from a single load/read primitive.
@@ -98,8 +101,8 @@ struct STCommEvent
      *
      * Use STEvent::flush() between different read primitives.
      */
-    void addEdge(TID writer, EID writer_event, Addr addr);
-    void reset();
+    auto addEdge(TID writer, EID writer_event, Addr addr) -> void;
+    auto reset() -> void;
 
     /**
      * vector of:
@@ -110,6 +113,7 @@ struct STCommEvent
      */
     using LoadEdges = std::vector<std::tuple<TID, EID, AddrSet>>;
     LoadEdges comms;
+
     bool isActive{false};
 };
 

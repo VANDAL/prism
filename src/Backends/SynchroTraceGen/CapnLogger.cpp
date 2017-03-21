@@ -47,7 +47,101 @@ inline void writePackedMessageToGz(gzFile fz, MessageBuilder &message)
 namespace STGen
 {
 
-CapnLogger::CapnLogger(TID tid, std::string outputPath)
+namespace
+{
+/* Common between compressed/uncompressed */
+template <typename Event, typename OrphanagePtr, typename OrphanList>
+auto flushSyncEvent(unsigned char syncType, Addr syncAddr,
+                    OrphanagePtr &orphanage, OrphanList &orphans) -> void
+{
+    auto orphan = orphanage->getOrphanage().template newOrphan<Event>();
+    auto syncBuilder = orphan.get().initSync();
+
+    /* translate type to CapnProto enum */
+    syncBuilder.setId(syncAddr);
+    switch (syncType)
+    {
+    case 1:
+        syncBuilder.setType(Event::SyncType::LOCK);
+        break;
+    case 2:
+        syncBuilder.setType(Event::SyncType::UNLOCK);
+        break;
+    case 3:
+        syncBuilder.setType(Event::SyncType::SPAWN);
+        break;
+    case 4:
+        syncBuilder.setType(Event::SyncType::JOIN);
+        break;
+    case 5:
+        syncBuilder.setType(Event::SyncType::BARRIER);
+        break;
+    case 6:
+        syncBuilder.setType(Event::SyncType::COND_WAIT);
+        break;
+    case 7:
+        syncBuilder.setType(Event::SyncType::COND_SIGNAL);
+        break;
+    case 8:
+        syncBuilder.setType(Event::SyncType::COND_BROADCAST);
+        break;
+    case 9:
+        syncBuilder.setType(Event::SyncType::SPIN_LOCK);
+        break;
+    case 10:
+        syncBuilder.setType(Event::SyncType::SPIN_UNLOCK);
+        break;
+    default:
+        fatal("capnlogger encountered unhandled sync event");
+    }
+
+    orphans.emplace_back(std::move(orphan));
+}
+
+
+template <typename Event, typename OrphanagePtr, typename OrphanList>
+auto flushInstrMarker(int limit, OrphanagePtr &orphanage, OrphanList &orphans) -> void
+{
+    auto orphan = orphanage->getOrphanage().template newOrphan<Event>();
+    auto markerBuilder = orphan.get().initMarker();
+    markerBuilder.setCount(limit);
+
+    orphans.emplace_back(std::move(orphan));
+}
+
+template <typename EventStream, typename OrphanagePtr, typename OrphanList>
+auto flushOrphans(OrphanagePtr flushedOrphanage, OrphanList flushedOrphans, gzFile fz) -> bool
+{
+    /* need to keep the orphanage alive until it's flushed */
+    (void)flushedOrphanage;
+
+    /* create the message now that we have a fixed length */
+    ::capnp::MallocMessageBuilder message;
+    auto eventStreamBuilder = message.initRoot<EventStream>();
+    auto eventsBuilder = eventStreamBuilder.initEvents(flushedOrphans.size());
+
+    for (unsigned i=0; i<flushedOrphans.size(); ++i)
+    {
+        auto reader = flushedOrphans[i].getReader();
+        eventsBuilder.setWithCaveats(i, reader);
+    }
+
+    ::capnp::writePackedMessageToGz(fz, message);
+
+    /* burn down the orphanage and orphans */
+    flushedOrphans.clear(); /* kill orphans first,
+                               otherwise we die when we run into the burning orphanage
+                               to kill the orphans */
+    return true;
+}
+
+}; //end namespace
+
+
+////////////////////////////////////////////////////////////
+// Multiple reads/writes compressed
+////////////////////////////////////////////////////////////
+CapnLoggerCompressed::CapnLoggerCompressed(TID tid, std::string outputPath)
 {
     assert(tid >= 1);
 
@@ -57,14 +151,15 @@ CapnLogger::CapnLogger(TID tid, std::string outputPath)
     /* nothing being copied yet */
     doneCopying = std::async([]{return true;});
 
-    auto filePath = outputPath + "/sigil.events.out-" + std::to_string(tid) + ".capn.bin.gz";
+    auto filePath = (outputPath + "/sigil.events.out-" + std::to_string(tid) +
+                     ".compressed.capn.bin.gz");
     fz = gzopen(filePath.c_str(), "wb");
     if (fz == NULL)
         fatal(std::string("opening gzfile: ") + strerror(errno));
 }
 
 
-CapnLogger::~CapnLogger()
+CapnLoggerCompressed::~CapnLoggerCompressed()
 {
     flushOrphansNow();
     int ret = gzclose(fz);
@@ -73,7 +168,7 @@ CapnLogger::~CapnLogger()
 }
 
 
-auto CapnLogger::flush(const STCompEvent& ev, const EID eid, const TID tid) -> void
+auto CapnLoggerCompressed::flush(const STCompEventCompressed& ev, EID eid, TID tid) -> void
 {
     (void)eid;
     (void)tid;
@@ -112,7 +207,7 @@ auto CapnLogger::flush(const STCompEvent& ev, const EID eid, const TID tid) -> v
 }
 
 
-auto CapnLogger::flush(const STCommEvent& ev, const EID eid, const TID tid) -> void
+auto CapnLoggerCompressed::flush(const STCommEventCompressed& ev, EID eid, TID tid) -> void
 {
     (void)eid;
     (void)tid;
@@ -141,71 +236,24 @@ auto CapnLogger::flush(const STCommEvent& ev, const EID eid, const TID tid) -> v
 }
 
 
-auto CapnLogger::flush(const unsigned char syncType, const Addr syncAddr,
-                       const EID eid, const TID tid) -> void
+auto CapnLoggerCompressed::flush(unsigned char syncType, Addr syncAddr, EID eid, TID tid) -> void
 {
     (void)eid;
     (void)tid;
 
-    auto orphan = orphanage->getOrphanage().newOrphan<Event>();
-    auto syncBuilder = orphan.get().initSync();
-
-    /* translate type to CapnProto enum */
-    switch (syncType)
-    {
-    case 1:
-        syncBuilder.setType(::Event::SyncType::LOCK);
-        break;
-    case 2:
-        syncBuilder.setType(::Event::SyncType::UNLOCK);
-        break;
-    case 3:
-        syncBuilder.setType(::Event::SyncType::SPAWN);
-        break;
-    case 4:
-        syncBuilder.setType(::Event::SyncType::JOIN);
-        break;
-    case 5:
-        syncBuilder.setType(::Event::SyncType::BARRIER);
-        break;
-    case 6:
-        syncBuilder.setType(::Event::SyncType::COND_WAIT);
-        break;
-    case 7:
-        syncBuilder.setType(::Event::SyncType::COND_SIGNAL);
-        break;
-    case 8:
-        syncBuilder.setType(::Event::SyncType::COND_BROADCAST);
-        break;
-    case 9:
-        syncBuilder.setType(::Event::SyncType::SPIN_LOCK);
-        break;
-    case 10:
-        syncBuilder.setType(::Event::SyncType::SPIN_UNLOCK);
-        break;
-    default:
-        fatal("capnlogger encountered unhandled sync event");
-    }
-
-    syncBuilder.setId(syncAddr);
-
-    orphans.emplace_back(std::move(orphan));
+    flushSyncEvent<Event>(syncType, syncAddr, orphanage, orphans);
     flushOrphansOnMaxEvents();
 }
 
 
-auto CapnLogger::instrMarker(int limit) -> void
+auto CapnLoggerCompressed::instrMarker(int limit) -> void
 {
-    auto orphan = orphanage->getOrphanage().newOrphan<Event>();
-    auto markerBuilder = orphan.get().initMarker();
-    markerBuilder.setCount(limit);
-
-    orphans.emplace_back(std::move(orphan));
+    flushInstrMarker<Event>(limit, orphanage, orphans);
     flushOrphansOnMaxEvents();
 }
 
 
-auto CapnLogger::flushOrphansOnMaxEvents() -> void
+auto CapnLoggerCompressed::flushOrphansOnMaxEvents() -> void
 {
     assert(events <= maxEventsPerMessage);
     if (++events == maxEventsPerMessage)
@@ -216,7 +264,7 @@ auto CapnLogger::flushOrphansOnMaxEvents() -> void
 }
 
 
-auto CapnLogger::flushOrphansNow() -> void
+auto CapnLoggerCompressed::flushOrphansNow() -> void
 {
     assert(events <= maxEventsPerMessage);
     if (events > 0)
@@ -228,43 +276,141 @@ auto CapnLogger::flushOrphansNow() -> void
 }
 
 
-auto CapnLogger::flushOrphansAsync() -> void
+auto CapnLoggerCompressed::flushOrphansAsync() -> void
 {
     /* asynchronously copy orphans and flush */
     assert(doneCopying.valid());
     doneCopying.get();
     doneCopying = std::async(std::launch::async,
-                             &CapnLogger::flushOrphans, this,
-                             std::move(orphans), std::move(orphanage));
-
+                             flushOrphans<EventStream, OrphanagePtr, OrphanList>,
+                             std::move(orphanage), std::move(orphans), fz);
     /* start a new orphanage */
     orphans.clear();
     orphanage.reset(new ::capnp::MallocMessageBuilder{});
 }
 
 
-auto CapnLogger::flushOrphans(std::vector<::capnp::Orphan<Event>> flushedOrphans,
-                              std::unique_ptr<::capnp::MallocMessageBuilder> flushedOrphanage)
-    -> bool
+////////////////////////////////////////////////////////////
+// Single read/write per event
+////////////////////////////////////////////////////////////
+CapnLoggerUncompressed::CapnLoggerUncompressed(TID tid, std::string outputPath)
 {
-    /* need to keep the orphanage alive until it's flushed */
-    (void)flushedOrphanage;
+    assert(tid >= 1);
 
-    /* create the message now that we have a fixed length */
-    ::capnp::MallocMessageBuilder message;
-    auto eventStreamBuilder = message.initRoot<EventStream>();
-    auto eventsBuilder = eventStreamBuilder.initEvents(flushedOrphans.size());
+    /* initialize orphanage */
+    orphanage.reset(new ::capnp::MallocMessageBuilder{});
 
-    for (unsigned i=0; i<flushedOrphans.size(); ++i)
+    /* nothing being copied yet */
+    doneCopying = std::async([]{return true;});
+
+    auto filePath = (outputPath + "/sigil.events.out-" + std::to_string(tid) +
+                     "uncompressed.capn.bin.gz");
+    fz = gzopen(filePath.c_str(), "wb");
+    if (fz == NULL)
+        fatal(std::string("opening gzfile: ") + strerror(errno));
+}
+
+
+CapnLoggerUncompressed::~CapnLoggerUncompressed()
+{
+    flushOrphansNow();
+    int ret = gzclose(fz);
+    if (ret != Z_OK)
+        fatal(std::string("closing gzfile: ") + strerror(errno));
+}
+
+
+auto CapnLoggerUncompressed::flush(StatCounter iops, StatCounter flops,
+                                   Event::MemType type, Addr start, Addr end,
+                                   EID eid, TID tid) -> void
+{
+    (void)eid;
+    (void)tid;
+
+    auto orphan = orphanage->getOrphanage().newOrphan<Event>();
+    auto compBuilder = orphan.get().initComp();
+    compBuilder.setIops(iops);
+    compBuilder.setFlops(flops);
+    compBuilder.setMem(type);
+    compBuilder.setStartAddr(start);
+    compBuilder.setEndAddr(end);
+
+    orphans.emplace_back(std::move(orphan));
+    flushOrphansOnMaxEvents();
+}
+
+
+auto CapnLoggerUncompressed::flush(EID producerEID, TID producerTID, Addr start, Addr end,
+                                   EID eid, TID tid) -> void
+{
+    (void)eid;
+    (void)tid;
+
+    auto orphan = orphanage->getOrphanage().newOrphan<Event>();
+    auto commBuilder = orphan.get().initComm();
+    commBuilder.setProducerEvent(producerEID);
+    commBuilder.setProducerThread(producerTID);
+    commBuilder.setStartAddr(start);
+    commBuilder.setEndAddr(end);
+
+    orphans.emplace_back(std::move(orphan));
+    flushOrphansOnMaxEvents();
+}
+
+
+auto CapnLoggerUncompressed::flush(unsigned char syncType, Addr syncAddr,
+                                   EID eid, TID tid) -> void
+{
+    (void)eid;
+    (void)tid;
+
+    flushSyncEvent<Event>(syncType, syncAddr, orphanage, orphans);
+    flushOrphansOnMaxEvents();
+}
+
+
+auto CapnLoggerUncompressed::instrMarker(int limit) -> void
+{
+    flushInstrMarker<Event>(limit, orphanage, orphans);
+    flushOrphansOnMaxEvents();
+}
+
+
+auto CapnLoggerUncompressed::flushOrphansOnMaxEvents() -> void
+{
+    assert(events <= maxEventsPerMessage);
+    if (++events == maxEventsPerMessage)
     {
-        auto reader = flushedOrphans[i].getReader();
-        eventsBuilder.setWithCaveats(i, reader);
+        flushOrphansAsync();
+        events = 0;
     }
+}
 
-    ::capnp::writePackedMessageToGz(fz, message);
 
-    /* burn down the orphanage */
-    return true;
+auto CapnLoggerUncompressed::flushOrphansNow() -> void
+{
+    assert(events <= maxEventsPerMessage);
+    if (events > 0)
+    {
+        flushOrphansAsync();
+        doneCopying.get(); // blocking flush
+        events = 0;
+    }
+}
+
+
+auto CapnLoggerUncompressed::flushOrphansAsync() -> void
+{
+    /* asynchronously copy orphans and flush */
+    assert(doneCopying.valid());
+    doneCopying.get();
+    doneCopying = std::async(std::launch::async,
+                             flushOrphans<EventStream, OrphanagePtr, OrphanList>,
+                             std::move(orphanage), std::move(orphans), fz);
+
+    /* start a new orphanage */
+    orphans.clear();
+    orphanage.reset(new ::capnp::MallocMessageBuilder{});
 }
 
 }; //end namespace STGen

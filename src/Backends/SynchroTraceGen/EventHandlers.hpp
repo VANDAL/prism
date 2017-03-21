@@ -32,7 +32,7 @@ class EventHandlers : public BackendIface
     auto onBarrier(Addr data) -> void;
     auto convertAndFlush(SyncType type, Addr data) -> void;
 
-    std::unordered_map<TID, ThreadContext> tcxts;
+    std::unordered_map<TID, std::unique_ptr<ThreadContext>> tcxts;
     TID currentTID{SO_UNDEF};
     ThreadContext *cachedTCxt{nullptr};
 };

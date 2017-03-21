@@ -7,7 +7,7 @@ namespace STGen
 {
 
 /* for testing */
-class NullLogger : public STLogger
+class NullLogger : public STLoggerCompressed, public STLoggerUncompressed
 {
   public:
     NullLogger(TID tid, std::string outputPath)
@@ -17,16 +17,40 @@ class NullLogger : public STLogger
         (void)outputPath;
     }
 
-    auto flush(const STCompEvent& ev, EID eid, TID tid) -> void override final
+    auto flush(const STCompEventCompressed& ev, EID eid, TID tid) -> void override final
     {
         (void)ev;
         (void)eid;
         (void)tid;
     }
 
-    auto flush(const STCommEvent& ev, EID eid, TID tid) -> void override final
+    auto flush(const STCommEventCompressed& ev, EID eid, TID tid) -> void override final
     {
         (void)ev;
+        (void)eid;
+        (void)tid;
+    }
+
+    auto flush(StatCounter iops, StatCounter flops,
+                       STCompEventUncompressed::MemType type, Addr start, Addr end,
+                       EID eid, TID tid) -> void override final
+    {
+        (void)iops;
+        (void)flops;
+        (void)type;
+        (void)start;
+        (void)end;
+        (void)eid;
+        (void)tid;
+    }
+
+    auto flush(EID producerEID, TID producerTID, Addr start, Addr end,
+                       EID eid, TID tid) -> void override final
+    {
+        (void)producerEID;
+        (void)producerTID;
+        (void)start;
+        (void)end;
         (void)eid;
         (void)tid;
     }

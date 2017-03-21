@@ -22,10 +22,12 @@ include_directories(${THIRD_PARTY}/capnproto/include)
 # SynchroTraceGen Backend
 set(SOURCES
 	EventHandlers.cpp
+	ThreadContext.cpp
 	TextLogger.cpp
 	CapnLogger.cpp
 	STEvent.cpp
-	STEventTrace.capnp.c++
+	STEventTraceCompressed.capnp.c++
+	STEventTraceUncompressed.capnp.c++
 	${THIRD_PARTY}/zlib/contrib/iostream3/zfstream.cc)
 add_library(STGenCore STATIC ${SOURCES})
 

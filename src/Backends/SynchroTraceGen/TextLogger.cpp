@@ -3,25 +3,8 @@
 namespace STGen
 {
 
-TextLogger::TextLogger(TID tid, std::string outputPath)
+namespace
 {
-    assert(tid >= 1);
-
-    /* XXX PERFORMANCE: modify this to reduce memory in STGen.
-     * Buffers for asynchronous I/O */
-    spdlog::set_async_mode(1 << 14);
-
-    auto filePath = outputPath + "/sigil.events.out-" + std::to_string(tid) + ".gz";
-    std::tie(logger, gzfile) = getGzLogger(filePath);
-}
-
-
-TextLogger::~TextLogger()
-{
-    blockingLoggerFlush(logger);
-    /* gzofstream destructor closes gzfile  */
-}
-
 
 template <typename I>
 inline auto n2hexstr(char (&hexStr)[sizeof(I)*2+3], const I &w) -> const char*
@@ -60,7 +43,51 @@ inline auto n2hexstr(char (&hexStr)[sizeof(I)*2+3], const I &w) -> const char*
 }
 
 
-auto TextLogger::flush(const STCompEvent& ev, const EID eid, const TID tid) -> void
+auto flushSyncEvent(unsigned char syncType, Addr syncAddr, EID eid, TID tid,
+                    std::shared_ptr<spdlog::logger> &logger) -> void
+{
+    char hexStr[sizeof(Addr)*2+3];
+    std::string logMsg;
+    logMsg += std::to_string(eid);
+    logMsg += ",";
+    logMsg += std::to_string(tid);
+    logMsg += ",pth_ty:";
+    logMsg += std::to_string(syncType);
+    logMsg += "^";
+    logMsg += n2hexstr(hexStr, syncAddr);
+    logger->info(logMsg);
+}
+
+
+auto flushInstrMarker(int limit, std::shared_ptr<spdlog::logger> &logger) -> void
+{
+    logger->info("! " + std::to_string(limit));
+}
+
+}; //end namespace
+
+
+TextLoggerCompressed::TextLoggerCompressed(TID tid, std::string outputPath)
+{
+    assert(tid >= 1);
+
+    /* XXX PERFORMANCE: modify this to reduce memory in STGen.
+     * Buffers for asynchronous I/O */
+    spdlog::set_async_mode(1 << 14);
+
+    auto filePath = outputPath + "/sigil.events.out-" + std::to_string(tid) + ".gz";
+    std::tie(logger, gzfile) = getGzLogger(filePath);
+}
+
+
+TextLoggerCompressed::~TextLoggerCompressed()
+{
+    blockingLoggerFlush(logger);
+    /* gzofstream destructor closes gzfile  */
+}
+
+
+auto TextLoggerCompressed::flush(const STCompEventCompressed& ev, EID eid, TID tid) -> void
 {
     /* http://stackoverflow.com/a/18892355 */
     logMsg += std::to_string(eid);
@@ -99,7 +126,7 @@ auto TextLogger::flush(const STCompEvent& ev, const EID eid, const TID tid) -> v
 }
 
 
-auto TextLogger::flush(const STCommEvent& ev, const EID eid, const TID tid) -> void
+auto TextLoggerCompressed::flush(const STCommEventCompressed& ev, EID eid, TID tid) -> void
 {
     assert(ev.comms.empty() == false);
     logMsg += std::to_string(eid);
@@ -128,32 +155,122 @@ auto TextLogger::flush(const STCommEvent& ev, const EID eid, const TID tid) -> v
 }
 
 
-auto TextLogger::flush(const unsigned char syncType, const Addr syncAddr,
-                       const EID eid, const TID tid) -> void
+auto TextLoggerCompressed::flush(unsigned char syncType, Addr syncAddr, EID eid, TID tid) -> void
 {
-    char hexStr[sizeof(Addr)*2+3];
+    flushSyncEvent(syncType, syncAddr, eid, tid, logger);
+}
+
+
+auto TextLoggerCompressed::instrMarker(int limit) -> void
+{
+    flushInstrMarker(limit, logger);
+}
+
+
+TextLoggerUncompressed::TextLoggerUncompressed(TID tid, std::string outputPath)
+{
+    assert(tid >= 1);
+
+    /* XXX PERFORMANCE: modify this to reduce memory in STGen.
+     * Buffers for asynchronous I/O */
+    spdlog::set_async_mode(1 << 14);
+
+    auto filePath = outputPath + "/sigil.events.out-" + std::to_string(tid) + ".gz";
+    std::tie(logger, gzfile) = getGzLogger(filePath);
+}
+
+
+TextLoggerUncompressed::~TextLoggerUncompressed()
+{
+    blockingLoggerFlush(logger);
+    /* gzofstream destructor closes gzfile  */
+}
+
+
+auto TextLoggerUncompressed::flush(StatCounter iops, StatCounter flops,
+                   STCompEventUncompressed::MemType type, Addr start, Addr end,
+                   EID eid, TID tid) -> void
+{
+    /* http://stackoverflow.com/a/18892355 */
     logMsg += std::to_string(eid);
     logMsg += ",";
     logMsg += std::to_string(tid);
-    logMsg += ",pth_ty:";
-    logMsg += std::to_string(syncType);
-    logMsg += "^";
-    logMsg += n2hexstr(hexStr, syncAddr);
+    logMsg += ",";
+    logMsg += std::to_string(iops);
+    logMsg += ",";
+    logMsg += std::to_string(flops);
+
+    char hexStr[sizeof(Addr)*2+3];
+    switch (type)
+    {
+    /* only one of
+     *  - no reads/writes,
+     *  - one read,
+     *  - one write
+     * possible in uncompressed mode */
+    case STCompEventUncompressed::MemType::READ:
+        logMsg += ",1,0 * ";
+        logMsg += n2hexstr(hexStr, start);
+        logMsg += " ";
+        logMsg += n2hexstr(hexStr, end);
+        break;
+    case STCompEventUncompressed::MemType::WRITE:
+        logMsg += ",0,1 $ ";
+        logMsg += n2hexstr(hexStr, start);
+        logMsg += " ";
+        logMsg += n2hexstr(hexStr, end);
+        break;
+    case STCompEventUncompressed::MemType::NONE:
+        logMsg += ",0,0";
+        break;
+    default:
+        fatal("textlogger encountered unhandled memory type");
+    }
+
     logger->info(logMsg);
     logMsg.clear();
 }
 
 
-auto TextLogger::instrMarker(int limit) -> void
+auto TextLoggerUncompressed::flush(EID producerEID, TID producerTID, Addr start, Addr end,
+                                   EID eid, TID tid) -> void
 {
-    logger->info("! " + std::to_string(limit));
+    logMsg += std::to_string(eid);
+    logMsg += ",";
+    logMsg += std::to_string(tid);
+
+    logMsg += " # ";
+    logMsg += std::to_string(producerTID);
+    logMsg += " ";
+    logMsg += std::to_string(producerEID);
+    logMsg += " ";
+
+    char hexStr[sizeof(Addr)*2+3];
+    logMsg += n2hexstr(hexStr, start);
+    logMsg += " ";
+    logMsg += n2hexstr(hexStr, end);
+
+    logger->info(logMsg);
+    logMsg.clear();
 }
 
 
-auto TextLogger::flushPthread(std::string filePath,
-                              ThreadList newThreadsInOrder,
-                              SpawnList threadSpawns,
-                              BarrierList barrierParticipants) -> void
+auto TextLoggerUncompressed::flush(unsigned char syncType, Addr syncAddr, EID eid, TID tid) -> void
+{
+    flushSyncEvent(syncType, syncAddr, eid, tid, logger);
+}
+
+
+auto TextLoggerUncompressed::instrMarker(int limit) -> void
+{
+    flushInstrMarker(limit, logger);
+}
+
+
+auto flushPthread(std::string filePath,
+                  ThreadList newThreadsInOrder,
+                  SpawnList threadSpawns,
+                  BarrierList barrierParticipants) -> void
 {
     auto loggerPair = getFileLogger(filePath);
     auto logger = std::move(loggerPair.first);
@@ -196,7 +313,7 @@ auto TextLogger::flushPthread(std::string filePath,
 }
 
 
-auto TextLogger::flushStats(std::string filePath, ThreadStatMap allThreadsStats) -> void
+auto flushStats(std::string filePath, ThreadStatMap allThreadsStats) -> void
 {
     auto loggerPair = getFileLogger(filePath);
     auto logger = std::move(loggerPair.first);
@@ -270,7 +387,7 @@ auto TextLogger::flushStats(std::string filePath, ThreadStatMap allThreadsStats)
 }
 
 
-auto TextLogger::getFileLogger(std::string filePath)
+auto getFileLogger(std::string filePath)
     -> std::pair<std::shared_ptr<spdlog::logger>, std::shared_ptr<std::ofstream>>
 {
     auto file = std::make_shared<std::ofstream>(filePath, std::ios::trunc | std::ios::out);
@@ -283,7 +400,7 @@ auto TextLogger::getFileLogger(std::string filePath)
 }
 
 
-auto TextLogger::getGzLogger(std::string filePath)
+auto getGzLogger(std::string filePath)
     -> std::pair<std::shared_ptr<spdlog::logger>, std::shared_ptr<gzofstream>>
 {
     auto gzfile = std::make_shared<gzofstream>(filePath.c_str(), std::ios::trunc | std::ios::out);
@@ -296,7 +413,7 @@ auto TextLogger::getGzLogger(std::string filePath)
 }
 
 
-auto TextLogger::blockingLoggerFlush(std::shared_ptr<spdlog::logger> &logger) -> void
+auto blockingLoggerFlush(std::shared_ptr<spdlog::logger> &logger) -> void
 {
     /* Make sure all other shared_ptrs are destroyed, as well.
      * Might be annoying to throw here, but it'll save debugging headaches.
