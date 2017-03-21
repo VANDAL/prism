@@ -8,13 +8,11 @@ import STEventTraceUncompressed_capnp
 
 
 def processSTEventTrace(file):
-    for stream in (STEventTraceUncompressed_capnp.EventStream
+    for stream in (STEventTraceUncompressed_capnp.EventStreamUncompressed
                    .read_multiple_packed(file, traversal_limit_in_words=2**63)):
         for event in stream.events:
             which = event.which()
             if which == 'comp':
-                event.comp.iops    # IOPs value
-                event.comp.flops   # FLOPs value
                 if event.comp.mem == 'write':
                     # address range written
                     event.comp.startAddr

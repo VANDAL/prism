@@ -8,7 +8,7 @@ import STEventTraceCompressed_capnp
 
 
 def processSTEventTrace(file):
-    for stream in (STEventTraceCompressed_capnp.EventStream
+    for stream in (STEventTraceCompressed_capnp.EventStreamCompressed
                    .read_multiple_packed(file, traversal_limit_in_words=2**63)):
         for event in stream.events:
             which = event.which()

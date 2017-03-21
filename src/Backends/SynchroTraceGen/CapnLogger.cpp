@@ -304,7 +304,7 @@ CapnLoggerUncompressed::CapnLoggerUncompressed(TID tid, std::string outputPath)
     doneCopying = std::async([]{return true;});
 
     auto filePath = (outputPath + "/sigil.events.out-" + std::to_string(tid) +
-                     "uncompressed.capn.bin.gz");
+                     ".uncompressed.capn.bin.gz");
     fz = gzopen(filePath.c_str(), "wb");
     if (fz == NULL)
         fatal(std::string("opening gzfile: ") + strerror(errno));

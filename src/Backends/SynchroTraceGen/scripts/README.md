@@ -31,8 +31,12 @@ copy it to the current working directory.
   * See http://jparyani.github.io/pycapnp/install.html for further details.
 
 * Generate the \*.capnp.bin file with:
+
    `$ bin/sigil2 --backend=stgen -l capnp --executable=...`
 
 * Run the script as:
-    ./stgen_capnp_parser_compressed.py sigil.events-#.compressed.capnp.bin.gz
-    ./stgen_capnp_parser_uncompressed.py sigil.events-#.uncompressed.capnp.bin.gz
+
+   ```
+   $ ./stgen_capnp_parser_compressed.py sigil.events-#.compressed.capnp.bin.gz
+   $ ./stgen_capnp_parser_uncompressed.py sigil.events-#.uncompressed.capnp.bin.gz
+   ```
