@@ -1,0 +1,71 @@
+Last Updated: March 25, 2017
+Last Author:  Mike Lui
+
+SynchroTraceGen for SynchroTrace Simulation Framework
+-----------------------------------------------------
+
+This Backend generates a trace originally just for the SynchroTrace simulation
+framework. It has been extended to provide traces for other purposes, such
+as post process analysis.
+
+Each trace file is:
+  - generated per thread
+  - a series of 'events' in order
+  - composed of three types of 'events'
+
+    1. a synchronization event: predefined events like pthread API calls
+
+    2. a communication event: a memory read from one thread, that was written
+                             by a different thread
+
+    3. a compute event: an aggregate event; IOPS and FLOPS are counted until a
+                        set number of reads or writes occur, then the event is
+                        flushed into the trace. By default, 100 reads or writes
+                        will be counted before flushing, but this value can be
+                        lowered via an argument, to preserve memory ordering.
+
+
+This Backend holds a different context for each thread. Each time the Sigil2
+core informs the backend that the thread stream has switched, the current
+context switches.
+
+Three types of trace formats are available:
+  - text -- the default trace format. This is gzipped on-the-fly
+  - null -- no trace file is generated. This is for testing and profiling
+  - capnp -- a capnproto binary trace. A different trace file is generated if
+             the trace is 'compressed' compared to 'uncompressed' (see below).
+             This is gzipped on-the-fly (https://capnproto.org/)
+
+Because we found that the trace format for aggregate events (detailed above,
+e.g. 100 reads or writes per compute event) became inefficient when generating
+an uncompressed event trace (i.e. 1 read or write per compute event), two
+types of thread contexts are chosen at runtime -- a 'compressed' context and
+an 'uncompressed' context, which generate mutually exclusive 'compressed' and
+'uncompressed' CapnProto binary traces.
+
+The general architecture:
+                 +------------------+
+                 |    Sigil2 Core   |
+                 +------------------+
+                           |
+                           v
+  +------------------------------------------------------+
+  |               EventHandler                           |
+  |                 - parse command line args            |
+  |                 - manage each thread trace context   |
+  +------------------------------------------------------+
+             |                                |
+            /                                  \
+           v                                    v
++------------------------------+   +--------------------------------+
+| ThreadContext - COMPRESSED   |   |  ThreadContext - UNCOMPRESSED  |
+|  - Synchronization           |   |   - Synchronization            |
+|  - Communication COMPRESSED  |   |   - Communication UNCOMPRESSED |
+|  - Compute COMPRESSED        |   |   - Compute UNCOMPRESSED       |
++------------------------------+   +--------------------------------+
+                |                                    |
+                v                                    v
++------------------------------+   +--------------------------------+
+|   COMPRESSED output loggers  |   |  UNCOMPRESSED output loggers   |
++------------------------------+   +--------------------------------+
+
