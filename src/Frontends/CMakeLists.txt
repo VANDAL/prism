@@ -13,4 +13,6 @@ set(FRONTEND_TARGETS ${FRONTEND_TARGETS} $<TARGET_OBJECTS:DrSigil>)
 #add_subdirectory(${SRC_FRONTENDS}/Injector)
 #target_link_libraries(sigil2 Injector)
 
-add_library(frontends STATIC ${FRONTEND_TARGETS})
+set(SOURCES CleanupResources.cpp)
+
+add_library(frontends STATIC ${FRONTEND_TARGETS} ${SOURCES})

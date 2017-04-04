@@ -20,7 +20,7 @@ using SigiLog::fatal;
 using SigiLog::warn;
 
 /* XXX: Setting {addr, pm} bits too large can cause bad_alloc errors */
-template <typename SO, unsigned ADDR_BITS = 38, unsigned PM_BITS = 16>
+template <typename SO, unsigned ADDR_BITS = 38, unsigned PM_BITS = 20>
 class ShadowMemory
 {
     static_assert(ADDR_BITS > 0 && ADDR_BITS < 64, "Invalid address range");

@@ -7,6 +7,7 @@
 #define DIR_TEMPLATE "/sgl2-XXXXXX"
 
 using SigiLog::fatal;
+namespace Cleanup { extern std::string ipcDir; };
 
 ////////////////////////////////////////////////////////////
 // Launching DynamoRIO
@@ -124,6 +125,7 @@ auto configureIpcDir() -> std::string
 auto startDrSigil(FrontendStarterArgs args) -> FrontendIfaceGenerator
 {
     auto ipcDir = configureIpcDir();
+    Cleanup::setCleanupDir(ipcDir);
 
     auto pid = fork();
     if (pid >= 0)

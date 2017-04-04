@@ -31,8 +31,15 @@
  * available to let Sigil2 know how many valid events are in the buffer.
  */
 
+
 using SigiLog::warn;
 using SigiLog::fatal;
+
+namespace Cleanup
+{
+auto setCleanupDir(std::string dir) -> void;
+}; //end namespace Cleanup
+
 
 class DBIFrontend : public FrontendIface
 {
@@ -41,6 +48,7 @@ class DBIFrontend : public FrontendIface
     const std::string shmemName;
     const std::string emptyFifoName;
     const std::string fullFifoName;
+    FILE *shmemfp;
     int emptyfd;
     int fullfd;
     Sigil2DBISharedData *shmem;
@@ -61,24 +69,22 @@ class DBIFrontend : public FrontendIface
         , fullFifoName (ipcDir + "/" + SIGIL2_DBI_FULLFIFO_NAME  + "-" + std::to_string(uid))
     {
         initShMem();
-        makeNewFifo(emptyFifoName.c_str());
-        makeNewFifo(fullFifoName.c_str());
-        connectDBI();
+        emptyfd = createAndOpenNewFifo(emptyFifoName.c_str(), O_WRONLY);
+        fullfd = createAndOpenNewFifo(fullFifoName.c_str(), O_RDONLY);
 
         /* asynchronously manage communications with the DBI tool */
         eventLoop = std::make_shared<std::thread>(&DBIFrontend::receiveEventsLoop, this);
     }
 
-    ~DBIFrontend()
+    ~DBIFrontend() override
     {
         /* All communication with the DBI tool
          * should be completed by destruction */
         eventLoop->join();
         disconnectDBI();
-        fileCleanup();
     }
 
-    virtual auto acquireBuffer() -> EventBuffer* override
+    virtual auto acquireBuffer() -> EventBuffer* override final
     {
         filled.P();
         lastBufferIdx = q.dequeue();
@@ -92,7 +98,7 @@ class DBIFrontend : public FrontendIface
             return &(shmem->buf[lastBufferIdx]);
     }
 
-    virtual auto releaseBuffer() -> void override
+    virtual auto releaseBuffer() -> void override final
     {
         emptied.V();
 
@@ -106,8 +112,8 @@ class DBIFrontend : public FrontendIface
     /* Initialize IPC between Sigil2 and the DBI tool */
     auto initShMem() -> void
     {
-        FILE *fd = fopen(shmemName.c_str(), "wb+");
-        if (fd == nullptr)
+        shmemfp = fopen(shmemName.c_str(), "wb+");
+        if (shmemfp == nullptr)
             fatal(std::string("sigil2 shared memory file open failed -- ") + strerror(errno));
 
         /* XXX From write(2) man pages:
@@ -119,25 +125,24 @@ class DBIFrontend : public FrontendIface
          *
          * fwrite doesn't have this limitation */
         std::unique_ptr<Sigil2DBISharedData> init(new Sigil2DBISharedData());
-        int count = fwrite(init.get(), sizeof(Sigil2DBISharedData), 1, fd);
+        int count = fwrite(init.get(), sizeof(Sigil2DBISharedData), 1, shmemfp);
         if (count != 1)
         {
-            fclose(fd);
+            fclose(shmemfp);
             fatal(std::string("sigil2 shared memory file write failed -- ") + strerror(errno));
         }
 
         shmem = reinterpret_cast<Sigil2DBISharedData *>
-            (mmap(nullptr, sizeof(Sigil2DBISharedData), PROT_READ | PROT_WRITE, MAP_SHARED, fileno(fd), 0));
+            (mmap(nullptr, sizeof(Sigil2DBISharedData), PROT_READ | PROT_WRITE, MAP_SHARED,
+                  fileno(shmemfp), 0));
         if (shmem == MAP_FAILED)
         {
-            fclose(fd);
+            fclose(shmemfp);
             fatal(std::string("sigil2 mmap shared memory failed -- ") + strerror(errno));
         }
-
-        fclose(fd);
     }
 
-    auto makeNewFifo(const char *path) const -> void
+    auto createAndOpenNewFifo(const char *path, int flags) const -> int
     {
         if (mkfifo(path, 0600) < 0)
         {
@@ -152,40 +157,20 @@ class DBIFrontend : public FrontendIface
             else
                 fatal(std::string("sigil2 failed to create fifos -- ") + strerror(errno));
         }
-    }
 
-    auto connectDBI() -> void
-    {
-        /* XXX Sigil2 might get stuck blocking if the DBI tool
-         * unexpectedly exits before connecting at this point */
+        int fd = open(path, flags);
+        if (fd < 0)
+            fatal(std::string("sigil2 failed to open fifo: ") + path + " -- " + strerror(errno));
 
-        emptyfd = open(emptyFifoName.c_str(), O_WRONLY);
-        if (emptyfd < 0)
-            fatal(std::string("sigil2 failed to open empty-fifo for writing -- ") + strerror(errno));
-
-        fullfd = open(fullFifoName.c_str(), O_RDONLY);
-        if (fullfd < 0)
-            fatal(std::string("sigil2 failed to open full-fifo for reading -- ") + strerror(errno));
+        return fd;
     }
 
     auto disconnectDBI() -> void
     {
         munmap(shmem, sizeof(Sigil2DBISharedData));
+        fclose(shmemfp);
         close(emptyfd);
         close(fullfd);
-    }
-
-    auto fileCleanup() -> void
-    {
-        if (remove(shmemName.c_str()) != 0 ||
-            remove(emptyFifoName.c_str()) != 0 ||
-            remove(fullFifoName.c_str())  != 0)
-            warn(std::string("error deleting IPC files -- ") + strerror(errno));
-
-        /* Don't check return code.
-         * This will error if there are still other threads keeping IPC files alive.
-         * Let the last thread close the the directory. */
-        remove(ipcDir.c_str());
     }
 
     /* Reads an int from 'full' fifo and returns the data.

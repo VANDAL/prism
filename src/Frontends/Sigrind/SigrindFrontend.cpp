@@ -9,6 +9,7 @@
 
 using SigiLog::fatal;
 using SigiLog::warn;
+namespace Cleanup { extern std::string ipcDir; };
 
 ////////////////////////////////////////////////////////////
 // Launching Valgrind
@@ -232,6 +233,7 @@ auto startSigrind(FrontendStarterArgs args) -> FrontendIfaceGenerator
         fatal("Valgrind frontend attempted with other than 1 thread");
     gccWarn(userExecArgs);
     auto ipcDir = configureIpcDir();
+    Cleanup::setCleanupDir(ipcDir);
 
     auto pid = fork();
     if (pid >= 0)

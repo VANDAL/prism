@@ -39,7 +39,8 @@ class STShadowMemory
         std::bitset<MAX_THREADS> last_readers;
     };
 
-    ShadowMemory<ShadowObject, 48, 28> sm;
+    /* ADDR_BITS = 48, PM_BITS = 28 is more appropriate for DynamoRIO */
+    ShadowMemory<ShadowObject, 38, 20> sm;
 };
 
 
