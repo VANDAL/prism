@@ -7,8 +7,11 @@ auto Handler::onSyncEv(const SglSyncEv &ev) -> void
 {
     /* save the current entity so that it can
      * resume when the thread switches back */
-    if(ev.type == SyncTypeEnum::SGLPRIM_SYNC_SWAP)
-        cxt.setThreadContext(ev.id);
+    auto syncType = ev.type;
+    auto syncID = ev.data[0];
+
+    if(syncType == SyncTypeEnum::SGLPRIM_SYNC_SWAP)
+        cxt.setThreadContext(syncID);
 }
 
 

@@ -95,7 +95,7 @@ typedef struct SglSyncEv SglSyncEv;
     struct SglSyncEv
     {
         SyncType type;
-        SyncID   id;
+        SyncID   data[2]; // optional data like mutex values
     } __attribute__ ((__packed__));
 
 #ifdef __cplusplus

@@ -160,28 +160,28 @@ int I_WRAP_SONAME_FNNAME_ZZ(libpthreadZdsoZd0, pthreadZubarrierZuwaitZa)(pthread
 // PTHREAD CONDITIONAL WAIT
 ////////////////////////////////////////////
 int I_WRAP_SONAME_FNNAME_ZZ(NONE, pthreadZucondZuwaitZa)(pthread_cond_t *cond,
-                                                         pthread_mutex_t *mutex)
+                                                         pthread_mutex_t *mtx)
 {
     int ret;
     OrigFn fn;
     VALGRIND_GET_ORIG_FN(fn);
 
-    SIGIL_PTHREAD_CONDWAIT_ENTER(cond);
-    CALL_FN_W_WW(ret, fn, cond, mutex);
-    SIGIL_PTHREAD_CONDWAIT_LEAVE(cond);
+    SIGIL_PTHREAD_CONDWAIT_ENTER(cond, mtx);
+    CALL_FN_W_WW(ret, fn, cond, mtx);
+    SIGIL_PTHREAD_CONDWAIT_LEAVE(cond, mtx);
 
     return ret;
 }
 int I_WRAP_SONAME_FNNAME_ZZ(libpthreadZdsoZd0, pthreadZucondZuwaitZa)(pthread_cond_t *cond,
-                                                                      pthread_mutex_t *mutex)
+                                                                      pthread_mutex_t *mtx)
 {
     int ret;
     OrigFn fn;
     VALGRIND_GET_ORIG_FN(fn);
 
-    SIGIL_PTHREAD_CONDWAIT_ENTER(cond);
-    CALL_FN_W_WW(ret, fn, cond, mutex);
-    SIGIL_PTHREAD_CONDWAIT_LEAVE(cond);
+    SIGIL_PTHREAD_CONDWAIT_ENTER(cond, mtx);
+    CALL_FN_W_WW(ret, fn, cond, mtx);
+    SIGIL_PTHREAD_CONDWAIT_LEAVE(cond, mtx);
 
     return ret;
 }

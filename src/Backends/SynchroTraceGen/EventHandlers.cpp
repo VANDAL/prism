@@ -53,7 +53,7 @@ BarrierList barrierParticipants;
 auto EventHandlers::onSyncEv(const SglSyncEv &ev) -> void
 {
     auto syncType = ev.type;
-    auto syncID = ev.id;
+    auto syncID = ev.data[0];
 
     /* Update global state */
     if (syncType == SyncTypeEnum::SGLPRIM_SYNC_SWAP)
