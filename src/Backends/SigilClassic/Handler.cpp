@@ -3,60 +3,46 @@
 namespace SigilClassic
 {
 
-auto Handler::onSyncEv(const SglSyncEv &ev) -> void
+auto Handler::onSyncEv(const SglSyncEvWrapper &ev) -> void
 {
     /* save the current entity so that it can
      * resume when the thread switches back */
-    auto syncType = ev.type;
-    auto syncID = ev.data[0];
+    auto syncType = ev.type();
+    auto syncID = ev.data();
 
     if(syncType == SyncTypeEnum::SGLPRIM_SYNC_SWAP)
         cxt.setThreadContext(syncID);
 }
 
 
-auto Handler::onCompEv(const SglCompEv &ev) -> void
+auto Handler::onCompEv(const SglCompEvWrapper &ev) -> void
 {
     /* aggregate compute costs for the current entity */
-    switch(ev.type)
-    {
-      case CompCostTypeEnum::SGLPRIM_COMP_IOP:
+    if (ev.isIOP())
         cxt.incrIOPCost();
-        break;
-      case CompCostTypeEnum::SGLPRIM_COMP_FLOP:
+    else if (ev.isFLOP())
         cxt.incrFLOPCost();
-        break;
-      default:
-        break;
-    }
 }
 
 
-auto Handler::onMemEv(const SglMemEv &ev) -> void
+auto Handler::onMemEv(const SglMemEvWrapper &ev) -> void
 {
     /* - check shadow memory
      * - update the metadata for the current entity */
-    switch(ev.type)
-    {
-      case MemTypeEnum::SGLPRIM_MEM_LOAD:
-        cxt.monitorRead(ev.begin_addr, ev.size);
-        break;
-      case MemTypeEnum::SGLPRIM_MEM_STORE:
-        cxt.monitorWrite(ev.begin_addr, ev.size);
-        break;
-      default:
-        break;
-    }
+    if (ev.isLoad())
+        cxt.monitorRead(ev.addr(), ev.bytes());
+    else if (ev.isStore())
+        cxt.monitorWrite(ev.addr(), ev.bytes());
 }
 
 
-auto Handler::onCxtEv(const SglCxtEv &ev) -> void
+auto Handler::onCxtEv(const SglCxtEvWrapper &ev) -> void
 {
     /* Use function contexts as Sigil1 'entities' */
-    switch(ev.type)
+    switch(ev.type())
     {
       case CxtTypeEnum::SGLPRIM_CXT_FUNC_ENTER:
-        cxt.enterEntity(ev.name);
+        cxt.enterEntity(ev.getName());
         break;
       case CxtTypeEnum::SGLPRIM_CXT_FUNC_EXIT:
         cxt.exitEntity();

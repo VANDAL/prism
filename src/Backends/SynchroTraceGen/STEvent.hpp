@@ -7,7 +7,7 @@
 #include "spdlog/spdlog.h"
 #include <vector>
 
-/*******************************************************************************
+/******************************************************************************
  * SynchroTrace Events
  *
  * Defines an application event trace for later replay
@@ -15,8 +15,9 @@
  *
  * See Section 2.B in the SynchroTrace paper for further clarification.
  *
- * TODO MDL20170321 Clean up uncompressed event interface
- ******************************************************************************/
+ * TODO(someday) MDL20170321 Clean up uncompressed event interface
+ *****************************************************************************/
+
 
 namespace STGen
 {

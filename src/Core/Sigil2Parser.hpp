@@ -6,37 +6,34 @@
 #include "Backends.hpp"
 #include "Frontends.hpp"
 
-
-/* Sigil2 groups options together based on their position
- * in order to pass the option group to the frontend
- * instrumentation, the backend analysis, or the executable
- *
- * Most parsers have limited or confusing support for
- * order of non-option arguments in relation to option
- * arguments, including getopt
- *
- * Only allow long opts to avoid ambiguities.
- * Additionally imposes the constraint that the frontend,
- * backend, and executable cannot have any options that match */
-
 class ArgGroup
 {
+    /* Sigil2 groups options together based on their position
+     * in order to pass the option group to the frontend
+     * instrumentation, the backend analysis, or the executable
+     *
+     * Most parsers have limited or confusing support for
+     * order of non-option arguments in relation to option
+     * arguments, including getopt
+     *
+     * Only allow long opts to avoid ambiguities.
+     * Additionally imposes the constraint that the frontend,
+     * backend, and executable cannot have any options that match */
+
     using Args = std::vector<std::string>;
   public:
     ArgGroup()  = default;
     ~ArgGroup() = default;
 
-    /* Add a long option to group args */
     auto addGroup(const std::string &group, bool required) -> void;
+    /* Add a long option to group args */
 
-    /* Check an argv[] to see if it's been added as an
-     * arg group. If it is a validly formed arg group,
-     * begin grouping consecutive options under this group
-     * and return true; otherwise return false.
-     *
-     * long_opt is to be in the form: "--long_opt=argument" */
     auto tryGroup(const std::string& arg) -> bool;
     auto addArg(const std::string& arg) -> void;
+    /* Check to see if a string been added as an arg group start var.
+     * If it is valid, group consecutive options together.
+     *
+     * long_opt is to be in the form: "--long_opt=argument" */
 
     auto getGroup(const std::string& group) const -> Args;
     auto getOpt(const std::string& opt) const -> std::string;
@@ -45,11 +42,11 @@ class ArgGroup
     auto display_help() -> void;
 
   private:
-    /* long opt -> args */
     std::map<std::string, Args> group_args;
+    /* long opt -> args */
 
-    /* command line args that don't follow a group */
     std::map<std::string, std::string> args;
+    /* command line args that don't follow a group */
 
     const Args empty_group;
     Args required_groups;
@@ -70,9 +67,9 @@ class Sigil2Parser
     auto frontend()   -> ToolTuple;
     auto executable() -> Args;
 
+    auto tool(const char* option) -> ToolTuple;
     /* get tool options in the form of a name and consecutive options:
      * --option=name -and -a --list -of --arbitrary -options */
-    auto tool(const char* option) -> ToolTuple;
 
   private:
     ArgGroup parser;

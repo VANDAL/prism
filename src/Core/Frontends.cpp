@@ -12,8 +12,12 @@ auto FrontendFactory::create(ToolName name, FrontendStarterArgs args) const -> F
 
     std::transform(name.begin(), name.end(), name.begin(), ::tolower);
 
-    /* tool never registered */
-    if (exists(name) == false)
+    if (exists(name) == true)
+    {
+        auto start = registry.find(name)->second;
+        return [=]{ return start(args); };
+    }
+    else
     {
         std::string error(" invalid frontend argument ");
         error.append(name + "\n");
@@ -24,9 +28,6 @@ auto FrontendFactory::create(ToolName name, FrontendStarterArgs args) const -> F
 
         SigiLog::fatal(error);
     }
-
-    auto start = registry.find(name)->second;
-    return [=]{ return start(args); };
 }
 
 

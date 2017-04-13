@@ -3,9 +3,9 @@
 using SigiLog::warn;
 using SigiLog::fatal;
 
-////////////////////////////////////////////////////////
-// Sigil2Parser
-////////////////////////////////////////////////////////
+
+//-----------------------------------------------------------------------------
+/** Sigil2Parser **/
 constexpr char Sigil2Parser::frontendOption[];
 constexpr char Sigil2Parser::backendOption[];
 constexpr char Sigil2Parser::executableOption[];
@@ -27,6 +27,7 @@ auto Sigil2Parser::threads() -> int
      * This will cause 'n' event streams between Sigil2 and DynamoRIO
      * to be generated, and 'n' separate backend instances will
      * read from those event streams as separate threads */
+
     int threads = 1;
     const auto threadsArg = parser.getOpt(numThreadsOption);
     if (threadsArg.empty() == false)
@@ -58,7 +59,6 @@ auto Sigil2Parser::executable() -> Args
     return parser.getGroup(executableOption);
 }
 
-#include <iostream>
 auto Sigil2Parser::tool(const char* option) -> ToolTuple
 {
     const auto args = parser.getGroup(option);
@@ -76,9 +76,8 @@ auto Sigil2Parser::tool(const char* option) -> ToolTuple
 }
 
 
-////////////////////////////////////////////////////////
-// ArgGroup
-////////////////////////////////////////////////////////
+//-----------------------------------------------------------------------------
+/** ArgGroup **/
 auto ArgGroup::display_help() -> void
 {
     std::string help;
@@ -142,7 +141,6 @@ auto ArgGroup::tryGroup(const std::string &arg) -> bool
 
     /* duplicate option groups not allowed */
     prev_group = rem.substr(0, eqidx);
-
     if (group_args.at(prev_group).empty() == false)
     {
         fatal(arg + " is duplicate option");

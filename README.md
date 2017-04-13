@@ -17,7 +17,7 @@ Provides an extensible interface to  **architecture-agnostic** application event
 $ git clone https://github.com/VANDAL/Sigil2
 $ cd Sigil2
 $ mkdir build && cd build
-$ cmake ..
+$ cmake{3} .. # cmake3 needed for CentOS7
 $ make -j
 ```
 The executable will be put in `build/bin`. It can be run in place, or the folder can be moved to an install location.
@@ -52,8 +52,7 @@ A third frontend argument can be supplied
 | Linux                              | OSX/macOS | Windows       |
 | ---------------------------------- | --------- | ------------- |
 | 64-bit **CentOS 7** on **x86\_64** | untested  | not supported |
-| In Progress: 32-bit                |           |               |
-| In Progress: ARM                   |           |               |
+| YMMV: ARM                          |           |               |
 
 ## Documentation
 [Read the docs](http://sigil2.readthedocs.io/en/latest)

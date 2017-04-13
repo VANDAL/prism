@@ -20,11 +20,9 @@
 #define INCR_EID_OVERFLOW(var) (var == UINT_MAX ? true : (var += 1) && false)
 #endif
 
+
 namespace STGen
 {
-
-template <class LoggerType>
-using LogGenerator = std::function<std::unique_ptr<LoggerType>(TID, std::string)>;
 
 class ThreadContext
 {
@@ -39,8 +37,8 @@ class ThreadContext
     virtual auto getStats() const -> PerThreadStats = 0;
     virtual auto onIop() -> void = 0;
     virtual auto onFlop() -> void = 0;
-    virtual auto onRead(const Addr start, const Addr bytes) -> void = 0;
-    virtual auto onWrite(const Addr start, const Addr bytes) -> void = 0;
+    virtual auto onRead(Addr start, Addr bytes) -> void = 0;
+    virtual auto onWrite(Addr start, Addr bytes) -> void = 0;
     virtual auto onSync(unsigned char syncType, Addr syncAddr) -> void = 0;
     virtual auto onInstr() -> void = 0;
     virtual auto flushAll() -> void = 0;
@@ -77,12 +75,14 @@ class ThreadContextCompressed : public ThreadContext
     STCommEventCompressed stComm;
 
     TID tid;
-    unsigned primsPerStCompEv; // compression level of events
-    LogPtr logger;
+    unsigned primsPerStCompEv;
+    /* compression level of events */
 
-    /* track statistics */
     StatCounter events{0};
     PerThreadStats stats;
+    /* track statistics */
+
+    LogPtr logger;
 };
 
 
@@ -112,12 +112,14 @@ class ThreadContextUncompressed : public ThreadContext
     STCompEventUncompressed stComp;
 
     TID tid;
-    unsigned primsPerStCompEv; // compression level of events
-    LogPtr logger;
+    unsigned primsPerStCompEv;
+    /* compression level of events */
 
-    /* track statistics */
     StatCounter events{0};
     PerThreadStats stats;
+    /* track statistics */
+
+    LogPtr logger;
 };
 
 }; //end namespace STGen

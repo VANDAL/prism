@@ -5,7 +5,7 @@
 #include <tuple>
 #include <list>
 
-/* TODO these names are confusing; change them */
+/* TODO(someday) these names are confusing; change them */
 
 namespace STGen
 {
@@ -14,10 +14,11 @@ using StatCounter = unsigned long long;
 using Stats = std::tuple<StatCounter, StatCounter, StatCounter, StatCounter, StatCounter>;
 enum StatsType {IOP=0, FLOP, READ, WRITE, INSTR};
 
-/* XXX added for SynchroLearn™ */
 struct BarrierStats
 {
+    /* XXX added for SynchroLearn™ */
     /* Statistics per barrier region */
+
     StatCounter iops{0};
     StatCounter flops{0};
     StatCounter instrs{0};
@@ -50,6 +51,7 @@ struct BarrierStats
 struct LockStats
 {
     /* Statistics between a lock/unlock */
+
     StatCounter iops{0};
     StatCounter flops{0};
     StatCounter instrs{0};

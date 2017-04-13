@@ -3,13 +3,18 @@
 
 #include "STTypes.hpp"
 
+/*****************************************************************************
+ * Merge per-barrier statistics across threads.
+ *
+ * Each thread holds a list of aggregate stats for each barrier it comes across.
+ * Because the barriers may not line up nicely between threads,
+ * we do some ugly merging
+ *****************************************************************************/
+
+
 namespace STGen
 {
 
-/* Required to merge per-barrier statistics across threads.
- * Each thread holds a list of aggregate stats for each barrier it comes across.
- * Because the barriers may not line up nicely between threads,
- * we do some ugly merging */
 struct BarrierMerge
 {
     /* Find the first element of 'from', that matches 'to'.

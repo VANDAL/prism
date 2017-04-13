@@ -1,8 +1,8 @@
 #ifndef STGEN_CAPNLOGGER_H
 #define STGEN_CAPNLOGGER_H
 
+#include "Core/SigiLog.hpp"
 #include "STLogger.hpp"
-#include "Sigil2/SigiLog.hpp"
 #include "STEventTraceCompressed.capnp.h"
 #include "STEventTraceUncompressed.capnp.h"
 #include <capnp/message.h>
@@ -43,15 +43,16 @@ class CapnLoggerCompressed : public STLoggerCompressed
 
     static constexpr unsigned maxEventsPerMessage = 100000;
 
-    /* use an orphanage because we don't know the event count ahead of time */
     OrphanagePtr orphanage;
     OrphanList orphans;
+    /* use an orphanage because we don't know the event count ahead of time */
+
     gzFile fz;
     unsigned events{0};
 
+    std::future<bool> doneCopying;
     /* Use as a barrier to ensure one capnproto
      * message gets copied at a time */
-    std::future<bool> doneCopying;
 };
 
 
@@ -81,15 +82,16 @@ class CapnLoggerUncompressed : public STLoggerUncompressed
 
     static constexpr unsigned maxEventsPerMessage = 500000;
 
-    /* use an orphanage because we don't know the event count ahead of time */
     OrphanagePtr orphanage;
     OrphanList orphans;
+    /* use an orphanage because we don't know the event count ahead of time */
+
     gzFile fz;
     unsigned events{0};
 
+    std::future<bool> doneCopying;
     /* Use as a barrier to ensure one capnproto
      * message gets copied at a time */
-    std::future<bool> doneCopying;
 };
 
 }; //end namespace STGen

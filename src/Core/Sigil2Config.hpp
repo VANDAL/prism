@@ -11,15 +11,15 @@ class Sigil2Config
     Sigil2Config()  = default;
     ~Sigil2Config() = default;
 
-    /* configuration */
     auto registerBackend(ToolName name, Backend be)             -> Sigil2Config&;
     auto registerFrontend(ToolName name, FrontendStarter start) -> Sigil2Config&;
     auto parseCommandLine(int argc, char* argv[])               -> Sigil2Config&;
+    /* configuration */
 
-    /* accessors */
     auto threads()       const -> int                    { return _threads;  }
     auto backend()       const -> Backend                { return _backend;  }
     auto startFrontend() const -> FrontendStarterWrapper { return _startFrontend; }
+    /* accessors */
 
   private:
     BackendFactory beFactory;

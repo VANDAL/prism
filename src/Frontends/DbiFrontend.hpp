@@ -1,10 +1,10 @@
 #ifndef SGL_FRONTEND_DBI_H
 #define SGL_FRONTEND_DBI_H
 
-#include "Sigil2/Frontends.hpp"
+#include "Core/SigiLog.hpp"
+#include "Core/Frontends.hpp"
 #include "DbiIpcCommon.h"
 #include "Common.hpp"
-#include "Sigil2/SigiLog.hpp"
 #include <thread>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -43,48 +43,51 @@ auto setCleanupDir(std::string dir) -> void;
 
 class DBIFrontend : public FrontendIface
 {
-    /* IPC configuration */
     const std::string ipcDir;
-    const std::string shmemName;
     const std::string emptyFifoName;
     const std::string fullFifoName;
-    FILE *shmemfp;
+    const std::string shmemName;
     int emptyfd;
     int fullfd;
+    FILE *shmemfp;
     Sigil2DBISharedData *shmem;
+    /* IPC configuration */
 
-    /* Keep track of which buffers are in use/ready */
     CircularQueue<int, SIGIL2_DBI_BUFFERS> q;
     Sem filled{0}, emptied{SIGIL2_DBI_BUFFERS};
     int lastBufferIdx;
+    /* Keep track of which buffers are in use/ready */
 
+    std::thread eventLoop;
     /* Manage DBI events asynchronously */
-    std::shared_ptr<std::thread> eventLoop;
 
   public:
     DBIFrontend(const std::string &ipcDir)
         : ipcDir       (ipcDir)
-        , shmemName    (ipcDir + "/" + SIGIL2_DBI_SHMEM_NAME     + "-" + std::to_string(uid))
-        , emptyFifoName(ipcDir + "/" + SIGIL2_DBI_EMPTYFIFO_NAME + "-" + std::to_string(uid))
-        , fullFifoName (ipcDir + "/" + SIGIL2_DBI_FULLFIFO_NAME  + "-" + std::to_string(uid))
+        , emptyFifoName(ipcDir + "/" + SIGIL2_DBI_EMPTYFIFO_BASENAME + "-" + std::to_string(uid))
+        , fullFifoName (ipcDir + "/" + SIGIL2_DBI_FULLFIFO_BASENAME  + "-" + std::to_string(uid))
+        , shmemName    (ipcDir + "/" + SIGIL2_DBI_SHMEM_BASENAME     + "-" + std::to_string(uid))
     {
         initShMem();
         emptyfd = createAndOpenNewFifo(emptyFifoName.c_str(), O_WRONLY);
         fullfd = createAndOpenNewFifo(fullFifoName.c_str(), O_RDONLY);
 
         /* asynchronously manage communications with the DBI tool */
-        eventLoop = std::make_shared<std::thread>(&DBIFrontend::receiveEventsLoop, this);
+        eventLoop = std::thread{&DBIFrontend::receiveEventsLoop, this};
+
+        FrontendIface::nameBase = [&]{ assert(lastBufferIdx < decltype(lastBufferIdx){SIGIL2_DBI_BUFFERS});
+                                       return shmem->nameBuffers[lastBufferIdx].names; };
     }
 
     ~DBIFrontend() override
     {
         /* All communication with the DBI tool
          * should be completed by destruction */
-        eventLoop->join();
+        eventLoop.join();
         disconnectDBI();
     }
 
-    virtual auto acquireBuffer() -> EventBuffer* override final
+    virtual auto acquireBuffer() -> EventBufferPtr override final
     {
         filled.P();
         lastBufferIdx = q.dequeue();
@@ -95,11 +98,12 @@ class DBIFrontend : public FrontendIface
         if (lastBufferIdx < 0)
             return nullptr;
         else
-            return &(shmem->buf[lastBufferIdx]);
+            return EventBufferPtr(&(shmem->eventBuffers[lastBufferIdx]));
     }
 
-    virtual auto releaseBuffer() -> void override final
+    virtual auto releaseBuffer(EventBufferPtr eventBuffer) -> void override final
     {
+        eventBuffer.release();
         emptied.V();
 
         /* Tell Valgrind that the buffer is empty again */
@@ -109,9 +113,10 @@ class DBIFrontend : public FrontendIface
 
 
   private:
-    /* Initialize IPC between Sigil2 and the DBI tool */
     auto initShMem() -> void
     {
+        /* Initialize IPC between Sigil2 and the DBI tool */
+
         shmemfp = fopen(shmemName.c_str(), "wb+");
         if (shmemfp == nullptr)
             fatal(std::string("sigil2 shared memory file open failed -- ") + strerror(errno));
@@ -124,7 +129,7 @@ class DBIFrontend : public FrontendIface
          * systems.)
          *
          * fwrite doesn't have this limitation */
-        std::unique_ptr<Sigil2DBISharedData> init(new Sigil2DBISharedData());
+        auto init = std::make_unique<Sigil2DBISharedData>();
         int count = fwrite(init.get(), sizeof(Sigil2DBISharedData), 1, shmemfp);
         if (count != 1)
         {
@@ -150,7 +155,7 @@ class DBIFrontend : public FrontendIface
             {
                 if (remove(path) != 0)
                     fatal(std::string("sigil2 could not delete old fifos -- ") + strerror(errno));
-    
+
                 if (mkfifo(path, 0600) < 0)
                     fatal(std::string("sigil2 failed to create fifos -- ") + strerror(errno));
             }
@@ -173,12 +178,14 @@ class DBIFrontend : public FrontendIface
         close(fullfd);
     }
 
-    /* Reads an int from 'full' fifo and returns the data.
-     * This is an index to the buffer array in the shared memory.
-     * It informs Sigil2 that buffer[idx] has been filled with
-     * events and can be consumed by the Sigil2 backend. */
     auto readFullFifo() -> int
     {
+        /* Reads from 'full' fifo and returns the data.
+         * This is an index to the buffer array in the shared memory.
+         * It implicitly informs Sigil2 that buffer[idx] has
+         * been filled with events and can be consumed by
+         * the Sigil2 backend. */
+
         int full_data;
         int res = read(fullfd, &full_data, sizeof(full_data));
 
@@ -190,19 +197,21 @@ class DBIFrontend : public FrontendIface
         return full_data;
     }
 
-    /* The 'idx' sent informs the DBI tool that buffer[idx]
-     * has been consumed by the Sigil2 backend,
-     * and that the DBI tool can now fill it with events again. */
     auto writeEmptyFifo(unsigned idx) -> void
     {
-        auto res = write(emptyfd, &idx, sizeof(idx));
+        /* The 'idx' sent informs the DBI tool that buffer[idx]
+         * has been consumed by the Sigil2 backend,
+         * and that the DBI tool can now fill it with events again. */
+
+        int res = write(emptyfd, &idx, sizeof(idx));
         if (res < 0)
             fatal(std::string("could not send empty buffer status -- ") + strerror(errno));
     }
 
-    /* main event loop for managing the event buffers */
     auto receiveEventsLoop() -> void
     {
+        /* main event loop for managing the event buffers */
+
         bool finished = false;
         while (finished == false)
         {
@@ -211,7 +220,9 @@ class DBIFrontend : public FrontendIface
             emptied.P();
 
             if (fromDBI == SIGIL2_DBI_FINISHED)
+            {
                 finished = true;
+            }
             else
             {
                 assert(fromDBI < decltype(fromDBI){SIGIL2_DBI_BUFFERS} &&

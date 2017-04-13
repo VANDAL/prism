@@ -25,7 +25,7 @@ auto BackendFactory::create(ToolName name, Args args) const -> Backend
 }
 
 
-auto BackendFactory::add(ToolName name, BackendGenerator generator) -> void
+auto BackendFactory::add(ToolName name, BackendIfaceGenerator generator) -> void
 {
     std::transform(name.begin(), name.end(), name.begin(), ::tolower);
     auto p = registry.emplace(name, Backend());

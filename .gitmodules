@@ -10,12 +10,12 @@
 [submodule "include/zlib"]
 	path = third_party/zlib
 	url = https://github.com/madler/zlib
-[submodule "src/Frontends/DrSigil/dynamorio"]
-	path = src/Frontends/DrSigil/dynamorio-Sigil2
-	url = https://github.com/VANDAL/dynamorio-Sigil2
-[submodule "src/Frontends/Sigrind/valgrind-Sigil2"]
-	path = src/Frontends/Sigrind/valgrind-Sigil2
-	url = https://github.com/VANDAL/valgrind-Sigil2
+[submodule "src/Frontends/DrSigil/dynamorio-sigil2"]
+	path = src/Frontends/DrSigil/dynamorio-sigil2
+	url = https://github.com/VANDAL/dynamorio-sigil2
+[submodule "src/Frontends/Sigrind/valgrind-sigil2"]
+	path = src/Frontends/Sigrind/valgrind-sigil2
+	url = https://github.com/VANDAL/valgrind-sigil2
 [submodule "src/Backends/SynchroTraceGen/capnproto"]
 	path = src/Backends/SynchroTraceGen/capnproto
 	url = https://github.com/sandstorm-io/capnproto/

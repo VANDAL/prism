@@ -3,9 +3,8 @@
 namespace STGen
 {
 
-////////////////////////////////////////////////////////////
-// SynchroTrace - Compute Event
-////////////////////////////////////////////////////////////
+//-----------------------------------------------------------------------------
+/** Compute Event **/
 auto STCompEventCompressed::updateWrites(const Addr begin, const Addr size) -> void
 {
     isActive = true;
@@ -75,9 +74,8 @@ auto STCompEventUncompressed::reset() -> void
 
 
 
-////////////////////////////////////////////////////////////
-// SynchroTrace - Communication Event
-////////////////////////////////////////////////////////////
+//-----------------------------------------------------------------------------
+/** Communication Event **/
 auto STCommEventCompressed::addEdge(const TID writer, const EID writer_event,
                                     const Addr addr) -> void
 {

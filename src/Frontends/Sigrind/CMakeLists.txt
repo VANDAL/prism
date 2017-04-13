@@ -1,13 +1,13 @@
 # Build destinations
 get_target_property(SIGIL2_BIN sigil2 RUNTIME_OUTPUT_DIRECTORY)
 set(VGINST_DIR ${SIGIL2_BIN}/vg)
-set(VGSRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/valgrind-Sigil2)
+set(VGSRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/valgrind-sigil2)
 
 include_directories(
 	gcc-4.9.2
-	valgrind-Sigil2
-	valgrind-Sigil2/include
-	valgrind-Sigil2/VEX/pub)
+	valgrind-sigil2
+	valgrind-sigil2/include
+	valgrind-sigil2/VEX/pub)
 
 # Function wrapper for intercepting multithreading libs
 # (pthread and openmp function calls)

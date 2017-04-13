@@ -12,9 +12,8 @@ typedef enum SyncTypeEnum SyncTypeEnum;
 typedef enum EvTagEnum EvTagEnum;
 #endif
 
-////////////////
-/*   Memory   */
-////////////////
+//-----------------------------------------------------------------------------
+/**   Memory   **/
 enum MemTypeEnum
 {
     SGLPRIM_MEM_TYPE_UNDEF = 0,
@@ -23,9 +22,8 @@ enum MemTypeEnum
 };
 
 
-////////////////
-/*  Compute   */
-////////////////
+//-----------------------------------------------------------------------------
+/**  Compute   **/
 enum CompCostTypeEnum
 {
     SGLPRIM_COMP_TYPE_UNDEF = 0,
@@ -55,9 +53,8 @@ enum CompCostOpEnum
 };
 
 
-//////////////////
-/* Control Flow */
-//////////////////
+//-----------------------------------------------------------------------------
+/** Control Flow **/
 enum CFTypeEnum
 {
     SGLPRIM_CF_UNDEF = 0,
@@ -66,9 +63,8 @@ enum CFTypeEnum
 };
 
 
-///////////////
-/*  Context  */
-///////////////
+//-----------------------------------------------------------------------------
+/**  Context  **/
 enum CxtTypeEnum
 {
     SGLPRIM_CXT_UNDEF = 0,
@@ -80,14 +76,14 @@ enum CxtTypeEnum
 };
 
 
-/////////////////////
-/* Synchronization */
-/////////////////////
-/* TODO Many of these are specific
- * to SynchroTrace. Can we simplify
- * SynchroTrace to take a subset? */
+//-----------------------------------------------------------------------------
+/** Synchronization **/
 enum SyncTypeEnum
 {
+    /* TODO(someday) Many of these are specific
+     * to SynchroTrace. Can we simplify
+     * SynchroTrace to take a subset? */
+
     SGLPRIM_SYNC_UNDEF = 0,
     SGLPRIM_SYNC_CREATE,
     SGLPRIM_SYNC_JOIN,
@@ -105,6 +101,8 @@ enum SyncTypeEnum
     SGLPRIM_SYNC_SPINUNLOCK,
 };
 
+
+//-----------------------------------------------------------------------------
 enum EvTagEnum
 {
     SGL_MEM_TAG = 0,

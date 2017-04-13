@@ -7,7 +7,7 @@
 #include <cstdint>
 
 #include "SCShadowMemory.hpp"
-#include "Sigil2/Primitive.h"
+#include "Core/Primitive.h"
 
 namespace SigilClassic
 {

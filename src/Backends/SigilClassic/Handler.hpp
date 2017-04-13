@@ -1,7 +1,7 @@
 #ifndef SIGILCLASSIC_HANDLER_H
 #define SIGILCLASSIC_HANDLER_H
 
-#include "Sigil2/Backends.hpp"
+#include "Core/Backends.hpp"
 #include "SigilClassic.hpp"
 
 namespace SigilClassic
@@ -10,10 +10,10 @@ namespace SigilClassic
 /* interface to Sigil2 */
 class Handler : public BackendIface
 {
-    virtual auto onSyncEv(const SglSyncEv &ev) -> void override;
-    virtual auto onCompEv(const SglCompEv &ev) -> void override;
-    virtual auto onMemEv(const SglMemEv &ev) -> void override;
-    virtual auto onCxtEv(const SglCxtEv &ev) -> void override;
+    virtual auto onSyncEv(const SglSyncEvWrapper &ev) -> void override;
+    virtual auto onCompEv(const SglCompEvWrapper &ev) -> void override;
+    virtual auto onMemEv(const SglMemEvWrapper &ev) -> void override;
+    virtual auto onCxtEv(const SglCxtEvWrapper &ev) -> void override;
 
     SigilContext cxt;
 };

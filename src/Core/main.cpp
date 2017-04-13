@@ -7,11 +7,18 @@
 #include "Backends/SimpleCount/Handler.hpp"
 #include "Backends/SigilClassic/Handler.hpp"
 
+#ifdef PRETTY_PRINT_TITLE
 #include <iostream>
+#endif
 
 using namespace SigiLog;
 
+
+namespace
+{
 auto startSigil2(const Sigil2Config& config) -> int;
+};
+
 
 int main(int argc, char* argv[])
 {
@@ -34,22 +41,22 @@ int main(int argc, char* argv[])
         .registerFrontend("dynamorio",
                           startDrSigil)
         .registerBackend("stgen",
-                         {[]() {return std::make_shared<::STGen::EventHandlers>();},
+                         {[]() {return std::make_unique<::STGen::EventHandlers>();},
                           ::STGen::onParse,
                           ::STGen::onExit,
                           {},})
         .registerBackend("simplecount",
-                         {[]() {return std::make_shared<::SimpleCount::Handler>();},
+                         {[]() {return std::make_unique<::SimpleCount::Handler>();},
                           {},
                           ::SimpleCount::cleanup,
                           {},})
         .registerBackend("sigilclassic",
-                         {[]() {return std::make_shared<::SigilClassic::Handler>();},
+                         {[]() {return std::make_unique<::SigilClassic::Handler>();},
                           {},
                           {},
                           {},})
         .registerBackend("null",
-                         {[]() {return std::make_shared<::BackendIface>();},
+                         {[]() {return std::make_unique<::BackendIface>();},
                           {},
                           {},
                           {},})
@@ -61,60 +68,60 @@ int main(int argc, char* argv[])
 
 namespace
 {
-auto inline flushToBackend(std::shared_ptr<BackendIface>& be, EventBuffer* buf) -> void
+
+auto flushToBackend(BackendIface &be,
+                    const EventBuffer &buf,
+                    const GetNameBase &nameBase) -> void
 {
-    for (decltype(buf->events_used) i = 0; i < buf->events_used; ++i)
+    for (decltype(buf.used) i = 0; i < buf.used; ++i)
     {
-        BufferedSglEv &ev = buf->events[i];
+        const SglEvVariant &ev = buf.events[i];
 
         switch (ev.tag)
         {
         case EvTagEnum::SGL_MEM_TAG:
-            be->onMemEv(ev.mem);
+            be.onMemEv({ev.mem});
             break;
-
         case EvTagEnum::SGL_COMP_TAG:
-            be->onCompEv(ev.comp);
+            be.onCompEv({ev.comp});
             break;
-
         case EvTagEnum::SGL_SYNC_TAG:
-            be->onSyncEv(ev.sync);
+            be.onSyncEv({ev.sync});
             break;
-
         case EvTagEnum::SGL_CXT_TAG:
-            /* pool index set by frontend, so convert addressto this memory space */
-            if (ev.cxt.type == SGLPRIM_CXT_FUNC_ENTER || ev.cxt.type == SGLPRIM_CXT_FUNC_EXIT)
-                ev.cxt.name = buf->pool + ev.cxt.idx;
-            be->onCxtEv(ev.cxt);
+            be.onCxtEv({ev.cxt, nameBase});
             break;
-
         case EvTagEnum::SGL_CF_TAG:
-            be->onCFEv(ev.cf);
+            be.onCFEv(ev.cf);
             break;
-
         default:
             fatal(std::string("Received unhandled event in ").append(__FILE__));
         }
     }
 }
 
-auto consumeEvents(BackendGenerator createBEIface, FrontendIfaceGenerator createFEIface) -> void
-{
-    /* per-thread frontend/backend interfaces */
-    auto frontendIface = createFEIface();
-    auto backendIface  = createBEIface();
 
-    EventBuffer* buf = frontendIface->acquireBuffer();
+auto consumeEvents(BackendIfaceGenerator createBEIface,
+                   FrontendIfaceGenerator createFEIface) -> void
+{
+    BackendPtr backendIface  = createBEIface();
+    FrontendPtr frontendIface = createFEIface();
+    /* per-thread frontend/backend interfaces
+     * each backend interface needs a frontend interface to communicate with */
+
+    EventBufferPtr buf = frontendIface->acquireBuffer();
+
     while (buf != nullptr) // consume events until there's nothing left
     {
-        flushToBackend(backendIface, buf);
+        flushToBackend(*backendIface, *buf,
+                       frontendIface->nameBase);
 
         /* acquire a new buffer */
-        frontendIface->releaseBuffer();
+        frontendIface->releaseBuffer(std::move(buf));
         buf = frontendIface->acquireBuffer();
     }
 }
-};
+
 
 auto startSigil2(const Sigil2Config& config) -> int
 {
@@ -122,32 +129,29 @@ auto startSigil2(const Sigil2Config& config) -> int
     auto backend       = config.backend();
     auto startFrontend = config.startFrontend();
 
+    if (threads < 1)
+        fatal("Invalid number of backend threads");
+
     if (backend.parser)
         backend.parser(backend.args);
     else if (backend.args.size() > 0)
         fatal("Backend arguments provided, but Backend has no parser");
 
-    /* start async backend event processing */
-    if (threads < 1)
-    {
-        error("Invalid number of backend threads");
-        return EXIT_FAILURE;
-    }
-
-    /* each backend interface needs a frontend interface to communicate with */
+    /* start frontend only once and get its interface */
     auto frontendIfaceGenerator = startFrontend();
-    std::vector<std::thread> backends;
+    std::vector<std::thread> eventStreams;
     for(auto i = 0; i < threads; ++i)
-        backends.emplace_back(std::thread(consumeEvents,
-                                          backend.generator,
-                                          frontendIfaceGenerator));
+        eventStreams.emplace_back(std::thread(consumeEvents,
+                                              backend.generator,
+                                              frontendIfaceGenerator));
 
-    /* wait for backends to finish and then clean up */
+    /* wait for event handling to finish and then clean up */
     for(auto i = 0; i < threads; ++i)
-        backends[i].join();
-
+        eventStreams[i].join();
     if (backend.finish)
         backend.finish();
 
     return EXIT_SUCCESS;
 }
+
+}; //end namespace

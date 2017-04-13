@@ -1,9 +1,9 @@
 #ifndef STGEN_TEXT_LOGGER_H
 #define STGEN_TEXT_LOGGER_H
 
+#include "Core/SigiLog.hpp"
 #include "STLogger.hpp"
 #include "BarrierMerge.hpp"
-#include "Sigil2/SigiLog.hpp"
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/ostream_sink.h"
 #include "zfstream.h"
@@ -16,10 +16,11 @@ namespace STGen
 
 class TextLoggerCompressed : public STLoggerCompressed
 {
-    using Base = STLoggerCompressed;
     /* Uses spdlog logging library to asynchronously log to a text file.
      * The format is a custom format.
      * Each new logger writes to a new file */
+
+    using Base = STLoggerCompressed;
   public:
     TextLoggerCompressed(TID tid, std::string outputPath);
     TextLoggerCompressed(const TextLoggerCompressed& other) = delete;
@@ -39,10 +40,11 @@ class TextLoggerCompressed : public STLoggerCompressed
 
 class TextLoggerUncompressed : public STLoggerUncompressed
 {
-    using Base = STLoggerCompressed;
     /* Uses spdlog logging library to asynchronously log to a text file.
      * The format is a custom format.
      * Each new logger writes to a new file */
+
+    using Base = STLoggerCompressed;
   public:
     TextLoggerUncompressed(TID tid, std::string outputPath);
     TextLoggerUncompressed(const TextLoggerUncompressed& other) = delete;
@@ -63,7 +65,6 @@ class TextLoggerUncompressed : public STLoggerUncompressed
 };
 
 
-/* Helpers */
 auto flushPthread(std::string filePath,
                   ThreadList newThreadsInOrder,
                   SpawnList threadSpawns,
@@ -71,10 +72,10 @@ auto flushPthread(std::string filePath,
 
 auto flushStats(std::string filePath, ThreadStatMap allThreadsStats) -> void;
 
-/* XXX REMEMBER: the file stream needs to be returned
- * with the logger to extend the life of the stream */
 auto getFileLogger(std::string filePath)
     -> std::pair<std::shared_ptr<spdlog::logger>, std::shared_ptr<std::ofstream>>;
+/* XXX REMEMBER: the file stream needs to be returned
+ * with the logger to extend the life of the stream */
 
 auto getGzLogger(std::string filePath)
     -> std::pair<std::shared_ptr<spdlog::logger>, std::shared_ptr<gzofstream>>;

@@ -1,5 +1,5 @@
 #include "SigilClassic.hpp"
-#include "Sigil2/SigiLog.hpp"
+#include "Core/SigiLog.hpp"
 
 /* XXX overflow builtin not in GCC <5.
  * This overflow check should only be used for

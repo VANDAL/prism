@@ -1,8 +1,8 @@
 #include "CapnLogger.hpp"
 
-////////////////////////////////////////////////////////////
-// CapnProto -> Gzip file
-////////////////////////////////////////////////////////////
+
+//-----------------------------------------------------------------------------
+/** CapnProto -> Gzip file **/
 namespace kj
 {
 
@@ -31,9 +31,10 @@ class GzOutputStream : public OutputStream
 namespace capnp
 {
 
-/* Based off of writePackedMessageToFd in capnproto library */
 inline void writePackedMessageToGz(gzFile fz, MessageBuilder &message)
 {
+    /* Based off of writePackedMessageToFd in capnproto library */
+
     kj::GzOutputStream output(fz);
     writePackedMessage(output, message.getSegmentsForOutput());
 }
@@ -41,15 +42,15 @@ inline void writePackedMessageToGz(gzFile fz, MessageBuilder &message)
 }; //end nampespace capnp
 
 
-////////////////////////////////////////////////////////////
-// CapnProto Logging
-////////////////////////////////////////////////////////////
+//-----------------------------------------------------------------------------
+/** CapnProto Logging **/
 namespace STGen
 {
 
 namespace
 {
 /* Common between compressed/uncompressed */
+
 template <typename Event, typename OrphanagePtr, typename OrphanList>
 auto flushSyncEvent(unsigned char syncType, Addr syncAddr,
                     OrphanagePtr &orphanage, OrphanList &orphans) -> void
@@ -138,15 +139,14 @@ auto flushOrphans(OrphanagePtr flushedOrphanage, OrphanList flushedOrphans, gzFi
 }; //end namespace
 
 
-////////////////////////////////////////////////////////////
-// Multiple reads/writes compressed
-////////////////////////////////////////////////////////////
+//-----------------------------------------------------------------------------
+/** Multiple reads/writes compressed **/
 CapnLoggerCompressed::CapnLoggerCompressed(TID tid, std::string outputPath)
 {
     assert(tid >= 1);
 
     /* initialize orphanage */
-    orphanage.reset(new ::capnp::MallocMessageBuilder{});
+    orphanage = std::make_unique<::capnp::MallocMessageBuilder>();
 
     /* nothing being copied yet */
     doneCopying = std::async([]{return true;});
@@ -286,19 +286,18 @@ auto CapnLoggerCompressed::flushOrphansAsync() -> void
                              std::move(orphanage), std::move(orphans), fz);
     /* start a new orphanage */
     orphans.clear();
-    orphanage.reset(new ::capnp::MallocMessageBuilder{});
+    orphanage = std::make_unique<::capnp::MallocMessageBuilder>();
 }
 
 
-////////////////////////////////////////////////////////////
-// Single read/write per event
-////////////////////////////////////////////////////////////
+//-----------------------------------------------------------------------------
+/** Single read/write per event **/
 CapnLoggerUncompressed::CapnLoggerUncompressed(TID tid, std::string outputPath)
 {
     assert(tid >= 1);
 
     /* initialize orphanage */
-    orphanage.reset(new ::capnp::MallocMessageBuilder{});
+    orphanage = std::make_unique<::capnp::MallocMessageBuilder>();
 
     /* nothing being copied yet */
     doneCopying = std::async([]{return true;});
@@ -410,7 +409,7 @@ auto CapnLoggerUncompressed::flushOrphansAsync() -> void
 
     /* start a new orphanage */
     orphans.clear();
-    orphanage.reset(new ::capnp::MallocMessageBuilder{});
+    orphanage = std::make_unique<::capnp::MallocMessageBuilder>();
 }
 
 }; //end namespace STGen

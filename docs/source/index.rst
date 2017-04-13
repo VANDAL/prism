@@ -25,7 +25,7 @@ Features
 
   * Use multiple frontends for capturing software workloads
     like Valgrind and DynamoRIO
-  * Use custom C++11 libraries for analyzing event streams
+  * Use custom C++14 libraries for analyzing event streams
 
 * Platform-independent events
 

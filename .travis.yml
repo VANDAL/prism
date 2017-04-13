@@ -5,64 +5,46 @@
 # - Gabi Melman spdlog: https://github.com/gabime/spdlog
 language: cpp
 script: cmake
+dist: trusty
+sudo: false
 
 # Test matrix:
-# - Build matrix per compiler: C++11 + Debug/Release
+# - Build matrix per compiler: C++14 + Debug/Release
 # - Optionally: AddressSanitizer (ASAN)
-# - Valgrind: all release builds are also tested with valgrind
 # - gcc 4.8, 5, 6
 #
 matrix:
   include:
 
-    # Test gcc-4.8: C++11, Build=Debug/Release, ASAN=Off
-    - env: GCC_VERSION=4.8 BUILD_TYPE=Debug CPP_VERSION=11 ASAN=Off LIBCXX=Off
-      os: linux
-      addons: &gcc48
-        apt:
-          packages:
-            - g++-4.8
-            - valgrind
-            - cmake
-          sources:
-            - ubuntu-toolchain-r-test
-            - kalakris-cmake
-
-    - env: GCC_VERSION=4.8 BUILD_TYPE=Release CPP_VERSION=11 ASAN=Off LIBCXX=Off
-      os: linux
-      addons: *gcc48
-
-    # Test gcc-5: C++11, Build=Debug/Release, ASAN=Off
-    - env: GCC_VERSION=5 BUILD_TYPE=Debug CPP_VERSION=11 ASAN=Off LIBCXX=Off
+    # Test gcc-5: C++14, Build=Debug/Release, ASAN=Off
+    - env: GCC_VERSION=5 BUILD_TYPE=Debug CPP_VERSION=14 ASAN=Off LIBCXX=Off
       os: linux
       addons: &gcc5
         apt:
           packages:
             - g++-5
-            - valgrind
             - cmake
           sources:
             - ubuntu-toolchain-r-test
-            - kalakris-cmake
+            - george-edison55
 
-    - env: GCC_VERSION=5 BUILD_TYPE=Release CPP_VERSION=11 ASAN=Off LIBCXX=Off
+    - env: GCC_VERSION=5 BUILD_TYPE=Release CPP_VERSION=14 ASAN=Off LIBCXX=Off
       os: linux
       addons: *gcc5
 
-    # Test gcc-6: C++11, Build=Debug/Release, ASAN=Off
-    - env: GCC_VERSION=6 BUILD_TYPE=Debug CPP_VERSION=11 ASAN=Off LIBCXX=Off
+    # Test gcc-6: C++14, Build=Debug/Release, ASAN=Off
+    - env: GCC_VERSION=6 BUILD_TYPE=Debug CPP_VERSION=14 ASAN=Off LIBCXX=Off
       os: linux
       addons: &gcc6
         apt:
           packages:
             - g++-6
-            - valgrind
             - cmake
           sources:
             - ubuntu-toolchain-r-test
-            - kalakris-cmake
+            - george-edison55
 
-    - env: GCC_VERSION=6 BUILD_TYPE=Release CPP_VERSION=11 ASAN=Off LIBCXX=Off
+    - env: GCC_VERSION=6 BUILD_TYPE=Release CPP_VERSION=14 ASAN=Off LIBCXX=Off
       os: linux
       addons: *gcc6
 
@@ -75,17 +57,11 @@ before_install:
   - if [ "$CLANG_VERSION" == "3.4" ]; then export CXX="/usr/local/clang-3.4/bin/clang++" CC="/usr/local/clang-3.4/bin/clang"; fi
   - which $CXX
   - which $CC
-  - which valgrind
   - $CXX --version
   - if [ -n "$CLANG_VERSION" ]; then sudo CXX=$CXX CC=$CC ./tests/install_libcxx.sh; fi
 
 install:
   - cd $CHECKOUT_PATH
-
-  # Workaround for valgrind bug: https://bugs.kde.org/show_bug.cgi?id=326469.
-  # It is fixed in valgrind 3.10 so this won't be necessary if someone
-  # replaces the current valgrind (3.7) with valgrind-3.10
-  # - sed -i 's/march=native/msse4.2/' example/Makefile
 
   - if [ ! -d build ]; then mkdir build && cd build; fi
   - export CXX_FLAGS=""

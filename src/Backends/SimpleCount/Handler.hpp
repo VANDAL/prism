@@ -1,7 +1,7 @@
 #ifndef SIMPLECOUNT_H
 #define SIMPLECOUNT_H
 
-#include "Sigil2/Backends.hpp"
+#include "Core/Backends.hpp"
 
 namespace SimpleCount
 {
@@ -9,11 +9,11 @@ namespace SimpleCount
 /* interface to Sigil2 */
 class Handler : public BackendIface
 {
-    virtual auto onSyncEv(const SglSyncEv &ev) -> void override;
-    virtual auto onCompEv(const SglCompEv &ev) -> void override;
-    virtual auto onMemEv(const SglMemEv &ev) -> void override;
+    virtual auto onSyncEv(const SglSyncEvWrapper &ev) -> void override;
+    virtual auto onCompEv(const SglCompEvWrapper &ev) -> void override;
+    virtual auto onMemEv(const SglMemEvWrapper &ev) -> void override;
     virtual auto onCFEv(const SglCFEv &ev) -> void override;
-    virtual auto onCxtEv(const SglCxtEv &ev) -> void override;
+    virtual auto onCxtEv(const SglCxtEvWrapper &ev) -> void override;
 
     unsigned long mem_cnt;
     unsigned long comp_cnt;
@@ -22,7 +22,7 @@ class Handler : public BackendIface
     unsigned long cxt_cnt;
 
   public:
-    ~Handler();
+    virtual ~Handler() override;
 };
 
 auto cleanup() -> void;

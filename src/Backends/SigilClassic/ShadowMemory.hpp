@@ -1,8 +1,8 @@
 #ifndef SHADOWMEMORY_H
 #define SHADOWMEMORY_H
 
-#include "Sigil2/Primitive.h" // PtrVal type
-#include "Sigil2/SigiLog.hpp"
+#include "Core/Primitive.h" // PtrVal type
+#include "Core/SigiLog.hpp"
 
 #include <limits>
 #include <vector>
@@ -48,19 +48,15 @@ class ShadowMemory
 
     /* Implementation */
     using SecondaryMap = std::vector<SO>;
-    using SecondaryMapPtr = std::unique_ptr<SecondaryMap>;
-    using PrimaryMap = std::vector<SecondaryMapPtr>;
+    using PrimaryMap = std::vector<std::unique_ptr<SecondaryMap>>;
 
     auto operator[](Addr addr) -> SO&
     {
         if ((addr >> addr_bits) == 0)
         {
-            SecondaryMapPtr &ptr = pm[addr >> sm_bits]; /* PM offset */
+            auto &ptr = pm[addr >> sm_bits]; /* PM offset */
             if (ptr == nullptr)
-            {
-                ptr = SecondaryMapPtr(new SecondaryMap(sm_size));
-                assert(ptr != nullptr);
-            }
+                ptr = std::make_unique<SecondaryMap>(sm_size);
 
             return (*ptr)[addr & ((1ULL << sm_bits) - 1)]; /* SM offset */
         }

@@ -15,19 +15,19 @@ std::atomic<unsigned long> global_cxt_cnt;
 namespace SimpleCount
 {
 
-auto Handler::onSyncEv(const SglSyncEv &ev) -> void
+auto Handler::onSyncEv(const SglSyncEvWrapper &ev) -> void
 {
     ++sync_cnt;
 }
 
 
-auto Handler::onCompEv(const SglCompEv &ev) -> void
+auto Handler::onCompEv(const SglCompEvWrapper &ev) -> void
 {
     ++comp_cnt;
 }
 
 
-auto Handler::onMemEv(const SglMemEv &ev) -> void
+auto Handler::onMemEv(const SglMemEvWrapper &ev) -> void
 {
     ++mem_cnt;
 }
@@ -39,7 +39,7 @@ auto Handler::onCFEv(const SglCFEv &ev) -> void
 }
 
 
-auto Handler::onCxtEv(const SglCxtEv &ev) -> void
+auto Handler::onCxtEv(const SglCxtEvWrapper &ev) -> void
 {
     ++cxt_cnt;
 }

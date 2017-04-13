@@ -1,22 +1,7 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.1.3)
 project(sigil2)
 
-####################################################
-# C++11 support                                    #
-# from http://stackoverflow.com/a/31010221/1371191 #
-####################################################
-macro(use_cxx11)
-  if (CMAKE_VERSION VERSION_LESS "3.1")
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-      set (CMAKE_CXX_FLAGS "--std=gnu++11 ${CMAKE_CXX_FLAGS}")
-    endif ()
-  else ()
-    set (CMAKE_CXX_STANDARD 11)
-  endif ()
-endmacro(use_cxx11)
-
-use_cxx11()
-
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE "Release" CACHE STRING
@@ -30,16 +15,11 @@ endif(NOT CMAKE_BUILD_TYPE)
 enable_testing(true)
 include(CTest)
 
-# http://stackoverflow.com/a/34900012/1371191
-# NOT COMPATIBLE WITH version <2.8.12
-# add_library(Catch INTERFACE)
-# target_include_directories(Catch INTERFACE include/Catch/include)
-
-###################################################
-# Include everything                              #
-# ...there's probably a cleaner way to do this... #
-###################################################
-get_filename_component(SRC_SIGIL2    src/Sigil2    ABSOLUTE)
+######################
+# Include everything #
+# TODO(cleanup)      #
+######################
+get_filename_component(SRC_CORE      src/Core      ABSOLUTE)
 get_filename_component(SRC_FRONTENDS src/Frontends ABSOLUTE)
 get_filename_component(SRC_BACKENDS  src/Backends  ABSOLUTE)
 get_filename_component(THIRD_PARTY   third_party   ABSOLUTE)
@@ -63,11 +43,11 @@ include_directories(${SRC_BACKENDS})
 ################
 set(SOURCES
 	${THIRD_PARTY}/whereami/src/whereami.c
-	${SRC_SIGIL2}/Backends.cpp
-	${SRC_SIGIL2}/Frontends.cpp
-	${SRC_SIGIL2}/Sigil2Parser.cpp
-	${SRC_SIGIL2}/Sigil2Config.cpp
-	${SRC_SIGIL2}/main.cpp)
+	${SRC_CORE}/Backends.cpp
+	${SRC_CORE}/Frontends.cpp
+	${SRC_CORE}/Sigil2Parser.cpp
+	${SRC_CORE}/Sigil2Config.cpp
+	${SRC_CORE}/main.cpp)
 add_executable(sigil2 ${SOURCES})
 target_link_libraries(sigil2 pthread rt)
 set_target_properties(sigil2

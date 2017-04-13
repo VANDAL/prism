@@ -6,11 +6,12 @@
 namespace STGen
 {
 
-////////////////////////////////////////////////////////////
-// Compressed ThreadContext
-////////////////////////////////////////////////////////////
-ThreadContextCompressed::ThreadContextCompressed(TID tid, unsigned primsPerStCompEv,
-                                                 std::string outputPath, std::string loggerType)
+//-----------------------------------------------------------------------------
+/** Compressed ThreadContext **/
+ThreadContextCompressed::ThreadContextCompressed(TID tid,
+                                                 unsigned primsPerStCompEv,
+                                                 std::string outputPath,
+                                                 std::string loggerType)
     : tid(tid)
     , primsPerStCompEv(primsPerStCompEv)
 {
@@ -51,11 +52,12 @@ auto ThreadContextCompressed::onFlop() -> void
 }
 
 
-auto ThreadContextCompressed::onRead(const Addr start, const Addr bytes) -> void
+auto ThreadContextCompressed::onRead(Addr start, Addr bytes) -> void
 {
     bool isCommEdge = false;
 
-    /* Each byte of the read may have been touched by a different thread */
+    /* Each byte of the read may have been touched by a different thread,
+     * so check the reader/writer pair for each byte */
     for (Addr i = 0; i < bytes; ++i)
     {
         Addr addr = start + i;
@@ -67,14 +69,15 @@ auto ThreadContextCompressed::onRead(const Addr start, const Addr bytes) -> void
             if (isReader == false)
                 shadow.updateReader(addr, 1, tid);
 
-            if /*comm edge*/((isReader == false) && (writer != tid) && (writer != SO_UNDEF))
-            /* XXX treat a read/write to an address with UNDEF thread as a local compute event */
+            if ((isReader == false) && (writer != tid) && (writer != SO_UNDEF))
             {
                 isCommEdge = true;
                 stComm.addEdge(writer, shadow.getWriterEID(addr), addr);
             }
-            else/*local load, comp event*/
+            else /*local load, comp event*/
             {
+                /* treat a read/write to an address with
+                 * UNDEF thread as a local compute event */
                 stComp.updateReads(addr, 1);
             }
         }
@@ -107,7 +110,7 @@ auto ThreadContextCompressed::onRead(const Addr start, const Addr bytes) -> void
 }
 
 
-auto ThreadContextCompressed::onWrite(const Addr start, const Addr bytes) -> void
+auto ThreadContextCompressed::onWrite(Addr start, Addr bytes) -> void
 {
     stComp.incWrites();
     stComp.updateWrites(start, bytes);
@@ -204,10 +207,10 @@ auto ThreadContextCompressed::getLogger(TID tid, std::string outputPath,
 }
 
 
-////////////////////////////////////////////////////////////
-// Uncompressed ThreadContext
-////////////////////////////////////////////////////////////
-ThreadContextUncompressed::ThreadContextUncompressed(TID tid, unsigned primsPerStCompEv,
+//-----------------------------------------------------------------------------
+/** Uncompressed ThreadContext **/
+ThreadContextUncompressed::ThreadContextUncompressed(TID tid,
+                                                     unsigned primsPerStCompEv,
                                                      std::string outputPath,
                                                      std::string loggerType)
     : tid(tid)
@@ -247,7 +250,7 @@ auto ThreadContextUncompressed::onFlop() -> void
 }
 
 
-auto ThreadContextUncompressed::onRead(const Addr start, const Addr bytes) -> void
+auto ThreadContextUncompressed::onRead(Addr start, Addr bytes) -> void
 {
     /* Each byte of the read may have been touched by a different thread
      * If one byte was touched by another thread, consider the entire read
@@ -296,7 +299,7 @@ auto ThreadContextUncompressed::onRead(const Addr start, const Addr bytes) -> vo
 }
 
 
-auto ThreadContextUncompressed::onWrite(const Addr start, const Addr bytes) -> void
+auto ThreadContextUncompressed::onWrite(Addr start, Addr bytes) -> void
 {
     compFlush(STCompEventUncompressed::MemType::WRITE, start, start+bytes-1);
 
@@ -347,6 +350,7 @@ auto ThreadContextUncompressed::compFlush(STCompEventUncompressed::MemType type,
 auto ThreadContextUncompressed::compFlushIfActive() -> void
 {
     /* Flushing for reason other than memory access */
+
     if (stComp.isActive == true)
     {
         logger->flush(stComp.iops, stComp.flops,

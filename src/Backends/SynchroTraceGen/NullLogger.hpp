@@ -6,9 +6,9 @@
 namespace STGen
 {
 
-/* for testing */
 class NullLogger : public STLoggerCompressed, public STLoggerUncompressed
 {
+    /* for testing */
   public:
     NullLogger(TID tid, std::string outputPath)
     {

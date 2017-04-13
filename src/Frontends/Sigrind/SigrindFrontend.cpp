@@ -1,6 +1,6 @@
+#include "Core/SigiLog.hpp"
 #include "AvailableFrontends.hpp"
 #include "DbiFrontend.hpp"
-#include "Sigil2/SigiLog.hpp"
 #include "elfio/elfio.hpp"
 #include "whereami.h"
 #include "glob.h"
@@ -249,5 +249,5 @@ auto startSigrind(FrontendStarterArgs args) -> FrontendIfaceGenerator
     else
         fatal(std::string("sigrind fork failed -- ") + strerror(errno));
 
-    return [=]{ return std::make_shared<DBIFrontend>(ipcDir); };
+    return [=]{ return std::make_unique<DBIFrontend>(ipcDir); };
 }

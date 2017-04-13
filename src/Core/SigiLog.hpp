@@ -6,7 +6,8 @@
 
 namespace
 {
-/* TODO clean up shared logger */
+/* TODO(cleanup) : singleton is used for cleaner interface to spdlog,
+ * but it's a bit messy */
 class SigilLogger
 {
   public:

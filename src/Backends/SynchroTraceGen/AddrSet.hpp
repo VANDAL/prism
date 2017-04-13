@@ -8,9 +8,10 @@
 namespace STGen
 {
 
-/* Helper class to track unique ranges of addresses */
 struct AddrSet
 {
+    /* Helper class to track unique ranges of addresses */
+
     using AddrRange = std::pair<Addr, Addr>;
     using Ranges = std::multiset<AddrRange, std::less<AddrRange>, MemoryPool<AddrRange>>;
 
@@ -22,12 +23,12 @@ struct AddrSet
     void clear() { ms.clear(); }
 
 
-    /* A range of addresses is specified by the pair.
-     * This call inserts that range and merges existing ranges
-     * in order to keep the set of addresses unique */
     void insert(const AddrRange &range)
     {
-        /* TODO Someone please clean up flow control */
+        /* A range of addresses is specified by the pair.
+         * This call inserts that range and merges existing ranges
+         * in order to keep the set of addresses unique */
+        /* TODO(someday) Someone please clean up flow control */
 
         assert(range.first <= range.second);
 

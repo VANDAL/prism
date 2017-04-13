@@ -9,25 +9,13 @@ namespace STGen
 
 STShadowMemory ThreadContext::shadow;
 
-template <typename T>
-struct FunctionSignature;
-
-template <typename R, typename... Args>
-struct FunctionSignature<R (Args...)>
-{
-    using type = R(Args...);
-};
-
 template <class TCxtType>
 auto ThreadContextGenerator(TID tid,
                             unsigned primsPerStCompEv,
                             std::string outputPath,
                             std::string loggerType) -> std::unique_ptr<ThreadContext>
 {
-    return std::unique_ptr<ThreadContext>(new TCxtType{tid,
-                                                       primsPerStCompEv,
-                                                       outputPath,
-                                                       loggerType});
+    return std::make_unique<TCxtType>(tid, primsPerStCompEv, outputPath, loggerType);
 }
 using TCxtGenerator = std::function<decltype(ThreadContextGenerator<ThreadContextCompressed>)>;
 
@@ -47,13 +35,12 @@ BarrierList barrierParticipants;
 }; //end namespace
 
 
-////////////////////////////////////////////////////////////
-// Synchronization Event Handling
-////////////////////////////////////////////////////////////
-auto EventHandlers::onSyncEv(const SglSyncEv &ev) -> void
+//-----------------------------------------------------------------------------
+/** Synchronization Event Handling **/
+auto EventHandlers::onSyncEv(const SglSyncEvWrapper &ev) -> void
 {
-    auto syncType = ev.type;
-    auto syncID = ev.data[0];
+    auto syncType = ev.type();
+    auto syncID = ev.data();
 
     /* Update global state */
     if (syncType == SyncTypeEnum::SGLPRIM_SYNC_SWAP)
@@ -67,57 +54,39 @@ auto EventHandlers::onSyncEv(const SglSyncEv &ev) -> void
 }
 
 
-////////////////////////////////////////////////////////////
-// Compute Event Handling
-////////////////////////////////////////////////////////////
-auto EventHandlers::onCompEv(const SglCompEv &ev) -> void
+//-----------------------------------------------------------------------------
+/** Compute Event Handling **/
+auto EventHandlers::onCompEv(const SglCompEvWrapper &ev) -> void
 {
-    switch (ev.type)
-    {
-    case CompCostTypeEnum::SGLPRIM_COMP_IOP:
+    if (ev.isIOP())
         cachedTCxt->onIop();
-        break;
-    case CompCostTypeEnum::SGLPRIM_COMP_FLOP:
+    else if (ev.isFLOP())
         cachedTCxt->onFlop();
-        break;
-    default:
-        break;
-    }
 }
 
 
-////////////////////////////////////////////////////////////
-// Memory Event Handling
-////////////////////////////////////////////////////////////
-auto EventHandlers::onMemEv(const SglMemEv &ev) -> void
+//-----------------------------------------------------------------------------
+/** Memory Event Handling **/
+auto EventHandlers::onMemEv(const SglMemEvWrapper &ev) -> void
 {
-    switch (ev.type)
-    {
-    case MemTypeEnum::SGLPRIM_MEM_LOAD:
-        cachedTCxt->onRead(ev.begin_addr, ev.size);
-        break;
-    case MemTypeEnum::SGLPRIM_MEM_STORE:
-        cachedTCxt->onWrite(ev.begin_addr, ev.size);
-        break;
-    default:
-        break;
-    }
+    if (ev.isLoad())
+        cachedTCxt->onRead(ev.addr(), ev.bytes());
+    else if (ev.isStore())
+        cachedTCxt->onWrite(ev.addr(), ev.bytes());
 }
 
 
-////////////////////////////////////////////////////////////
-// Context Event Handling (instructions)
-////////////////////////////////////////////////////////////
-auto EventHandlers::onCxtEv(const SglCxtEv &ev) -> void
+//-----------------------------------------------------------------------------
+/** Context Event Handling (instructions) **/
+auto EventHandlers::onCxtEv(const SglCxtEvWrapper &ev) -> void
 {
-    if (ev.type == CxtTypeEnum::SGLPRIM_CXT_INSTR)
+    if (ev.type() == CxtTypeEnum::SGLPRIM_CXT_INSTR)
         cachedTCxt->onInstr();
 }
 
 
-////////////////////////////////////////////////////////////
-// Flush final stats and data
-////////////////////////////////////////////////////////////
+//-----------------------------------------------------------------------------
+/** Flush final stats and data **/
 EventHandlers::~EventHandlers()
 {
     std::lock_guard<std::mutex> lock(gMtx);
@@ -136,9 +105,8 @@ auto onExit() -> void
 }
 
 
-////////////////////////////////////////////////////////////
-// Synchronization Event Helpers
-////////////////////////////////////////////////////////////
+//-----------------------------------------------------------------------------
+/** Synchronization Event Helpers **/
 auto EventHandlers::onSwapTCxt(TID newTID) -> void
 {
     assert(newTID > 0);
@@ -195,27 +163,28 @@ auto EventHandlers::onBarrier(Addr data) -> void
 
 auto EventHandlers::convertAndFlush(SyncType type, Addr data) -> void
 {
-/* Convert sync type to SynchroTrace's expected value
- * From SynchroTraceSim source code:
- *
- * #define P_MUTEX_LK              1
- * #define P_MUTEX_ULK             2
- * #define P_CREATE                3
- * #define P_JOIN                  4
- * #define P_BARRIER_WT            5
- * #define P_COND_WT               6
- * #define P_COND_SG               7
- * #define P_COND_BROAD            8
- * #define P_SPIN_LK               9
- * #define P_SPIN_ULK              10
- * #define P_SEM_INIT              11
- * #define P_SEM_WAIT              12
- * #define P_SEM_POST              13
- * #define P_SEM_GETV              14
- * #define P_SEM_DEST              15
- *
- * NOTE: semaphores are not supported in SynchroTraceGen
- */
+    /* Convert sync type to SynchroTrace's expected value
+     * From SynchroTraceSim source code:
+     *
+     * #define P_MUTEX_LK              1
+     * #define P_MUTEX_ULK             2
+     * #define P_CREATE                3
+     * #define P_JOIN                  4
+     * #define P_BARRIER_WT            5
+     * #define P_COND_WT               6
+     * #define P_COND_SG               7
+     * #define P_COND_BROAD            8
+     * #define P_SPIN_LK               9
+     * #define P_SPIN_ULK              10
+     * #define P_SEM_INIT              11
+     * #define P_SEM_WAIT              12
+     * #define P_SEM_POST              13
+     * #define P_SEM_GETV              14
+     * #define P_SEM_DEST              15
+     *
+     * NOTE: semaphores are not supported in SynchroTraceGen
+     */
+
     SyncType stSyncType = 0;
     switch (type)
     {
@@ -258,9 +227,8 @@ auto EventHandlers::convertAndFlush(SyncType type, Addr data) -> void
 }
 
 
-////////////////////////////////////////////////////////////
-// Option Parsing
-////////////////////////////////////////////////////////////
+//-----------------------------------------------------------------------------
+/** Option Parsing **/
 auto parseAll(const Args &args, const std::set<char> &options) -> std::map<char, std::string>
 {
     std::map<char, std::string> matches;

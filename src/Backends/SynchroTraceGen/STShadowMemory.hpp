@@ -7,9 +7,6 @@
 #include <cstdint>
 #include <bitset>
 
-/* In SynchroTraceGen, 'shadow state' takes the form of
- * the most recent thread to {read from, write to} an address.
- */
 
 namespace STGen
 {
@@ -21,6 +18,8 @@ static_assert((MAX_THREADS > 0) && !(MAX_THREADS & (MAX_THREADS-1)),
 
 class STShadowMemory
 {
+    /* In SynchroTraceGen, 'shadow state' takes the form of
+     * the most recent thread to {read from, write to} an address.  */
   public:
     auto updateWriter(Addr addr, ByteCount bytes, TID tid, EID eid) -> void;
     auto updateReader(Addr addr, ByteCount bytes, TID tid) -> void;
@@ -30,17 +29,17 @@ class STShadowMemory
 
     struct ShadowObject
     {
-        /* Last thread/event to read/write to addr */
         TID last_writer{SO_UNDEF};
         EID last_writer_event{0};
+        /* Last thread/event to read/write to addr */
     
+        std::bitset<MAX_THREADS> last_readers;
         /* A bitfield -- each bit represents a thread
          * each address can have multiple readers */
-        std::bitset<MAX_THREADS> last_readers;
     };
 
-    /* ADDR_BITS = 48, PM_BITS = 28 is more appropriate for DynamoRIO */
     ShadowMemory<ShadowObject, 38, 20> sm;
+    /* ADDR_BITS = 48, PM_BITS = 28 is more appropriate for DynamoRIO */
 };
 
 

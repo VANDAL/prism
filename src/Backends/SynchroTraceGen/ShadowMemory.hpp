@@ -1,15 +1,16 @@
 #ifndef SHADOWMEMORY_H
 #define SHADOWMEMORY_H
 
-#include "Sigil2/Primitive.h" // PtrVal type
-#include "Sigil2/SigiLog.hpp"
+#include "Core/Primitive.h" // PtrVal type
+#include "Core/SigiLog.hpp"
 
 #include <limits>
 #include <vector>
 #include <memory>
 #include <stdexcept>
 
-/* Shadow Memory tracks 'shadow state' for an address.
+/**
+ * Shadow Memory tracks 'shadow state' for an address.
  * For further clarification, please read,
  * "How to Shadow Every Byte of Memory Used by a Program"
  * by Nicholas Nethercote and Julian Seward
@@ -39,28 +40,24 @@ class ShadowMemory
     ShadowMemory(const ShadowMemory &) = delete;
     ShadowMemory &operator=(const ShadowMemory &) = delete;
 
-    /* Configuration */
     const Addr addr_bits;
     const Addr pm_bits;
     const Addr sm_bits;
     const Addr pm_size;
     const Addr sm_size;
+    /* Configuration */
 
-    /* Implementation */
     using SecondaryMap = std::vector<SO>;
-    using SecondaryMapPtr = std::unique_ptr<SecondaryMap>;
-    using PrimaryMap = std::vector<SecondaryMapPtr>;
+    using PrimaryMap = std::vector<std::unique_ptr<SecondaryMap>>;
+    /* Implementation */
 
     auto operator[](Addr addr) -> SO&
     {
         if ((addr >> addr_bits) == 0)
         {
-            SecondaryMapPtr &ptr = pm[addr >> sm_bits]; /* PM offset */
+            auto &ptr = pm[addr >> sm_bits]; /* PM offset */
             if (ptr == nullptr)
-            {
-                ptr = SecondaryMapPtr(new SecondaryMap(sm_size));
-                assert(ptr != nullptr);
-            }
+                ptr = std::make_unique<SecondaryMap>(sm_size);
 
             return (*ptr)[addr & ((1ULL << sm_bits) - 1)]; /* SM offset */
         }
