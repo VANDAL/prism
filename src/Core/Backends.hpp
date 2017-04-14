@@ -12,10 +12,10 @@ class BackendIface
 {
   public:
     virtual ~BackendIface() {}
-    virtual void onMemEv(const SglMemEvWrapper &) {}
-    virtual void onCompEv(const SglCompEvWrapper &) {}
-    virtual void onSyncEv(const SglSyncEvWrapper &) {}
-    virtual void onCxtEv(const SglCxtEvWrapper &) {}
+    virtual void onMemEv(const sigil2::MemEvent &) {}
+    virtual void onCompEv(const sigil2::CompEvent &) {}
+    virtual void onSyncEv(const sigil2::SyncEvent &) {}
+    virtual void onCxtEv(const sigil2::CxtEvent &) {}
     virtual void onCFEv(const SglCFEv &) {}
 };
 

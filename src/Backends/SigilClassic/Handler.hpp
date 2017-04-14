@@ -10,10 +10,10 @@ namespace SigilClassic
 /* interface to Sigil2 */
 class Handler : public BackendIface
 {
-    virtual auto onSyncEv(const SglSyncEvWrapper &ev) -> void override;
-    virtual auto onCompEv(const SglCompEvWrapper &ev) -> void override;
-    virtual auto onMemEv(const SglMemEvWrapper &ev) -> void override;
-    virtual auto onCxtEv(const SglCxtEvWrapper &ev) -> void override;
+    virtual auto onSyncEv(const sigil2::SyncEvent &ev) -> void override;
+    virtual auto onCompEv(const sigil2::CompEvent &ev) -> void override;
+    virtual auto onMemEv(const sigil2::MemEvent &ev) -> void override;
+    virtual auto onCxtEv(const sigil2::CxtEvent &ev) -> void override;
 
     SigilContext cxt;
 };

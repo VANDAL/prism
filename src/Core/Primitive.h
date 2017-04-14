@@ -100,10 +100,14 @@ struct SglSyncEv
 } __attribute__ ((__packed__));
 
 #ifdef __cplusplus
+} // end extern "C"
+
 using GetNameBase = std::function<const char*(void)>;
-struct SglMemEvWrapper
+namespace sigil2
 {
-    SglMemEvWrapper(const SglMemEv &ev) : ev(ev){}
+struct MemEvent
+{
+    MemEvent(const SglMemEv &ev) : ev(ev){}
     auto type() const -> MemType { return ev.type; }
     auto isLoad() const -> bool { return (ev.type == MemTypeEnum::SGLPRIM_MEM_LOAD); }
     auto isStore() const -> bool { return (ev.type == MemTypeEnum::SGLPRIM_MEM_STORE); }
@@ -112,18 +116,18 @@ struct SglMemEvWrapper
     const SglMemEv &ev;
 };
 
-struct SglCompEvWrapper
+struct CompEvent
 {
-    SglCompEvWrapper(const SglCompEv &ev) : ev(ev) {}
+    CompEvent(const SglCompEv &ev) : ev(ev) {}
     auto type() const -> CompCostType { return ev.type; }
     auto isIOP() const -> bool { return (ev.type == CompCostTypeEnum::SGLPRIM_COMP_IOP); }
     auto isFLOP() const -> bool { return (ev.type == CompCostTypeEnum::SGLPRIM_COMP_FLOP); }
     const SglCompEv &ev;
 };
 
-struct SglCxtEvWrapper
+struct CxtEvent
 {
-    SglCxtEvWrapper(const SglCxtEv &ev, const GetNameBase &nameBase)
+    CxtEvent(const SglCxtEv &ev, const GetNameBase &nameBase)
         : ev(ev), nameBase(nameBase) {}
     auto type() const -> CxtType { return ev.type; }
     auto id() const -> PtrVal { return ev.id; }
@@ -133,16 +137,15 @@ struct SglCxtEvWrapper
     const GetNameBase &nameBase;
 };
 
-struct SglSyncEvWrapper
+struct SyncEvent
 {
-    SglSyncEvWrapper(const SglSyncEv &ev) : ev(ev) {}
+    SyncEvent(const SglSyncEv &ev) : ev(ev) {}
     auto type() const -> SyncType { return ev.type; }
     auto data() const -> SyncID { return ev.data[0]; }
     auto dataExtra() const -> SyncID { return ev.data[1]; }
     const SglSyncEv &ev;
 };
-
-} // end extern "C"
+}; //end namespace sigil2
 #endif
 
 #endif //_SGLPRIM_H_

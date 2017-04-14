@@ -37,7 +37,7 @@ BarrierList barrierParticipants;
 
 //-----------------------------------------------------------------------------
 /** Synchronization Event Handling **/
-auto EventHandlers::onSyncEv(const SglSyncEvWrapper &ev) -> void
+auto EventHandlers::onSyncEv(const sigil2::SyncEvent &ev) -> void
 {
     auto syncType = ev.type();
     auto syncID = ev.data();
@@ -56,7 +56,7 @@ auto EventHandlers::onSyncEv(const SglSyncEvWrapper &ev) -> void
 
 //-----------------------------------------------------------------------------
 /** Compute Event Handling **/
-auto EventHandlers::onCompEv(const SglCompEvWrapper &ev) -> void
+auto EventHandlers::onCompEv(const sigil2::CompEvent &ev) -> void
 {
     if (ev.isIOP())
         cachedTCxt->onIop();
@@ -67,7 +67,7 @@ auto EventHandlers::onCompEv(const SglCompEvWrapper &ev) -> void
 
 //-----------------------------------------------------------------------------
 /** Memory Event Handling **/
-auto EventHandlers::onMemEv(const SglMemEvWrapper &ev) -> void
+auto EventHandlers::onMemEv(const sigil2::MemEvent &ev) -> void
 {
     if (ev.isLoad())
         cachedTCxt->onRead(ev.addr(), ev.bytes());
@@ -78,7 +78,7 @@ auto EventHandlers::onMemEv(const SglMemEvWrapper &ev) -> void
 
 //-----------------------------------------------------------------------------
 /** Context Event Handling (instructions) **/
-auto EventHandlers::onCxtEv(const SglCxtEvWrapper &ev) -> void
+auto EventHandlers::onCxtEv(const sigil2::CxtEvent &ev) -> void
 {
     if (ev.type() == CxtTypeEnum::SGLPRIM_CXT_INSTR)
         cachedTCxt->onInstr();

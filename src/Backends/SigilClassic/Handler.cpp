@@ -3,7 +3,7 @@
 namespace SigilClassic
 {
 
-auto Handler::onSyncEv(const SglSyncEvWrapper &ev) -> void
+auto Handler::onSyncEv(const sigil2::SyncEvent &ev) -> void
 {
     /* save the current entity so that it can
      * resume when the thread switches back */
@@ -15,7 +15,7 @@ auto Handler::onSyncEv(const SglSyncEvWrapper &ev) -> void
 }
 
 
-auto Handler::onCompEv(const SglCompEvWrapper &ev) -> void
+auto Handler::onCompEv(const sigil2::CompEvent &ev) -> void
 {
     /* aggregate compute costs for the current entity */
     if (ev.isIOP())
@@ -25,7 +25,7 @@ auto Handler::onCompEv(const SglCompEvWrapper &ev) -> void
 }
 
 
-auto Handler::onMemEv(const SglMemEvWrapper &ev) -> void
+auto Handler::onMemEv(const sigil2::MemEvent &ev) -> void
 {
     /* - check shadow memory
      * - update the metadata for the current entity */
@@ -36,7 +36,7 @@ auto Handler::onMemEv(const SglMemEvWrapper &ev) -> void
 }
 
 
-auto Handler::onCxtEv(const SglCxtEvWrapper &ev) -> void
+auto Handler::onCxtEv(const sigil2::CxtEvent &ev) -> void
 {
     /* Use function contexts as Sigil1 'entities' */
     switch(ev.type())

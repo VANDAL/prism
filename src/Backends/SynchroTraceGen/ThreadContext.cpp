@@ -197,11 +197,11 @@ auto ThreadContextCompressed::getLogger(TID tid, std::string outputPath,
                                         std::string loggerType) -> LogPtr
 {
     if (loggerType == "text")
-        return LogPtr(new TextLoggerCompressed{tid, outputPath});
+        return std::make_unique<TextLoggerCompressed>(tid, outputPath);
     else if (loggerType == "capnp")
-        return LogPtr(new CapnLoggerCompressed{tid, outputPath});
+        return std::make_unique<CapnLoggerCompressed>(tid, outputPath);
     else if (loggerType == "null")
-        return LogPtr(new NullLogger{tid, outputPath});
+        return std::make_unique<NullLogger>(tid, outputPath);
     else
         fatal("Invalid logger type");
 }
@@ -382,11 +382,11 @@ auto ThreadContextUncompressed::getLogger(TID tid, std::string outputPath,
                                           std::string loggerType) -> LogPtr
 {
     if (loggerType == "text")
-        return LogPtr(new TextLoggerUncompressed{tid, outputPath});
+        return std::make_unique<TextLoggerUncompressed>(tid, outputPath);
     else if (loggerType == "capnp")
-        return LogPtr(new CapnLoggerUncompressed{tid, outputPath});
+        return std::make_unique<CapnLoggerUncompressed>(tid, outputPath);
     else if (loggerType == "null")
-        return LogPtr(new NullLogger{tid, outputPath});
+        return std::make_unique<NullLogger>(tid, outputPath);
     else
         fatal("Invalid logger type");
 }

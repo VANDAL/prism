@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="https://cdn.rawgit.com/VANDAL/Sigil2/master/docs/sigil2-torus.png" alt="mmmmmm">
+  <img src="https://cdn.rawgit.com/VANDAL/sigil2/master/docs/sigil2-torus.png" alt="mmmmmm">
 </p>
 <p align="center"> <i>mmmmm...Sigil...</i>  </p>
 
 
 [![BSD licensed](https://img.shields.io/badge/license-BSD-blue.svg)](./COPYING)
-[![Build Status](https://travis-ci.org/VANDAL/Sigil2.svg?branch=master)](https://travis-ci.org/VANDAL/Sigil2)
+[![Build Status](https://travis-ci.org/VANDAL/sigil2.svg?branch=master)](https://travis-ci.org/VANDAL/sigil2)
 [![Docs Status](https://readthedocs.org/projects/sigil2/badge)](http://sigil2.readthedocs.io/en/latest)
 
 Provides an extensible interface to  **architecture-agnostic** application events.

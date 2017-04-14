@@ -42,7 +42,7 @@ Contribute
 
 Source Code: https://git.io/sigil2
 
-Issue Tracker: https://github.com/VANDAL/Sigil2/issues
+Issue Tracker: https://github.com/VANDAL/sigil2/issues
 
 Support
 -------
@@ -54,4 +54,4 @@ License
 
 This project is licensed under the `BSD3 license`_.
 
-.. _`BSD3 license`: https://github.com/mikelui/Sigil2/blob/master/COPYING
+.. _`BSD3 license`: https://github.com/mikelui/sigil2/blob/master/COPYING

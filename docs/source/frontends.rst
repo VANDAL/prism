@@ -102,7 +102,7 @@ Static Library Support
 ~~~~~~~~~~~~~~~~~~~~~~
 
 Applications that use a static Pthreads or OpenMP library must be manually linked with the
-Sigil2-Valgrind wrapper archive.
+sigil2-valgrind wrapper archive.
 This can be found in ``BUILD_DIR/bin/libsglwrapper.a``.
 
 For example: ::

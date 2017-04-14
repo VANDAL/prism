@@ -15,8 +15,8 @@ Building Sigil2
 
 Clone and build |project| from source::
 
-  $ git clone https://github.com/mdlui/Sigil2
-  $ cd Sigil2
+  $ git clone https://github.com/VANDAL/sigil2
+  $ cd sigil2
   $ mkdir build && cd build
   $ cmake{3} .. # CentOS 7 requires cmake3 package
   $ make -j
@@ -57,9 +57,9 @@ Dependencies
 +-------------+----------+
 | PACKAGE     | VERSION  |
 +=============+==========+
-| gcc/g++     |  4.8+    |
+| gcc/g++     |  5+      |
 +-------------+----------+
-| cmake       |  2.8.11+ |
+| cmake       |  3.1.3+  |
 +-------------+----------+
 | make        |  3.8+    |
 +-------------+----------+
