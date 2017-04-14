@@ -1,17 +1,19 @@
-#include "Sigil2Parser.hpp"
+#include "Parser.hpp"
 
 using SigiLog::warn;
 using SigiLog::fatal;
 
+namespace sigil2
+{
 
 //-----------------------------------------------------------------------------
-/** Sigil2Parser **/
-constexpr char Sigil2Parser::frontendOption[];
-constexpr char Sigil2Parser::backendOption[];
-constexpr char Sigil2Parser::executableOption[];
-constexpr char Sigil2Parser::numThreadsOption[];
+/** Parser **/
+constexpr char Parser::frontendOption[];
+constexpr char Parser::backendOption[];
+constexpr char Parser::executableOption[];
+constexpr char Parser::numThreadsOption[];
 
-Sigil2Parser::Sigil2Parser(int argc, char* argv[])
+Parser::Parser(int argc, char* argv[])
 {
     parser.addGroup(frontendOption, false);
     parser.addGroup(backendOption, true);
@@ -20,7 +22,7 @@ Sigil2Parser::Sigil2Parser(int argc, char* argv[])
 }
 
 
-auto Sigil2Parser::threads() -> int
+auto Parser::threads() -> int
 {
     /* The number of 'threads' Sigil2 will use */
     /* MDL20160805 Currently only valid with DynamoRIO frontend.
@@ -42,24 +44,24 @@ auto Sigil2Parser::threads() -> int
 }
 
 
-auto Sigil2Parser::backend() -> ToolTuple
+auto Parser::backend() -> ToolTuple
 {
     return tool(backendOption);
 }
 
 
-auto Sigil2Parser::frontend() -> ToolTuple
+auto Parser::frontend() -> ToolTuple
 {
     return tool(frontendOption);
 }
 
 
-auto Sigil2Parser::executable() -> Args
+auto Parser::executable() -> Args
 {
     return parser.getGroup(executableOption);
 }
 
-auto Sigil2Parser::tool(const char* option) -> ToolTuple
+auto Parser::tool(const char* option) -> ToolTuple
 {
     const auto args = parser.getGroup(option);
 
@@ -237,3 +239,5 @@ auto ArgGroup::parse(int argc, char* argv[]) -> bool
 
     return true;
 }
+
+}; //end namespace sigil2

@@ -3,17 +3,17 @@
 
 #include "Backends.hpp"
 #include "Frontends.hpp"
-#include "Sigil2Parser.hpp"
+#include "Parser.hpp"
 
-class Sigil2Config
+namespace sigil2
+{
+
+class Config
 {
   public:
-    Sigil2Config()  = default;
-    ~Sigil2Config() = default;
-
-    auto registerBackend(ToolName name, Backend be)             -> Sigil2Config&;
-    auto registerFrontend(ToolName name, FrontendStarter start) -> Sigil2Config&;
-    auto parseCommandLine(int argc, char* argv[])               -> Sigil2Config&;
+    auto registerBackend(ToolName name, Backend be)             -> Config&;
+    auto registerFrontend(ToolName name, FrontendStarter start) -> Config&;
+    auto parseCommandLine(int argc, char* argv[])               -> Config&;
     /* configuration */
 
     auto threads()       const -> int                    { return _threads;  }
@@ -29,5 +29,7 @@ class Sigil2Config
     Backend _backend;
     FrontendStarterWrapper _startFrontend;
 };
+
+}; //end namespace sigil2
 
 #endif

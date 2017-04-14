@@ -1,4 +1,4 @@
-#include "Sigil2Config.hpp"
+#include "Config.hpp"
 #include "EventBuffer.h"
 
 #include "Frontends/AvailableFrontends.hpp"
@@ -12,13 +12,12 @@
 #endif
 
 using namespace SigiLog;
-
+using namespace sigil2;
 
 namespace
 {
-auto startSigil2(const Sigil2Config& config) -> int;
+auto startSigil2(const Config& config) -> int;
 };
-
 
 int main(int argc, char* argv[])
 {
@@ -35,7 +34,7 @@ int main(int argc, char* argv[])
     std::cerr << title;
 #endif
 
-    auto config = Sigil2Config()
+    auto config = Config()
         .registerFrontend("valgrind",
                           startSigrind)
         .registerFrontend("dynamorio",
@@ -123,7 +122,7 @@ auto consumeEvents(BackendIfaceGenerator createBEIface,
 }
 
 
-auto startSigil2(const Sigil2Config& config) -> int
+auto startSigil2(const Config& config) -> int
 {
     auto threads       = config.threads();
     auto backend       = config.backend();

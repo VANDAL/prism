@@ -1,6 +1,9 @@
-#include "Sigil2Config.hpp"
+#include "Config.hpp"
 
-auto Sigil2Config::registerBackend(ToolName name, Backend be) -> Sigil2Config&
+namespace sigil2
+{
+
+auto Config::registerBackend(ToolName name, Backend be) -> Config&
 {
     std::transform(name.begin(), name.end(), name.begin(), ::tolower);
     beFactory.add(name, be.generator);
@@ -10,16 +13,16 @@ auto Sigil2Config::registerBackend(ToolName name, Backend be) -> Sigil2Config&
 }
 
 
-auto Sigil2Config::registerFrontend(ToolName name, FrontendStarter start) -> Sigil2Config&
+auto Config::registerFrontend(ToolName name, FrontendStarter start) -> Config&
 {
     std::transform(name.begin(), name.end(), name.begin(), ::tolower);
     feFactory.add(name, start);
     return *this;
 }
 
-auto Sigil2Config::parseCommandLine(int argc, char* argv[]) -> Sigil2Config&
+auto Config::parseCommandLine(int argc, char* argv[]) -> Config&
 {
-    Sigil2Parser parser(argc, argv);
+    Parser parser(argc, argv);
 
     _threads = parser.threads();
 
@@ -36,3 +39,5 @@ auto Sigil2Config::parseCommandLine(int argc, char* argv[]) -> Sigil2Config&
 
     return *this;
 }
+
+}; //end namespace sigil2

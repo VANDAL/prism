@@ -6,6 +6,9 @@
 #include "Backends.hpp"
 #include "Frontends.hpp"
 
+namespace sigil2
+{
+
 class ArgGroup
 {
     /* Sigil2 groups options together based on their position
@@ -18,13 +21,12 @@ class ArgGroup
      *
      * Only allow long opts to avoid ambiguities.
      * Additionally imposes the constraint that the frontend,
-     * backend, and executable cannot have any options that match */
+     * backend, and executable cannot have any options that match.
+     *
+     * TODO(cleanup) check if this comment is still valid */
 
     using Args = std::vector<std::string>;
   public:
-    ArgGroup()  = default;
-    ~ArgGroup() = default;
-
     auto addGroup(const std::string &group, bool required) -> void;
     /* Add a long option to group args */
 
@@ -55,12 +57,11 @@ class ArgGroup
 };
 
 
-class Sigil2Parser
+class Parser
 {
     using ToolTuple = std::pair<std::string, std::vector<std::string>>;
   public:
-    Sigil2Parser(int argc, char* argv[]);
-    ~Sigil2Parser() = default;
+    Parser(int argc, char* argv[]);
 
     auto threads()    -> int;
     auto backend()    -> ToolTuple;
@@ -78,5 +79,7 @@ class Sigil2Parser
     static constexpr char executableOption[] = "executable";
     static constexpr char numThreadsOption[] = "num-threads";
 };
+
+}; //end namespace sigil2
 
 #endif

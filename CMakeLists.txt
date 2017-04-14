@@ -45,8 +45,8 @@ set(SOURCES
 	${THIRD_PARTY}/whereami/src/whereami.c
 	${SRC_CORE}/Backends.cpp
 	${SRC_CORE}/Frontends.cpp
-	${SRC_CORE}/Sigil2Parser.cpp
-	${SRC_CORE}/Sigil2Config.cpp
+	${SRC_CORE}/Parser.cpp
+	${SRC_CORE}/Config.cpp
 	${SRC_CORE}/main.cpp)
 add_executable(sigil2 ${SOURCES})
 target_link_libraries(sigil2 pthread rt)
