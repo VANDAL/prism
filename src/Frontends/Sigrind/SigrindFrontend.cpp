@@ -1,6 +1,6 @@
 #include "Core/SigiLog.hpp"
 #include "AvailableFrontends.hpp"
-#include "DbiFrontend.hpp"
+#include "FrontendShmemIPC.hpp"
 #include "elfio/elfio.hpp"
 #include "whereami.h"
 #include "glob.h"
@@ -9,7 +9,6 @@
 
 using SigiLog::fatal;
 using SigiLog::warn;
-namespace Cleanup { extern std::string ipcDir; };
 
 ////////////////////////////////////////////////////////////
 // Launching Valgrind
@@ -83,7 +82,7 @@ auto gccWarn(const std::vector<std::string> &userExec) -> void
 }
 
 
-auto configureWrapperEnv(std::string sigil2_path) -> void
+auto configureWrapperEnv(const std::string &sigil2_path) -> void
 {
     /* check if function capture is available
      * (for multithreaded lib intercepts) */
@@ -249,5 +248,5 @@ auto startSigrind(FrontendStarterArgs args) -> FrontendIfaceGenerator
     else
         fatal(std::string("sigrind fork failed -- ") + strerror(errno));
 
-    return [=]{ return std::make_unique<DBIFrontend>(ipcDir); };
+    return [=]{ return std::make_unique<ShmemFrontend<Sigil2DBISharedData>>(ipcDir); };
 }

@@ -22,13 +22,14 @@
  * These primitives are created in the event generation front end,
  * and passed to Sigil's event manager for further processing
  *
- * XXX MDL20160814
- * These primitives are used both for presentation to a user-backend, and also
- * used for IPC between event generation frontends. Due to the pure amount and
- * variety of events transferred, each struct is packed to save memory space.
- * Aligned structs would not be of much benefit anyway, due to the way events
- * are serialized in shared memory. Otherwise, there is an overhead of up to 8x
- * in memory space (using unions and padding structs for alignment in arrays).
+ * XXX MDL20170414
+ * These primitives are used for IPC between event generation frontends.
+ * Due to the pure amount and variety of events transferred,
+ * each struct is packed to save memory space.
+ * Aligned structs do not have much performance benefit anyway, on x86,
+ * due to the way events are serially written to and read in shared memory.
+ * Otherwise, there is an overhead of up to 8x in memory space
+ * (using unions and padding structs for alignment in arrays).
  */
 
 #include <stdint.h>
@@ -72,9 +73,10 @@ struct SglCompEv
     uint8_t      size;
 } __attribute__ ((__packed__));
 
-/* unimplemented */
 struct SglCFEv
 {
+    /* unimplemented */
+
     CFType type;
 } __attribute__ ((__packed__));
 
@@ -105,6 +107,10 @@ struct SglSyncEv
 using GetNameBase = std::function<const char*(void)>;
 namespace sigil2
 {
+/* XXX MDL20170414
+ * Microtests show insignificant performance overhead for using const wrapper
+ * structs that only access data from the underlying raw event data */
+
 struct MemEvent
 {
     MemEvent(const SglMemEv &ev) : ev(ev){}

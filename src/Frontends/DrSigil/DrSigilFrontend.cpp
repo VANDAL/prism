@@ -1,13 +1,12 @@
 #include "Core/SigiLog.hpp"
 #include "AvailableFrontends.hpp"
-#include "DbiFrontend.hpp"
+#include "FrontendShmemIPC.hpp"
 #include "whereami.h"
 #include "glob.h"
 
 #define DIR_TEMPLATE "/sgl2-XXXXXX"
 
 using SigiLog::fatal;
-namespace Cleanup { extern std::string ipcDir; };
 
 ////////////////////////////////////////////////////////////
 // Launching DynamoRIO
@@ -144,5 +143,5 @@ auto startDrSigil(FrontendStarterArgs args) -> FrontendIfaceGenerator
     else
         fatal(std::string("sigrind fork failed -- ") + strerror(errno));
 
-    return [=]{ return std::make_unique<DBIFrontend>(ipcDir); };
+    return [=]{ return std::make_unique<ShmemFrontend<Sigil2DBISharedData>>(ipcDir); };
 }
