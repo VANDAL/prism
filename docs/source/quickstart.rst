@@ -6,12 +6,19 @@ This document will go through building and running |project|.
 Building Sigil2
 ---------------
 
+.. note:: The default compiler for **CentOS 7** and older (gcc <5)
+          does not support **C++14**. Install and enable the offical
+          Devtoolset_ before compiling.
+
+.. _Devtoolset:
+   https://www.softwarecollections.org/en/scls/rhscl/devtoolset-6/
+
 Clone and build |project| from source::
 
   $ git clone https://github.com/mdlui/Sigil2
   $ cd Sigil2
   $ mkdir build && cd build
-  $ cmake ..
+  $ cmake{3} .. # CentOS 7 requires cmake3 package
   $ make -j
 
 This creates a ``build/bin`` folder containing the :program:`sigil2` executable.
@@ -33,7 +40,7 @@ events into a special event trace that is used in SynchroTrace_.
 More information on backends are in :ref:`backends`.
 
 .. _SynchroTrace:
-   http://vlsi.ece.drexel.edu/index.php/SynchroTrace
+   http://vlsi.ece.drexel.edu/index.php/SynchroTrace/
 
 A third option ``frontend`` will change the underlying method
 for observing the application. By default, this is Valgrind_: ::
