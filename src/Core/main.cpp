@@ -40,22 +40,22 @@ int main(int argc, char* argv[])
         .registerFrontend("dynamorio",
                           startDrSigil)
         .registerBackend("stgen",
-                         {[]() {return std::make_unique<::STGen::EventHandlers>();},
+                         {[]{return std::make_unique<::STGen::EventHandlers>();},
                           ::STGen::onParse,
                           ::STGen::onExit,
                           {},})
         .registerBackend("simplecount",
-                         {[]() {return std::make_unique<::SimpleCount::Handler>();},
+                         {[]{return std::make_unique<::SimpleCount::Handler>();},
                           {},
                           ::SimpleCount::cleanup,
                           {},})
         .registerBackend("sigilclassic",
-                         {[]() {return std::make_unique<::SigilClassic::Handler>();},
+                         {[]{return std::make_unique<::SigilClassic::Handler>();},
                           {},
                           {},
                           {},})
         .registerBackend("null",
-                         {[]() {return std::make_unique<::BackendIface>();},
+                         {[]{return std::make_unique<::BackendIface>();},
                           {},
                           {},
                           {},})

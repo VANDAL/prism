@@ -14,13 +14,14 @@ Provides an extensible interface to  **architecture-agnostic** application event
 
 ## Install
 :boom: C++14 compiler support is required :boom:  
-See [CentOS 7 Compiler Support](#centos-7-compiler-support)
+:boom: cmake v3 required :boom:  
+See [CentOS 7 Support](#centos-7-support)
 ```
-$ git clone https://github.com/VANDAL/sigil2
-$ cd sigil2
-$ mkdir build && cd build
-$ cmake{3} .. # cmake3 needed for CentOS7
-$ make -j
+git clone https://github.com/VANDAL/sigil2
+cd sigil2
+mkdir build && cd build
+cmake ..
+make -j
 ```
 The executable will be put in `build/bin`. It can be run in place, or the folder can be moved to an install location.
 
@@ -56,11 +57,13 @@ A third frontend argument can be supplied
 | 64-bit **CentOS 7** on **x86\_64** | untested  | not supported |
 | YMMV: ARM                          |           |               |
 
-### CentOS 7 Compiler Support
+### CentOS 7 Support
 ```
-# yum install centos-release-scl
-# yum install devtoolset-6
-$ scl enable devtoolset-6 bash
+sudo yum install epel-release
+sudo yum install centos-release-scl
+sudo yum install cmake3 devtoolset-6
+scl enable devtoolset-6 bash
+# use cmake3 and build and usual
 ```
 See [Software Collections](https://www.softwarecollections.org/en/scls/rhscl/devtoolset-6/) for details.
 

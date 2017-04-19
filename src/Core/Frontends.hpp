@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <atomic>
 #include <cstdint>
 
 using ToolName = std::string;
@@ -38,7 +39,7 @@ class FrontendIface
   protected:
     const unsigned uid;
   private:
-    static unsigned uidCount;
+    static std::atomic<unsigned> uidCount;
 };
 
 
