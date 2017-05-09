@@ -25,7 +25,7 @@ get_filename_component(SRC_BACKENDS  src/Backends  ABSOLUTE)
 get_filename_component(THIRD_PARTY   third_party   ABSOLUTE)
 
 execute_process(
-	COMMAND git submodule update --init ${INCLUDES_DIR}
+	COMMAND git submodule update --init ${THIRD_PARTY}
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 include_directories(${THIRD_PARTY}/Catch/include)
 include_directories(${THIRD_PARTY}/whereami/src)
@@ -37,6 +37,22 @@ include_directories(${THIRD_PARTY}/capnproto/include)
 include_directories(src)
 include_directories(${SRC_FRONTENDS})
 include_directories(${SRC_BACKENDS})
+
+######################
+# Optional Frontends #
+######################
+if(NOT DYNAMORIO_ENABLE)
+	set(DYNAMORIO_ENABLE FALSE CACHE BOOL
+		"Enable DynamoRIO frontend"
+		FORCE)
+endif(NOT DYNAMORIO_ENABLE)
+
+if(NOT PERF_ENABLE)
+	set(PERF_ENABLE FALSE CACHE BOOL
+		"Enable perf frontend"
+		FORCE)
+endif(NOT PERF_ENABLE)
+
 
 ################
 # Build Sigil2 #

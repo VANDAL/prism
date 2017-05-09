@@ -1,6 +1,11 @@
 # dynamorio frontend -- drsigil
 set(SOURCES DrSigilFrontend.cpp)
 add_library(DrSigil OBJECT ${SOURCES})
+target_compile_definitions(DrSigil PRIVATE $<$<BOOL:${DYNAMORIO_ENABLE}>:DYNAMORIO_ENABLE>)
+
+
+###############################################################################
+if (${DYNAMORIO_ENABLE})
 
 # DynamoRIO
 set(DR_PATH ${SRC_FRONTENDS}/DrSigil)
@@ -39,3 +44,5 @@ ExternalProject_Add_Step(dynamorio post_install
 	DEPENDEES install)
 
 add_dependencies(DrSigil dynamorio)
+
+endif (${DYNAMORIO_ENABLE})

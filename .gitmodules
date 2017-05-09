@@ -19,3 +19,12 @@
 [submodule "src/Backends/SynchroTraceGen/capnproto"]
 	path = src/Backends/SynchroTraceGen/capnproto
 	url = https://github.com/sandstorm-io/capnproto/
+[submodule "src/Frontends/PerfPT/linux"]
+	path = src/Frontends/PerfPT/linux
+	url = https://github.com/torvalds/linux
+[submodule "src/Frontends/PerfPT/xed"]
+	path = src/Frontends/PerfPT/xed
+	url = https://github.com/intelxed/xed
+[submodule "src/Frontends/PerfPT/mbuild"]
+	path = src/Frontends/PerfPT/mbuild
+	url = https://github.com/intelxed/mbuild

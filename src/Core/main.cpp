@@ -39,6 +39,8 @@ int main(int argc, char* argv[])
                           startSigrind)
         .registerFrontend("dynamorio",
                           startDrSigil)
+        .registerFrontend("perf",
+                          startPerfPT)
         .registerBackend("stgen",
                          {[]{return std::make_unique<::STGen::EventHandlers>();},
                           ::STGen::onParse,

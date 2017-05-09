@@ -105,7 +105,8 @@ enum SyncTypeEnum
 //-----------------------------------------------------------------------------
 enum EvTagEnum
 {
-    SGL_MEM_TAG = 0,
+    SGL_EV_UNDEF = 0,
+    SGL_MEM_TAG,
     SGL_COMP_TAG,
     SGL_CF_TAG,
     SGL_CXT_TAG,

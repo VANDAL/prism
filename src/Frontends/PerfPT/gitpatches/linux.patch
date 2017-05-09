@@ -1,0 +1,1120 @@
+From 758f9c336e0f5163676e5265d1ab60a90a0d910d Mon Sep 17 00:00:00 2001
+From: Mike Lui <mike.d.lui@gmail.com>
+Date: Tue, 9 May 2017 13:52:01 -0400
+Subject: [PATCH] patch
+
+---
+ tools/perf/Build                     |  10 ++
+ tools/perf/Makefile.perf             |   5 +
+ tools/perf/builtin-script.c          | 276 ++++++++++++++++++++++++++++-
+ tools/perf/sigil2/Build              |  16 ++
+ tools/perf/sigil2/ipc.c              | 298 +++++++++++++++++++++++++++++++
+ tools/perf/sigil2/ipc.h              |  20 +++
+ tools/perf/sigil2/xed-decode-cache.c | 333 +++++++++++++++++++++++++++++++++++
+ tools/perf/sigil2/xed-decode-cache.h |  42 +++++
+ 8 files changed, 999 insertions(+), 1 deletion(-)
+ create mode 100644 tools/perf/sigil2/Build
+ create mode 100644 tools/perf/sigil2/ipc.c
+ create mode 100644 tools/perf/sigil2/ipc.h
+ create mode 100644 tools/perf/sigil2/xed-decode-cache.c
+ create mode 100644 tools/perf/sigil2/xed-decode-cache.h
+
+diff --git a/tools/perf/Build b/tools/perf/Build
+index b12d5d1..cc0055e 100644
+--- a/tools/perf/Build
++++ b/tools/perf/Build
+@@ -50,4 +50,14 @@ libperf-y += arch/
+ libperf-y += ui/
+ libperf-y += scripts/
+ 
++SIGIL2_SRC_PATH := $(shell readlink -f ~mdl45/github/sigil2/src)
++libperf-y += sigil2/
++CFLAGS_builtin-script.o += -Wno-unused-variable
++CFLAGS_builtin-script.o += -Wno-unused-but-set-variable
++CFLAGS_builtin-script.o += -Wno-old-style-declaration
++CFLAGS_builtin-script.o += -Wno-switch-enum
++CFLAGS_builtin-script.o += -Wno-packed
++CFLAGS_builtin-script.o += -I/home/mdl45/github/xed_build/kits/xed-install-base-2017-04-18-lin-x86-64/include
++CFLAGS_builtin-script.o += "-I$(SIGIL2_SRC_PATH)"
++
+ gtk-y += ui/gtk/
+diff --git a/tools/perf/Makefile.perf b/tools/perf/Makefile.perf
+index 8bb16aa..198207b 100644
+--- a/tools/perf/Makefile.perf
++++ b/tools/perf/Makefile.perf
+@@ -369,6 +369,11 @@ ifeq ($(USE_CXX), 1)
+   LIBS += -lstdc++
+ endif
+ 
++##############
++# SIGIL2 XED #
++##############
++LIBS += -L../../../xed/obj -lxed
++
+ export INSTALL SHELL_PATH
+ 
+ ### Build rules
+diff --git a/tools/perf/builtin-script.c b/tools/perf/builtin-script.c
+index 2f3ff69..2bed944 100644
+--- a/tools/perf/builtin-script.c
++++ b/tools/perf/builtin-script.c
+@@ -29,6 +29,14 @@
+ #include "asm/bug.h"
+ #include "util/mem-events.h"
+ 
++#include "sigil2/ipc.h"
++#include "sigil2/xed-decode-cache.h"
++#include "xed/xed-interface.h"
++static char const               *sigil2; // IPC dir
++//static xed_decode_cache_t       xed_cache;
++//static xed_decode_cache_entry_t *xed_cache_entries;
++//static xed_uint32_t const       xed_n_entries = 1 << 20;
++
+ static char const		*script_name;
+ static char const		*generate_script_lang;
+ static bool			debug_mode;
+@@ -940,6 +948,208 @@ static void process_event(struct perf_script *script,
+ 	printf("\n");
+ }
+ 
++
++static inline Bool is_call(int flags)
++{
++	return (PERF_IP_FLAG_BRANCH | PERF_IP_FLAG_CALL) == flags;
++}
++
++
++static inline Bool is_return(int flags)
++{
++	return (PERF_IP_FLAG_BRANCH | PERF_IP_FLAG_RETURN) == flags;
++}
++
++
++static const char* pthread_funcs[] =
++{
++	"pthread_create",
++	"pthread_join",
++	"pthread_barrier_wait",
++	"pthread_mutex_lock",
++	"pthread_mutex_unlock",
++	"pthread_cond_wait",
++	"pthread_cond_signal",
++	"pthread_cond_broadcast",
++	"pthread_spin_lock",
++	"pthread_spin_unlock",
++	0
++};
++
++
++static Bool sigil2_pthread_check(const char* funcname)
++{
++	const char *pthreadname = NULL;
++	for (int i=0; (pthreadname=pthread_funcs[i]); ++i)
++		if (strcmp(pthreadname, funcname) == 0)
++			return TRUE;
++	return FALSE;
++}
++
++
++struct sigil2_inactive_threads_t {
++	/* event generation for threads are
++	 * inactive during pthread events */
++	struct sigil2_inactive_threads_t *next;
++	unsigned tid;
++};
++
++
++static void sigil2_process_event(struct perf_script *script,
++				 struct perf_sample *sample,
++				 struct perf_evsel *evsel,
++				 struct addr_location *al)
++{
++	static unsigned sgl2_current_tid = 0;
++	static struct sigil2_inactive_threads_t *inactives_head = NULL;
++	static Bool sgl2_active = TRUE;
++
++	struct thread *thread = al->thread;
++	struct perf_event_attr *attr = &evsel->attr;
++
++	int flags = sample->flags & ~PERF_IP_FLAG_IN_TX;
++
++	(void)(script);
++
++	if (output[attr->type].fields == 0)
++		return;
++
++	if (!(attr->type == PERF_TYPE_HARDWARE &&
++	      attr->config & PERF_COUNT_HW_INSTRUCTIONS))
++		return;
++
++	if (!al->sym)
++		return;
++
++	/**
++	 * Assume this is run with the following flags:
++	 *  -F comm,pid,tid,dso,ip,sym,insn,time --itrace=i1ibcrx
++	 *  So each sample we have:
++	 *  - instruction
++	 *  - function name
++	 *  - file
++	 *  We'll break down each instruction to get IOP/FLOP/mem data
++	 *  Function names will be used to infer synchronization data,
++	 *  e.g. pthread function enters
++	 */
++
++	// TODO(someday) review for corner cases with thread swaps and
++	// de/reactivates
++
++	//---------------------------------------------------------------------
++	// Check thread id
++	if (sgl2_current_tid == 0 ||
++	    sgl2_current_tid != sample->tid) {
++		struct sigil2_inactive_threads_t *cur = inactives_head;
++		sgl2_current_tid = sample->tid;
++		sgl2_sync_event(SGLPRIM_SYNC_SWAP, sgl2_current_tid);
++		sgl2_active = TRUE;
++		while (cur) {
++			if (cur->tid == sgl2_current_tid) {
++				sgl2_active = FALSE;
++				break;
++			}
++			cur = cur->next;
++		}
++	}
++
++	//---------------------------------------------------------------------
++	// Check if we're in a synchronization event
++	if (!sgl2_active) {
++		/* We have to handle a situation where the perf event
++		 * stream switches to an active thread before it 'reactivates' */
++		if (is_return(flags) && sigil2_pthread_check(al->sym->name)) {
++			struct sigil2_inactive_threads_t **cur = &inactives_head;
++			while (*cur) {
++				if ((*cur)->tid == sgl2_current_tid) {
++					struct sigil2_inactive_threads_t *tmp = *cur;
++					*cur = (*cur)->next;
++					free(tmp);
++					break;
++				}
++				cur = &((*cur)->next);
++			}
++			sgl2_active = TRUE;
++		} else {
++			/* Not active yet */
++			return;
++		}
++	}
++
++	{
++	/* For some reason, 'call' and 'return' insns are sampled twice.
++	 * To workaround, we use a simple state machine. */
++	#define NOT_SEEN    0 /* initial state */
++	#define IGNORE_SEEN 1 /* first seen, ignore this */
++	#define JUST_SEEN   2 /* second time seen in a row */
++	static int was_entered = NOT_SEEN;
++	static int was_exited = NOT_SEEN;
++
++	/* TODO(soon) do a sanity state check/assert somewhere,
++	 * for call/return status */
++
++	if (is_call(flags) && (was_entered == NOT_SEEN)) {
++		was_entered = IGNORE_SEEN;
++	} else if (was_entered == IGNORE_SEEN) {
++		was_entered = JUST_SEEN;
++	} else if (was_entered == JUST_SEEN) {
++		was_entered = NOT_SEEN;
++		/* If we do not deactivate on a pthread event,
++		 * we can see some corner cases where there
++		 * are calls without returns (e.g. starting
++		 * the new thread */
++
++		sgl2_func_enter(al->sym->name);
++		if (sigil2_pthread_check(al->sym->name)) {
++			if (inactives_head == NULL) {
++				inactives_head = malloc(sizeof(struct sigil2_inactive_threads_t));
++				inactives_head->tid = sample->tid;
++				inactives_head->next = NULL;
++			} else {
++				struct sigil2_inactive_threads_t *cur = inactives_head;
++				while (cur->next != NULL)
++					cur = cur->next;
++				cur->next = malloc(sizeof(struct sigil2_inactive_threads_t));
++				cur->next->tid = sample->tid;
++				cur->next->next = NULL;
++			}
++			sgl2_active = FALSE;
++		}
++	}
++
++	if (is_return(flags) && (was_exited == NOT_SEEN)) {
++		was_exited = IGNORE_SEEN;
++		sgl2_func_exit(al->sym->name);
++	} else if (was_exited == IGNORE_SEEN) {
++		was_exited = JUST_SEEN;
++	} else if (was_exited == JUST_SEEN) {
++		was_exited = NOT_SEEN;
++	}
++
++	if ((PERF_IP_FLAG_BRANCH | PERF_IP_FLAG_CONDITIONAL) == flags) {
++		/* Do nothing for now (control flow unimplemented) */
++	}
++	}
++
++	{
++	unsigned long secs;
++	unsigned long long nsecs;
++
++	// the binary (command) 
++	// thread__comm_str(thread)
++	
++	// nanoseconds timestamp
++	nsecs = sample->time;
++	secs = nsecs / NSEC_PER_SEC;
++	nsecs -= secs * NSEC_PER_SEC;
++	// TODO send timestamp info
++	}
++
++	//---------------------------------------------------------------------
++	// Break the instruction into Sigil2 events
++	xed_decode_to_sigil2(sample->ip, sample->insn_len, (xed_uint8_t*)sample->insn);
++}
++
+ static struct scripting_ops	*scripting_ops;
+ 
+ static void __process_stat(struct perf_evsel *counter, u64 tstamp)
+@@ -1053,6 +1263,51 @@ static int process_sample_event(struct perf_tool *tool,
+ 	return 0;
+ }
+ 
++static int sigil2_process_sample_event(struct perf_tool *tool,
++				       union perf_event *event,
++				       struct perf_sample *sample,
++				       struct perf_evsel *evsel,
++				       struct machine *machine)
++{
++	struct perf_script *scr = container_of(tool, struct perf_script, tool);
++	struct addr_location al;
++
++	if (perf_time__skip_sample(&scr->ptime, sample->time))
++		return 0;
++
++	if (debug_mode) {
++		if (sample->time < last_timestamp) {
++			pr_err("Samples misordered, previous: %" PRIu64
++				" this: %" PRIu64 "\n", last_timestamp,
++				sample->time);
++			nr_unordered++;
++		}
++		last_timestamp = sample->time;
++		return 0;
++	}
++
++	if (machine__resolve(machine, &al, sample) < 0) {
++		pr_err("problem processing %d event, skipping it.\n",
++		       event->header.type);
++		return -1;
++	}
++
++	if (al.filtered)
++		goto out_put;
++
++	if (cpu_list && !test_bit(sample->cpu, cpu_bitmap))
++		goto out_put;
++
++	if (scripting_ops)
++		scripting_ops->process_event(event, sample, evsel, &al);
++	else
++		sigil2_process_event(scr, sample, evsel, &al);
++
++out_put:
++	addr_location__put(&al);
++	return 0;
++}
++
+ static int process_attr(struct perf_tool *tool, union perf_event *event,
+ 			struct perf_evlist **pevlist)
+ {
+@@ -2120,6 +2375,7 @@ int cmd_script(int argc, const char **argv, const char *prefix __maybe_unused)
+ 		.mode = PERF_DATA_MODE_READ,
+ 	};
+ 	const struct option options[] = {
++	OPT_STRING('0', "sigil2", &sigil2, "path", "Sigil2 IPC path"),
+ 	OPT_BOOLEAN('D', "dump-raw-trace", &dump_trace,
+ 		    "dump raw trace in ASCII"),
+ 	OPT_INCR('v', "verbose", &verbose,
+@@ -2180,7 +2436,7 @@ int cmd_script(int argc, const char **argv, const char *prefix __maybe_unused)
+ 		    "Show the mmap events"),
+ 	OPT_BOOLEAN('\0', "show-switch-events", &script.show_switch_events,
+ 		    "Show context switch events (if recorded)"),
+-	OPT_BOOLEAN('f', "force", &file.force, "don't complain, do it"),
++	OPT_BOOLEAN('f', "force", &symbol_conf.force, "don't complain, do it"),
+ 	OPT_BOOLEAN(0, "ns", &nanosecs,
+ 		    "Use 9 decimal places when displaying time"),
+ 	OPT_CALLBACK_OPTARG(0, "itrace", &itrace_synth_opts, NULL, "opts",
+@@ -2211,6 +2467,24 @@ int cmd_script(int argc, const char **argv, const char *prefix __maybe_unused)
+ 	argc = parse_options_subcommand(argc, argv, options, script_subcommands, script_usage,
+ 			     PARSE_OPT_STOP_AT_NON_OPTION);
+ 
++	/* ignore other options and run sigil2 specific proessing
++	 * when generating the trace */
++	if (sigil2) {
++		if (sgl2_init(sigil2) < 0) {
++			fprintf(stderr,
++				"Error initializing Sigil2 IPC\n");
++			//return -1;
++		}
++
++		script.tool.sample = sigil2_process_sample_event;
++
++		/* init xed here? */
++		xed_tables_init();
++		xed_cached_decode_init();
++		//xed_cache_entries = malloc(xed_n_entries * sizeof(xed_decode_cache_entry_t));
++		//xed_decode_cache_initialize(&xed_cache, xed_cache_entries, xed_n_entries);
++	}
++
+ 	file.path = input_name;
+ 
+ 	if (argc > 1 && !strncmp(argv[0], "rec", strlen("rec"))) {
+diff --git a/tools/perf/sigil2/Build b/tools/perf/sigil2/Build
+new file mode 100644
+index 0000000..3051c02
+--- /dev/null
++++ b/tools/perf/sigil2/Build
+@@ -0,0 +1,16 @@
++libperf-y += ipc.o
++libperf-y += xed-decode-cache.o
++
++SIGIL2_SRC_PATH := $(shell readlink -f ~mdl45/github/sigil2/src)
++
++CFLAGS_ipc.o += "-I$(SIGIL2_SRC_PATH)"
++CFLAGS_ipc.o += "-Wno-packed"
++CFLAGS_ipc.o += "-Wno-unused-function"
++
++CFLAGS_xed-decode-cache.o += "-Wno-old-style-declaration"
++CFLAGS_xed-decode-cache.o += "-Wno-old-style-definition"
++CFLAGS_xed-decode-cache.o += "-Wno-switch-enum"
++CFLAGS_xed-decode-cache.o += "-Wno-declaration-after-statement"
++CFLAGS_xed-decode-cache.o += "-Wno-packed"
++CFLAGS_xed-decode-cache.o += "-I$(SIGIL2_SRC_PATH)"
++CFLAGS_xed-decode-cache.o += "-I/home/mdl45/github/xed_build/kits/xed-install-base-2017-04-18-lin-x86-64/include"
+diff --git a/tools/perf/sigil2/ipc.c b/tools/perf/sigil2/ipc.c
+new file mode 100644
+index 0000000..05034f0
+--- /dev/null
++++ b/tools/perf/sigil2/ipc.c
+@@ -0,0 +1,298 @@
++#include "ipc.h"
++#include <string.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <sys/mman.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <assert.h>
++
++// MDL20170414 only supports 1 channel/thread
++
++#define SIGIL2_SUCCESS 0
++#define SIGIL2_ERROR -1
++
++static struct ipc_config {
++	char *ipc_dir;
++	char *shmem_path;
++	char *full_pipe_path;
++	char *empty_pipe_path;
++} config;
++
++static struct ipc_state {
++	int   shmem_fd;
++	int   full_pipe_fd;
++	int   empty_pipe_fd;
++	Sigil2PerfSharedData *shmem;
++
++	EventBuffer *curr_ev_buf;
++	SglEvVariant *curr_ev_slot;
++	Bool is_full[SIGIL2_IPC_BUFFERS];
++	size_t curr_idx;
++} state;
++
++
++static void sgl2_init_config(const char* dir)
++{
++	int shmem_path_len, full_pipe_path_len, empty_pipe_path_len;
++	const char *channel_id;
++	assert(config.ipc_dir == NULL);
++
++	config.ipc_dir = strdup(dir);
++	channel_id = "-0";
++
++	shmem_path_len = strlen(config.ipc_dir) + strlen("/") +\
++			     strlen(SIGIL2_IPC_SHMEM_BASENAME) +\
++			     strlen(channel_id) + 1;
++	config.shmem_path = malloc(shmem_path_len);
++	snprintf(config.shmem_path, shmem_path_len,
++		 "%s/%s%s", config.ipc_dir, SIGIL2_IPC_SHMEM_BASENAME, channel_id);
++
++	full_pipe_path_len = strlen(config.ipc_dir) + strlen("/") +\
++				 sizeof(SIGIL2_IPC_FULLFIFO_BASENAME) +\
++				 strlen(channel_id) + 1;
++	config.full_pipe_path = malloc(full_pipe_path_len);
++	snprintf(config.full_pipe_path, shmem_path_len,
++		 "%s/%s%s", config.ipc_dir, SIGIL2_IPC_FULLFIFO_BASENAME, channel_id);
++
++	empty_pipe_path_len = strlen(config.ipc_dir) + strlen("/") +\
++				  sizeof(SIGIL2_IPC_EMPTYFIFO_BASENAME) +\
++				  strlen(channel_id) + 1;
++	config.empty_pipe_path = malloc(empty_pipe_path_len);
++	snprintf(config.empty_pipe_path, shmem_path_len,
++		 "%s/%s%s", config.ipc_dir, SIGIL2_IPC_EMPTYFIFO_BASENAME, channel_id);
++}
++
++
++static void sgl2_free_config(void)
++{
++	assert(config.ipc_dir != NULL &&
++	       config.shmem_path != NULL &&
++	       config.full_pipe_path != NULL &&
++	       config.empty_pipe_path != NULL);
++	free(config.ipc_dir);
++	free(config.shmem_path);
++	free(config.full_pipe_path);
++	free(config.empty_pipe_path);
++}
++
++
++#ifndef SIGIL2_MOCK
++static int sgl2_init_shmem(void)
++{
++	assert(config.shmem_path != NULL);
++	state.shmem_fd = open(config.shmem_path, O_RDWR);
++	if (state.shmem_fd < 0) {
++		fprintf(stderr,
++			"Error opening Sigil2 shared memory %s\n",
++			config.shmem_path);
++		return SIGIL2_ERROR;
++	}
++
++	state.shmem = mmap(NULL, sizeof(Sigil2PerfSharedData),
++			   PROT_READ | PROT_WRITE, MAP_SHARED,
++			   state.shmem_fd, 0);
++	if (state.shmem == MAP_FAILED) {
++		fprintf(stderr,
++			"Error mapping Sigil2 shared memory %s\n",
++			config.shmem_path);
++		return SIGIL2_ERROR;
++	}
++
++	return SIGIL2_SUCCESS;
++}
++#else
++static int sgl2_init_shmem(void)
++{
++	state.shmem = malloc(sizeof(Sigil2PerfSharedData));
++	return SIGIL2_SUCCESS;
++}
++#endif // SIGIL2_MOCK
++
++
++static void set_and_init_buffer(void)
++{
++	state.curr_ev_buf = state.shmem->eventBuffers + state.curr_idx;
++	state.curr_ev_buf->used = 0;
++	state.curr_ev_slot  = state.curr_ev_buf->events + state.curr_ev_buf->used;
++}
++
++
++static void set_next_buffer(void)
++{
++	/* circular buffer */
++	state.curr_idx++;
++	if (state.curr_idx == SIGIL2_IPC_BUFFERS)
++		state.curr_idx = 0;
++
++	if (state.is_full[state.curr_idx]) {
++		unsigned buf_idx;
++		int res = read(state.empty_pipe_fd, &buf_idx, sizeof(buf_idx));
++		if (res != sizeof(buf_idx)) {
++			fprintf(stderr, "Perf - error reading from Sigil2 empty fifo\n");
++			exit(1);
++		}
++
++		state.is_full[buf_idx] = FALSE;
++		state.curr_idx = buf_idx;
++	}
++
++	set_and_init_buffer();
++}
++
++
++static void sgl2_free_shmem(void)
++{
++	close(state.shmem_fd);
++	munmap(state.shmem, sizeof(Sigil2PerfSharedData));
++}
++
++
++static int sgl2_init_pipes(void)
++{
++	state.full_pipe_fd = open(config.full_pipe_path, O_WRONLY);
++	state.empty_pipe_fd = open(config.empty_pipe_path, O_RDONLY);
++
++	if (state.full_pipe_fd < 0 ||
++	    state.empty_pipe_fd < 0)
++		return SIGIL2_ERROR;
++
++	return SIGIL2_SUCCESS;
++}
++
++
++static void sgl2_free_pipes(void)
++{
++	close(state.full_pipe_fd);
++	close(state.empty_pipe_fd);
++}
++
++
++int sgl2_init(const char* ipc_dir)
++{
++	sgl2_init_config(ipc_dir);
++
++	sgl2_init_shmem();
++	if (sgl2_init_shmem() < 0 ||
++	    sgl2_init_pipes() < 0)
++		return SIGIL2_ERROR;
++
++	for (int i=0; i<SIGIL2_IPC_BUFFERS; ++i)
++		state.is_full[i] = FALSE;
++	state.curr_ev_buf = NULL;
++	state.curr_ev_slot = NULL;
++	state.curr_idx = 0;
++	set_and_init_buffer();
++
++	return SIGIL2_SUCCESS;
++}
++
++
++void sgl2_finish(void)
++{
++	sgl2_free_pipes();
++	sgl2_free_shmem();
++	sgl2_free_config();
++}
++
++
++static inline Bool is_events_full(void)
++{
++	return state.curr_ev_buf->used == SIGIL2_EVENTS_BUFFER_SIZE;
++}
++
++
++static void flush_to_sigil2(void)
++{
++	int res;
++
++	state.is_full[state.curr_idx] = TRUE;
++	res = write(state.full_pipe_fd, &state.curr_idx, sizeof(state.curr_idx));
++	if (res != sizeof(state.curr_idx)) {
++		fprintf(stderr, "Perf - error writing to Sigil2 full fifo\n");
++		exit(1);
++	}
++}
++
++
++#ifndef SIGIL2_MOCK
++static SglEvVariant* acq_event_slot(void)
++{
++	if (is_events_full()) {
++		flush_to_sigil2();
++		set_next_buffer();
++	}
++
++	state.curr_ev_buf->used++;
++	return state.curr_ev_slot++;
++}
++#else
++static SglEvVariant* acq_event_slot(void)
++{
++	static unsigned long used_dummy = 0;
++	used_dummy = (used_dummy+1) & (SIGIL2_EVENTS_BUFFER_SIZE-1);
++	return &state.shmem->eventBuffers[0].events[used_dummy];
++}
++#endif // SIGIL2_MOCK
++
++
++void sgl2_comp_event(CompCostType type)
++{
++	SglEvVariant *ev = acq_event_slot();
++	ev->tag = SGL_COMP_TAG;
++	ev->comp.type = type;
++}
++
++
++void sgl2_mem_event(MemType type)
++{
++	SglEvVariant *ev = acq_event_slot();
++	ev->tag = SGL_MEM_TAG;
++	ev->mem.type = type;
++}
++
++
++void sgl2_instr_event(PtrVal ip)
++{
++	SglEvVariant *ev = acq_event_slot();
++	ev->tag = SGL_CXT_TAG;
++	ev->cxt.type = SGLPRIM_CXT_INSTR;
++	ev->cxt.id = ip;
++}
++
++
++void sgl2_sync_event(SyncType type, SyncID data)
++{
++	/* No way to capture sync values (mutex, cond var, et al).
++	 * Maybe check ip prior to function enter. */
++	SglEvVariant *ev = acq_event_slot();
++	ev->tag = SGL_SYNC_TAG;
++	ev->sync.type = type;
++	ev->sync.data[0] = data;
++}
++
++
++void sgl2_func_enter(const char *name)
++{
++	SglEvVariant *ev = acq_event_slot();
++	ev->tag = SGL_CXT_TAG;
++	ev->cxt.type = SGLPRIM_CXT_FUNC_ENTER;
++
++	(void)(name);
++	//printf("entered %s\n", name);
++	// ...
++}
++
++
++void sgl2_func_exit(const char *name)
++{
++	SglEvVariant *ev = acq_event_slot();
++	ev->tag = SGL_CXT_TAG;
++	ev->cxt.type = SGLPRIM_CXT_FUNC_EXIT;
++
++	(void)(name);
++//	printf("exited  %s\n", name);
++	// ...
++}
+diff --git a/tools/perf/sigil2/ipc.h b/tools/perf/sigil2/ipc.h
+new file mode 100644
+index 0000000..571e18f
+--- /dev/null
++++ b/tools/perf/sigil2/ipc.h
+@@ -0,0 +1,20 @@
++#ifndef SIGIL2_PERF_IPC_H
++#define SIGIL2_PERF_IPC_H
++
++#include "Frontends/CommonShmemIPC.h"
++
++typedef char Bool;
++#define TRUE 1
++#define FALSE 0
++
++int sgl2_init(const char* ipc_dir);
++void sgl2_finish(void);
++
++void sgl2_comp_event(CompCostType type);
++void sgl2_mem_event(MemType type);
++void sgl2_instr_event(PtrVal ip);
++void sgl2_sync_event(SyncType type, SyncID data);
++void sgl2_func_enter(const char *name);
++void sgl2_func_exit(const char *name);
++
++#endif
+diff --git a/tools/perf/sigil2/xed-decode-cache.c b/tools/perf/sigil2/xed-decode-cache.c
+new file mode 100644
+index 0000000..ea7dbf9
+--- /dev/null
++++ b/tools/perf/sigil2/xed-decode-cache.c
+@@ -0,0 +1,333 @@
++#include "ipc.h"
++#include "xed-decode-cache.h"
++#include "stdio.h"
++#include "stdio.h"
++#include "string.h"
++#include "stdlib.h"
++
++void xed_decode_to_sigil2(PtrVal ip, unsigned len, const xed_uint8_t *insn)
++{
++	const xed_machine_mode_enum_t mmode = XED_MACHINE_MODE_LONG_64;
++	const xed_address_width_enum_t stack_addr_width = XED_ADDRESS_WIDTH_64b;
++
++	xed_error_enum_t xed_err;
++	xed_decoded_inst_t xedd;
++	xed_iclass_enum_t class;
++	Bool iop = FALSE;
++	Bool flop = FALSE;
++	unsigned reads = 0;
++	unsigned writes = 0;
++
++	xed_decoded_inst_zero(&xedd);
++	xed_decoded_inst_set_mode(&xedd, mmode, stack_addr_width);
++
++	xed_err = xed_decode(&xedd, insn, len);
++	if (xed_err) {
++		printf("Error decoding insn:");
++		for (unsigned i=0; i<len; ++i)
++			printf(" %02x", insn[i]);
++		printf("\n");
++
++		return;
++	}
++
++	/* IOP/FLOP */
++	class = xed_decoded_inst_get_iclass(&xedd);
++	switch(class)
++	{
++	case XED_ICLASS_ADD:
++	case XED_ICLASS_ADC:
++	case XED_ICLASS_SUB:
++	case XED_ICLASS_DIV:
++	case XED_ICLASS_MUL:
++	case XED_ICLASS_NEG:
++	case XED_ICLASS_AND:
++	case XED_ICLASS_OR:
++		iop = TRUE;
++		break;
++	case XED_ICLASS_ADDSS:
++	case XED_ICLASS_ADDSD:
++	case XED_ICLASS_ADDPS:
++	case XED_ICLASS_ADDPD:
++	case XED_ICLASS_ADDSUBPS:
++	case XED_ICLASS_ADDSUBPD:
++	case XED_ICLASS_ANDNPD:
++	case XED_ICLASS_ANDNPS:
++	case XED_ICLASS_ORPS:
++	case XED_ICLASS_ORPD:
++	case XED_ICLASS_MULSS:
++	case XED_ICLASS_MULSD:
++	case XED_ICLASS_MULPS:
++	case XED_ICLASS_MULPD:
++		flop = TRUE;
++		break;
++	case XED_ICLASS_NOP:
++	case XED_ICLASS_NOP2:
++	case XED_ICLASS_NOP3:
++	case XED_ICLASS_NOP4:
++	case XED_ICLASS_NOP5:
++	case XED_ICLASS_NOP6:
++	case XED_ICLASS_NOP7:
++	case XED_ICLASS_NOP8:
++	case XED_ICLASS_NOP9:
++		return;
++		break;
++	default:
++		break;
++	}
++
++	/* read/write */
++	unsigned memops = xed_decoded_inst_number_of_memory_operands(&xedd);
++	for (int i=memops; i>0; --i) {
++		/* Address generation is not available because it is
++		 * dependent upon runtime state, not available in the
++		 * Intel PT packets */
++		if (xed_decoded_inst_mem_read(&xedd, i)) {
++			reads++;
++		}
++		if (xed_decoded_inst_mem_written(&xedd, i)) {
++			writes++;
++		}
++	}
++
++	/* Sigil2 Core events */
++	sgl2_instr_event(ip);
++
++	for (unsigned i=0; i<reads; ++i)
++		sgl2_mem_event(SGLPRIM_MEM_LOAD);
++
++	if (iop != FALSE)
++		sgl2_comp_event(SGLPRIM_COMP_IOP);
++
++	if (flop != FALSE)
++		sgl2_comp_event(SGLPRIM_COMP_FLOP);
++
++	for (unsigned i=0; i<writes; ++i)
++		sgl2_mem_event(SGLPRIM_MEM_STORE);
++}
++
++/* FIXME MDL05042017 
++ * Keep to powers of 2 */
++#define CACHE_SIZE (1 << 20)
++#define CACHE_UNDEF (0)
++/* FIXME MDL05042017 this should be on the heap */
++
++struct xed_cache_t {
++	struct xed_cached_decode_t xeddc;
++	unsigned hash;
++};
++static unsigned long table_size = 0;
++static struct xed_cache_t xed_cache[CACHE_SIZE];
++
++//-----------------------------------------------------------------------------
++/* FNV */
++#define FNV_PRIME    16777619
++#define OFFSET_BASIS 2166136261
++static unsigned
++xed_FNV(unsigned len, const xed_uint8_t *insn)
++{
++	unsigned hash = OFFSET_BASIS;
++
++	for (unsigned i=0; i<len; ++i) {
++		hash ^= insn[i];
++		hash *= FNV_PRIME;
++	}
++
++	return hash;
++}
++
++
++static inline unsigned elem_hash(unsigned pos)
++{
++	return xed_cache[pos].hash;
++}
++
++
++static inline unsigned probe_distance(unsigned hash, unsigned pos)
++{
++	unsigned first_pos = hash % CACHE_SIZE;
++	if (first_pos <= pos)
++		return pos - first_pos;
++	else // wrap around happened...this should be very rare
++		return (CACHE_SIZE - first_pos) + pos;
++}
++
++static inline void xed_cache_elem_init(struct xed_cached_decode_t *elem,
++				       unsigned len, const xed_uint8_t *insn)
++{
++	elem->insn_len = len;
++	elem->insn = malloc(len * sizeof(xed_uint8_t));
++	memcpy(elem->insn, insn, len);
++
++	const xed_machine_mode_enum_t mmode = XED_MACHINE_MODE_LONG_64;
++	const xed_address_width_enum_t stack_addr_width = XED_ADDRESS_WIDTH_64b;
++
++	xed_error_enum_t xed_err;
++	xed_decoded_inst_t xedd;
++	xed_iclass_enum_t class;
++
++	xed_decoded_inst_zero(&xedd);
++	xed_decoded_inst_set_mode(&xedd, mmode, stack_addr_width);
++
++	xed_err = xed_decode(&xedd, insn, len);
++	if (xed_err) {
++	}
++
++	/* IOP/FLOP */
++	class = xed_decoded_inst_get_iclass(&xedd);
++	switch(class)
++	{
++	case XED_ICLASS_ADD:
++	case XED_ICLASS_ADC:
++	case XED_ICLASS_SUB:
++	case XED_ICLASS_DIV:
++	case XED_ICLASS_MUL:
++	case XED_ICLASS_NEG:
++	case XED_ICLASS_AND:
++	case XED_ICLASS_OR:
++		elem->iops++;
++		break;
++	case XED_ICLASS_ADDSS:
++	case XED_ICLASS_ADDSD:
++	case XED_ICLASS_ADDPS:
++	case XED_ICLASS_ADDPD:
++	case XED_ICLASS_ADDSUBPS:
++	case XED_ICLASS_ADDSUBPD:
++	case XED_ICLASS_ANDNPD:
++	case XED_ICLASS_ANDNPS:
++	case XED_ICLASS_ORPS:
++	case XED_ICLASS_ORPD:
++	case XED_ICLASS_MULSS:
++	case XED_ICLASS_MULSD:
++	case XED_ICLASS_MULPS:
++	case XED_ICLASS_MULPD:
++		elem->flops++;
++		break;
++	case XED_ICLASS_NOP:
++	case XED_ICLASS_NOP2:
++	case XED_ICLASS_NOP3:
++	case XED_ICLASS_NOP4:
++	case XED_ICLASS_NOP5:
++	case XED_ICLASS_NOP6:
++	case XED_ICLASS_NOP7:
++	case XED_ICLASS_NOP8:
++	case XED_ICLASS_NOP9:
++		return;
++		break;
++	default:
++		break;
++	}
++
++	/* read/write */
++	unsigned memops = xed_decoded_inst_number_of_memory_operands(&xedd);
++	for (int i=memops; i>0; --i) {
++		if (xed_decoded_inst_mem_read(&xedd, i)) {
++			elem->reads++;
++		}
++		if (xed_decoded_inst_mem_written(&xedd, i)) {
++			elem->writes++;
++		}
++	}
++}
++
++
++static inline void construct(unsigned pos, unsigned hash,
++			     unsigned insn_len, const xed_uint8_t *insn)
++{
++	struct xed_cache_t *elem = xed_cache + pos;
++	elem->hash = hash;
++	xed_cache_elem_init(&elem->xeddc, insn_len, insn);
++}
++
++
++static void relocate(const struct xed_cache_t *elem,
++		     unsigned pos, unsigned dist)
++{
++	for (;;) {
++
++		if (elem_hash(pos) == 0) {
++			/* We found an empty slot */
++			xed_cache[pos] = *elem;
++			return;
++		}
++
++		unsigned existing_dist = probe_distance(elem_hash(pos), pos);
++		if (dist > existing_dist) {
++			/* Swap elements and find a new location for
++			 * the swapped out element */
++
++			struct xed_cache_t temp = xed_cache[pos];
++			xed_cache[pos] = *elem;
++			relocate(&temp, pos, existing_dist);
++			return;
++		}
++
++		/* linear probe */
++		pos = (pos+1) & (CACHE_SIZE-1);
++		++dist;
++	}
++}
++
++
++void xed_cached_decode(struct xed_cached_decode_t *cache,
++		       unsigned insn_len, const xed_uint8_t *insn)
++{
++	/* Use a robin hood hash table */
++	/* TODO(soonish) increase table size when full */
++
++	unsigned hash = xed_FNV(insn_len, insn); 
++	unsigned pos = hash % CACHE_SIZE;
++	unsigned dist = 0;
++
++	for (;;) {
++
++		if (xed_cache[pos].xeddc.insn_len == insn_len &&
++		    strncmp((const char*)xed_cache[pos].xeddc.insn,
++			    (const char*)insn, insn_len) != 0) {
++			/* We hashed to cached data */
++			*cache = xed_cache[pos].xeddc;
++			return;
++		}
++
++		table_size++;
++
++		if (elem_hash(pos) == 0) {
++			/* We hashed to an empty slot, fill it in */
++			construct(pos, hash, insn_len, insn);
++			*cache = xed_cache[pos].xeddc;
++			return;
++		}
++
++		unsigned existing_dist = probe_distance(elem_hash(pos), pos);
++		if (dist > existing_dist) {
++			/* We went too far looking for an empty slot
++			 * (Should have found cached data by now if it exists) */
++
++			/* Swap elements and find a new location for
++			 * the swapped out element */
++
++			struct xed_cache_t temp = xed_cache[pos];
++
++			construct(pos, hash, insn_len, insn);
++			*cache = xed_cache[pos].xeddc;
++
++			relocate(&temp, pos, existing_dist);
++
++			return;
++		}
++
++		/* linear probe */
++		pos = (pos+1) & (CACHE_SIZE-1);
++		++dist;
++	}
++}
++
++void xed_cached_decode_init()
++{
++	for (size_t i=0; i<CACHE_SIZE; ++i) {
++		xed_cache[i].hash = 0;
++		xed_cache[i].xeddc.insn_len = 0;
++		xed_cache[i].xeddc.insn = NULL;
++		xed_cache[i].xeddc.ip = 0;
++	}
++}
+diff --git a/tools/perf/sigil2/xed-decode-cache.h b/tools/perf/sigil2/xed-decode-cache.h
+new file mode 100644
+index 0000000..4fbae1e
+--- /dev/null
++++ b/tools/perf/sigil2/xed-decode-cache.h
+@@ -0,0 +1,42 @@
++#include "xed/xed-interface.h"
++#include "Frontends/CommonShmemIPC.h"
++
++/* Implementation of a decoder cache
++ * Currently, the load on the cache is too high
++ * and there's no evictions, so it's unusable right now.
++ *
++ * Key: insn
++ * Value: some decoded data and categorization of the insn
++ *
++ * Because insns with immediates blow up the number
++ * of insns, there's no tractible upper bound on the
++ * number of unique insns. This wasn't considered initially,
++ * so there's no eviction in the cache. This needs to be
++ * implemented an profiled to see what real benefits we'd
++ * get.
++ *
++ * */
++
++struct xed_cached_decode_t {
++	/* Keep relevant Sigil2 primitive info */
++
++	unsigned insn_len;
++	xed_uint8_t *insn;
++	/* key */
++
++	PtrVal ip;
++
++	unsigned reads;
++	unsigned writes;
++	unsigned iops;
++	unsigned flops;
++
++	xed_decoded_inst_t *xedd;
++	xed_iclass_enum_t class;
++};
++
++void xed_decode_to_sigil2(PtrVal ip, unsigned len, const xed_uint8_t *insn);
++void xed_cached_decode(struct xed_cached_decode_t *cache,
++		       unsigned insn_len, const xed_uint8_t *insn);
++
++void xed_cached_decode_init(void);
+-- 
+2.9.3
+

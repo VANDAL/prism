@@ -4,6 +4,14 @@
 #include "whereami.h"
 #include "glob.h"
 
+#ifndef DYNAMORIO_ENABLE
+auto startDrSigil(FrontendStarterArgs args) -> FrontendIfaceGenerator
+{
+    (void)args;
+    SigiLog::fatal("DynamoRIO frontend not available");
+}
+#else
+
 #define DIR_TEMPLATE "/sgl2-XXXXXX"
 
 using SigiLog::fatal;
@@ -145,3 +153,5 @@ auto startDrSigil(FrontendStarterArgs args) -> FrontendIfaceGenerator
 
     return [=]{ return std::make_unique<ShmemFrontend<Sigil2DBISharedData>>(ipcDir); };
 }
+
+#endif // DYNAMORIO_ENABLE
