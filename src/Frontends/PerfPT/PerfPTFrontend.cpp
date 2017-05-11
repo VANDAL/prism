@@ -54,6 +54,7 @@ auto tokenizeOpts(const std::vector<std::string>& userExec,
     int optsSize = 1 + /* program name */
                    1 + /* 'script' */
                    2 + /* input perf data file */
+                   2 + /* perf sigil2 options */
                    4 + /* perf sample options */
                    1 /* null char */;
 
@@ -94,9 +95,7 @@ auto configurePerf(const std::vector<std::string>& userExec,
         fatal("couldn't find executable path");
     }
 
-    setenv("LD_LIBRARY_PATH", std::string(path).append("/perf/lib").c_str(), true);
-
-    std::string exec = std::string(path).append("/perf/bin/perf");
+    std::string exec = std::string(path) + "/perf/bin/perf";
 
     /* execvp() expects a const char* const* */
     auto opts = tokenizeOpts(userExec, args, ipcDir);

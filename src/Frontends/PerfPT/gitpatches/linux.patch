@@ -1,18 +1,18 @@
-From 758f9c336e0f5163676e5265d1ab60a90a0d910d Mon Sep 17 00:00:00 2001
+From d53fda29f17bbfaa21eb636c99427aa007838f5f Mon Sep 17 00:00:00 2001
 From: Mike Lui <mike.d.lui@gmail.com>
-Date: Tue, 9 May 2017 13:52:01 -0400
+Date: Thu, 11 May 2017 00:34:42 -0400
 Subject: [PATCH] patch
 
 ---
  tools/perf/Build                     |  10 ++
  tools/perf/Makefile.perf             |   5 +
- tools/perf/builtin-script.c          | 276 ++++++++++++++++++++++++++++-
+ tools/perf/builtin-script.c          | 272 +++++++++++++++++++++++++++-
  tools/perf/sigil2/Build              |  16 ++
- tools/perf/sigil2/ipc.c              | 298 +++++++++++++++++++++++++++++++
+ tools/perf/sigil2/ipc.c              | 332 ++++++++++++++++++++++++++++++++++
  tools/perf/sigil2/ipc.h              |  20 +++
  tools/perf/sigil2/xed-decode-cache.c | 333 +++++++++++++++++++++++++++++++++++
  tools/perf/sigil2/xed-decode-cache.h |  42 +++++
- 8 files changed, 999 insertions(+), 1 deletion(-)
+ 8 files changed, 1029 insertions(+), 1 deletion(-)
  create mode 100644 tools/perf/sigil2/Build
  create mode 100644 tools/perf/sigil2/ipc.c
  create mode 100644 tools/perf/sigil2/ipc.h
@@ -55,7 +55,7 @@ index 8bb16aa..198207b 100644
  
  ### Build rules
 diff --git a/tools/perf/builtin-script.c b/tools/perf/builtin-script.c
-index 2f3ff69..2bed944 100644
+index 2f3ff69..e1adc9b 100644
 --- a/tools/perf/builtin-script.c
 +++ b/tools/perf/builtin-script.c
 @@ -29,6 +29,14 @@
@@ -351,31 +351,33 @@ index 2f3ff69..2bed944 100644
  	OPT_BOOLEAN(0, "ns", &nanosecs,
  		    "Use 9 decimal places when displaying time"),
  	OPT_CALLBACK_OPTARG(0, "itrace", &itrace_synth_opts, NULL, "opts",
-@@ -2211,6 +2467,24 @@ int cmd_script(int argc, const char **argv, const char *prefix __maybe_unused)
+@@ -2211,6 +2467,17 @@ int cmd_script(int argc, const char **argv, const char *prefix __maybe_unused)
  	argc = parse_options_subcommand(argc, argv, options, script_subcommands, script_usage,
  			     PARSE_OPT_STOP_AT_NON_OPTION);
  
 +	/* ignore other options and run sigil2 specific proessing
 +	 * when generating the trace */
 +	if (sigil2) {
-+		if (sgl2_init(sigil2) < 0) {
-+			fprintf(stderr,
-+				"Error initializing Sigil2 IPC\n");
-+			//return -1;
-+		}
++		sgl2_init(sigil2);
 +
 +		script.tool.sample = sigil2_process_sample_event;
 +
-+		/* init xed here? */
 +		xed_tables_init();
 +		xed_cached_decode_init();
-+		//xed_cache_entries = malloc(xed_n_entries * sizeof(xed_decode_cache_entry_t));
-+		//xed_decode_cache_initialize(&xed_cache, xed_cache_entries, xed_n_entries);
 +	}
 +
  	file.path = input_name;
  
  	if (argc > 1 && !strncmp(argv[0], "rec", strlen("rec"))) {
+@@ -2489,5 +2756,8 @@ int cmd_script(int argc, const char **argv, const char *prefix __maybe_unused)
+ 	if (script_started)
+ 		cleanup_scripting();
+ out:
++	if (sigil2)
++		sgl2_finish();
++
+ 	return err;
+ }
 diff --git a/tools/perf/sigil2/Build b/tools/perf/sigil2/Build
 new file mode 100644
 index 0000000..3051c02
@@ -400,10 +402,10 @@ index 0000000..3051c02
 +CFLAGS_xed-decode-cache.o += "-I/home/mdl45/github/xed_build/kits/xed-install-base-2017-04-18-lin-x86-64/include"
 diff --git a/tools/perf/sigil2/ipc.c b/tools/perf/sigil2/ipc.c
 new file mode 100644
-index 0000000..05034f0
+index 0000000..6ad764e
 --- /dev/null
 +++ b/tools/perf/sigil2/ipc.c
-@@ -0,0 +1,298 @@
+@@ -0,0 +1,332 @@
 +#include "ipc.h"
 +#include <string.h>
 +#include <stdio.h>
@@ -411,14 +413,25 @@ index 0000000..05034f0
 +#include <sys/types.h>
 +#include <sys/stat.h>
 +#include <sys/mman.h>
++#include <errno.h>
 +#include <fcntl.h>
 +#include <unistd.h>
++#include <stdarg.h>
++#include <time.h>
 +#include <assert.h>
 +
 +// MDL20170414 only supports 1 channel/thread
 +
-+#define SIGIL2_SUCCESS 0
-+#define SIGIL2_ERROR -1
++__attribute__((noreturn))
++static void fatal(const char *m, ...)
++{
++	va_list args;
++	va_start(args, m);
++	vfprintf(stderr, m, args);
++	va_end(args);
++	exit(EXIT_FAILURE);
++}
++
 +
 +static struct ipc_config {
 +	char *ipc_dir;
@@ -437,7 +450,9 @@ index 0000000..05034f0
 +	SglEvVariant *curr_ev_slot;
 +	Bool is_full[SIGIL2_IPC_BUFFERS];
 +	size_t curr_idx;
-+} state;
++
++	Bool initialized;
++} state = { .initialized = FALSE };
 +
 +
 +static void sgl2_init_config(const char* dir)
@@ -449,23 +464,23 @@ index 0000000..05034f0
 +	config.ipc_dir = strdup(dir);
 +	channel_id = "-0";
 +
-+	shmem_path_len = strlen(config.ipc_dir) + strlen("/") +\
-+			     strlen(SIGIL2_IPC_SHMEM_BASENAME) +\
-+			     strlen(channel_id) + 1;
++	shmem_path_len = strlen(config.ipc_dir) + strlen("/") +
++				strlen(SIGIL2_IPC_SHMEM_BASENAME) +
++				strlen(channel_id) + 1;
 +	config.shmem_path = malloc(shmem_path_len);
 +	snprintf(config.shmem_path, shmem_path_len,
 +		 "%s/%s%s", config.ipc_dir, SIGIL2_IPC_SHMEM_BASENAME, channel_id);
 +
-+	full_pipe_path_len = strlen(config.ipc_dir) + strlen("/") +\
-+				 sizeof(SIGIL2_IPC_FULLFIFO_BASENAME) +\
-+				 strlen(channel_id) + 1;
++	full_pipe_path_len = strlen(config.ipc_dir) + strlen("/") +
++				    sizeof(SIGIL2_IPC_FULLFIFO_BASENAME) +
++				    strlen(channel_id) + 1;
 +	config.full_pipe_path = malloc(full_pipe_path_len);
 +	snprintf(config.full_pipe_path, shmem_path_len,
 +		 "%s/%s%s", config.ipc_dir, SIGIL2_IPC_FULLFIFO_BASENAME, channel_id);
 +
 +	empty_pipe_path_len = strlen(config.ipc_dir) + strlen("/") +\
-+				  sizeof(SIGIL2_IPC_EMPTYFIFO_BASENAME) +\
-+				  strlen(channel_id) + 1;
++				     sizeof(SIGIL2_IPC_EMPTYFIFO_BASENAME) +\
++				     strlen(channel_id) + 1;
 +	config.empty_pipe_path = malloc(empty_pipe_path_len);
 +	snprintf(config.empty_pipe_path, shmem_path_len,
 +		 "%s/%s%s", config.ipc_dir, SIGIL2_IPC_EMPTYFIFO_BASENAME, channel_id);
@@ -486,34 +501,26 @@ index 0000000..05034f0
 +
 +
 +#ifndef SIGIL2_MOCK
-+static int sgl2_init_shmem(void)
++static void sgl2_init_shmem(void)
 +{
++	assert(!state.initialized);
 +	assert(config.shmem_path != NULL);
++
 +	state.shmem_fd = open(config.shmem_path, O_RDWR);
-+	if (state.shmem_fd < 0) {
-+		fprintf(stderr,
-+			"Error opening Sigil2 shared memory %s\n",
-+			config.shmem_path);
-+		return SIGIL2_ERROR;
-+	}
++	if (state.shmem_fd < 0)
++		fatal("Perf - error opening Sigil2 shared memory %s\n", config.shmem_path);
 +
 +	state.shmem = mmap(NULL, sizeof(Sigil2PerfSharedData),
 +			   PROT_READ | PROT_WRITE, MAP_SHARED,
 +			   state.shmem_fd, 0);
-+	if (state.shmem == MAP_FAILED) {
-+		fprintf(stderr,
-+			"Error mapping Sigil2 shared memory %s\n",
-+			config.shmem_path);
-+		return SIGIL2_ERROR;
-+	}
 +
-+	return SIGIL2_SUCCESS;
++	if (state.shmem == MAP_FAILED)
++		fatal("Perf - error mapping Sigil2 shared memory %s\n", config.shmem_path);
 +}
 +#else
-+static int sgl2_init_shmem(void)
++static void sgl2_init_shmem(void)
 +{
 +	state.shmem = malloc(sizeof(Sigil2PerfSharedData));
-+	return SIGIL2_SUCCESS;
 +}
 +#endif // SIGIL2_MOCK
 +
@@ -522,7 +529,7 @@ index 0000000..05034f0
 +{
 +	state.curr_ev_buf = state.shmem->eventBuffers + state.curr_idx;
 +	state.curr_ev_buf->used = 0;
-+	state.curr_ev_slot  = state.curr_ev_buf->events + state.curr_ev_buf->used;
++	state.curr_ev_slot = state.curr_ev_buf->events + state.curr_ev_buf->used;
 +}
 +
 +
@@ -536,10 +543,8 @@ index 0000000..05034f0
 +	if (state.is_full[state.curr_idx]) {
 +		unsigned buf_idx;
 +		int res = read(state.empty_pipe_fd, &buf_idx, sizeof(buf_idx));
-+		if (res != sizeof(buf_idx)) {
-+			fprintf(stderr, "Perf - error reading from Sigil2 empty fifo\n");
-+			exit(1);
-+		}
++		if (res != sizeof(buf_idx))
++			fatal("Perf - error reading from Sigil2 empty fifo\n");
 +
 +		state.is_full[buf_idx] = FALSE;
 +		state.curr_idx = buf_idx;
@@ -556,16 +561,45 @@ index 0000000..05034f0
 +}
 +
 +
-+static int sgl2_init_pipes(void)
++static int sgl2_open_pipe(const char *path, int flags)
 +{
-+	state.full_pipe_fd = open(config.full_pipe_path, O_WRONLY);
-+	state.empty_pipe_fd = open(config.empty_pipe_path, O_RDONLY);
++	int fd;
++	unsigned max_tests;
 +
-+	if (state.full_pipe_fd < 0 ||
-+	    state.empty_pipe_fd < 0)
-+		return SIGIL2_ERROR;
++	assert(!state.initialized);
 +
-+	return SIGIL2_SUCCESS;
++	/* Wait for Sigil2 to create pipes
++	 * Timeout is empirical */
++	max_tests = 10;
++	for(unsigned i=0; i<max_tests+1; ++i)
++	{
++		struct timespec ts;
++
++		if(access(path, F_OK) == 0)
++			break;
++
++		if(i == max_tests)
++			fatal("Perf timed out waiting for sigil2 fifo: %s\n", path);
++
++		ts.tv_sec  = 0;
++		ts.tv_nsec = 200000000L;
++		nanosleep(&ts, NULL);
++	}
++
++	fd = open(path, flags);
++	if (fd < 0)
++		fatal("Perf - error initializing IPC pipe - %s: %s\n", path, strerror(errno));
++
++	return fd;
++}
++
++
++static void sgl2_init_pipes(void)
++{
++	assert(!state.initialized);
++
++	state.empty_pipe_fd = sgl2_open_pipe(config.empty_pipe_path, O_RDONLY);
++	state.full_pipe_fd = sgl2_open_pipe(config.full_pipe_path, O_WRONLY);
 +}
 +
 +
@@ -573,34 +607,6 @@ index 0000000..05034f0
 +{
 +	close(state.full_pipe_fd);
 +	close(state.empty_pipe_fd);
-+}
-+
-+
-+int sgl2_init(const char* ipc_dir)
-+{
-+	sgl2_init_config(ipc_dir);
-+
-+	sgl2_init_shmem();
-+	if (sgl2_init_shmem() < 0 ||
-+	    sgl2_init_pipes() < 0)
-+		return SIGIL2_ERROR;
-+
-+	for (int i=0; i<SIGIL2_IPC_BUFFERS; ++i)
-+		state.is_full[i] = FALSE;
-+	state.curr_ev_buf = NULL;
-+	state.curr_ev_slot = NULL;
-+	state.curr_idx = 0;
-+	set_and_init_buffer();
-+
-+	return SIGIL2_SUCCESS;
-+}
-+
-+
-+void sgl2_finish(void)
-+{
-+	sgl2_free_pipes();
-+	sgl2_free_shmem();
-+	sgl2_free_config();
 +}
 +
 +
@@ -616,10 +622,44 @@ index 0000000..05034f0
 +
 +	state.is_full[state.curr_idx] = TRUE;
 +	res = write(state.full_pipe_fd, &state.curr_idx, sizeof(state.curr_idx));
-+	if (res != sizeof(state.curr_idx)) {
-+		fprintf(stderr, "Perf - error writing to Sigil2 full fifo\n");
-+		exit(1);
-+	}
++	if (res != sizeof(state.curr_idx))
++		fatal("Perf - error writing to Sigil2 full fifo\n");
++}
++
++
++void sgl2_init(const char* ipc_dir)
++{
++	sgl2_init_config(ipc_dir);
++
++	sgl2_init_shmem();
++	sgl2_init_pipes();
++
++	for (int i=0; i<SIGIL2_IPC_BUFFERS; ++i)
++		state.is_full[i] = FALSE;
++	state.curr_ev_buf = NULL;
++	state.curr_ev_slot = NULL;
++	state.curr_idx = 0;
++	state.initialized = TRUE;
++	set_and_init_buffer();
++}
++
++
++void sgl2_finish(void)
++{
++	int res;
++	int finished = SIGIL2_IPC_FINISHED;
++
++	flush_to_sigil2();
++
++	res = write(state.full_pipe_fd, &finished, sizeof(finished));
++	if (res != sizeof(finished))
++		fatal("Perf - error writing to Sigil2 full fifo\n");
++
++	while (read(state.empty_pipe_fd, &finished, sizeof(finished)) > 0);
++
++	sgl2_free_pipes();
++	sgl2_free_shmem();
++	sgl2_free_config();
 +}
 +
 +
@@ -687,8 +727,6 @@ index 0000000..05034f0
 +	ev->cxt.type = SGLPRIM_CXT_FUNC_ENTER;
 +
 +	(void)(name);
-+	//printf("entered %s\n", name);
-+	// ...
 +}
 +
 +
@@ -699,12 +737,10 @@ index 0000000..05034f0
 +	ev->cxt.type = SGLPRIM_CXT_FUNC_EXIT;
 +
 +	(void)(name);
-+//	printf("exited  %s\n", name);
-+	// ...
 +}
 diff --git a/tools/perf/sigil2/ipc.h b/tools/perf/sigil2/ipc.h
 new file mode 100644
-index 0000000..571e18f
+index 0000000..97bdb82
 --- /dev/null
 +++ b/tools/perf/sigil2/ipc.h
 @@ -0,0 +1,20 @@
@@ -717,7 +753,7 @@ index 0000000..571e18f
 +#define TRUE 1
 +#define FALSE 0
 +
-+int sgl2_init(const char* ipc_dir);
++void sgl2_init(const char* ipc_dir);
 +void sgl2_finish(void);
 +
 +void sgl2_comp_event(CompCostType type);

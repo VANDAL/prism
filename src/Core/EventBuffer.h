@@ -8,6 +8,7 @@
 #define SIGIL2_EVENTS_BUFFER_SIZE (1UL << 22)
 
 #ifdef __cplusplus
+#include <memory>
 extern "C" {
 #else
 typedef struct SglEvVariant SglEvVariant;
