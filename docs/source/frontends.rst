@@ -1,6 +1,13 @@
 Frontend Documentation
 ======================
 
+Each frontend generates one or more event streams to a Sigil2 backend analysis
+tool. Each frontend has it's own internal representation (IR) of events, so the process
+of converting frontend IR to Sigil2 event primitives is different for each frontend.
+For example, Valgrind will disassemble each machine instruction into multiple VEX IR
+statements and expressions;
+DynamoRIO annotates each instruction in a basic block with specific attributes;
+the current Perf frontend only supports x86_64 decoding via the Intel XED library.
 
 
 Valgrind
@@ -112,7 +119,7 @@ $CC $CFLAGS main.c -Wl,--whole-archive $BUILD_DIR/bin/libsglwrapper.a -Wl,--no-w
 ----
 
 DynamoRIO
----------------
+---------
 
 Synopsis
 ^^^^^^^^
@@ -124,11 +131,13 @@ $ bin/sigil2 --num-threads=N --frontend=dynamorio OPTIONS --backend=BACKEND --ex
 Description
 ^^^^^^^^^^^
 
-.. note:: Custom options must be passed to **cmake** during configuration to
+.. note:: -DDYNAMORIO_ENABLE=ON must be passed to **cmake** during configuration to
           build with DynamoRIO support.
 
-**Experimental DynamioRIO support is temporarily disabled due to internal
-refactoring to improve resource usage and accuracy.**
+DynamoRIO is a cross-platform dynamic binary instrumentation tool. DynamoRIO runs multithreaded
+applications natively. This makes results less reproducible than Valgrind, however analysis is
+potentially faster on a multi-core architecture. This enables multiple event streams to be
+processed at once, by setting --num-threads > 1.
 
 Options
 ^^^^^^^
@@ -139,5 +148,51 @@ Options
 
   --num-threads=N
 
+
+----
+
+Intel Process Trace
+-------------------
+
+Synopsis
+^^^^^^^^
+
+::
+
+$ bin/sigil2 --frontend=perf --backend=BACKEND --executable=perf.data
+
+Description
+^^^^^^^^^^^
+
+.. note:: -DPERF_ENABLE=ON must be passed to **cmake** during configuration to
+          build with Perf PT support.
+
+Intel Process Trace is a new CPU feature available on Intel processors that are
+Broadwell or more recent. The trace is captured via branch results. The entire
+trace is then reconstructed by perf by replaying the binary, including all shared
+library loading and context switches. A side effect of only capturing branch results
+is that all runtime information within the trace is lost, such as some memory access
+addresses; e.g. the Perf 'replay' mechanism does not support replaying malloc results.
+
+For more usage details, see: `perf design document for Intel PT`_
+
+For more technical details see: `Intel Software Developer's Manual Volume Three`_
+
+.. _perf design document for Intel PT:
+   https://github.com/torvalds/linux/blob/master/tools/perf/Documentation/intel-pt.txt
+
+.. _Intel Software Developer's Manual Volume Three:
+   https://software.intel.com/en-us/articles/intel-sdm
+
+Options
+^^^^^^^
+
+.. note:: The ``perf.data`` file is generated with: ``perf record -e intel_pt//u ./myexec``
+
+          If you receive '*AUX data lost N times out of M!*', try increasing the size of the AUX
+          buffer. Otherwise a significant of the portion of the trace may not be reproduced:
+          ``perf record -m,AUXTRACE_PAGES -e intel_pt//u ./myexec``
+
+.. todo:: options
 
 ----
