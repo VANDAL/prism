@@ -34,13 +34,16 @@ auto tokenizeOpts(const std::vector<std::string> &user_exec,
 
     /* format dynamorio options */
     //                 program name + dynamorio options + user program options + null
-    int dr_opts_size = 1            + 8 + args.size()     + user_exec.size()        + 1;
+    int dr_opts_size = 1            + 10 + args.size()     + user_exec.size()        + 1;
     char **dr_opts = static_cast<char **>(malloc(dr_opts_size * sizeof(char *)));
 
     int i = 0;
     dr_opts[i++] = strdup("drrun");
+    //dr_opts[i++] = strdup("-debug");
     dr_opts[i++] = strdup("-root");
     dr_opts[i++] = strdup((sigil_bin_dir + "/dr").c_str());
+    dr_opts[i++] = strdup("-max_bb_instrs");
+    dr_opts[i++] = strdup("128");
     dr_opts[i++] = strdup("-c");
 
     /* detect 32/64 bit and release/debug build */
