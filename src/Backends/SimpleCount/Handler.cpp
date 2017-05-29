@@ -5,11 +5,11 @@
 
 namespace
 {
-std::atomic<unsigned long> global_mem_cnt;
-std::atomic<unsigned long> global_comp_cnt;
-std::atomic<unsigned long> global_sync_cnt;
-std::atomic<unsigned long> global_cf_cnt;
-std::atomic<unsigned long> global_cxt_cnt;
+std::atomic<unsigned long> global_mem_cnt{0};
+std::atomic<unsigned long> global_comp_cnt{0};
+std::atomic<unsigned long> global_sync_cnt{0};
+std::atomic<unsigned long> global_cf_cnt{0};
+std::atomic<unsigned long> global_cxt_cnt{0};
 };
 
 namespace SimpleCount
@@ -64,6 +64,6 @@ auto cleanup() -> void
     logger->info("Total Memory   Events: {}", global_mem_cnt);
     logger->info("Total Sync     Events: {}", global_sync_cnt);
     logger->info("Total CntlFlow Events: {}", global_cf_cnt);
-    logger->info("Total Context  Events: {}", global_cxt_cnt);
+    logger->info(std::string("Total Context  Events: ") + std::to_string(global_cxt_cnt));
 }
 }; //end namespace SimpleCount

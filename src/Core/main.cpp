@@ -96,7 +96,7 @@ auto flushToBackend(BackendIface &be,
             be.onCFEv(ev.cf);
             break;
         default:
-            fatal(std::string("Received unhandled event in ").append(__FILE__));
+            fatal("Received unhandled event in " __FILE__);
         }
     }
 }

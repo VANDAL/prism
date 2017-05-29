@@ -4,8 +4,8 @@
 #include "Primitive.h"
 #include <stdlib.h>
 
-#define SIGIL2_NAMES_BUFFER_SIZE (1UL << 22)
-#define SIGIL2_EVENTS_BUFFER_SIZE (1UL << 22)
+#define SIGIL2_NAMES_BUFFER_SIZE (1UL << 20)
+#define SIGIL2_EVENTS_BUFFER_SIZE (1UL << 20)
 
 #ifdef __cplusplus
 #include <memory>
