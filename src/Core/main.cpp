@@ -126,9 +126,12 @@ auto consumeEvents(BackendIfaceGenerator createBEIface,
 
 auto startSigil2(const Config& config) -> int
 {
+    using std::chrono::high_resolution_clock;
+
     auto threads       = config.threads();
     auto backend       = config.backend();
     auto startFrontend = config.startFrontend();
+    auto timed         = config.timed();
 
     if (threads < 1)
         fatal("Invalid number of backend threads");
@@ -137,6 +140,16 @@ auto startSigil2(const Config& config) -> int
         backend.parser(backend.args);
     else if (backend.args.size() > 0)
         fatal("Backend arguments provided, but Backend has no parser");
+
+    info("executable : " + config.executablePrintable());
+    info("frontend   : " + config.frontendPrintable());
+    info("backend    : " + config.backendPrintable());
+    info("threads    : " + config.threadsPrintable());
+    info("timed      : " + (timed ? std::string("true") : std::string("false")));
+
+    high_resolution_clock::time_point start, end;
+    if (timed == true)
+        start = high_resolution_clock::now();
 
     /* start frontend only once and get its interface */
     auto frontendIfaceGenerator = startFrontend();
@@ -151,6 +164,13 @@ auto startSigil2(const Config& config) -> int
         eventStreams[i].join();
     if (backend.finish)
         backend.finish();
+
+    if (timed == true)
+    {
+        end = high_resolution_clock::now();
+        auto ms = std::chrono::duration<double>(end - start);
+        info("Sigil2 duration: " + std::to_string(ms.count()) + "s");
+    }
 
     return EXIT_SUCCESS;
 }

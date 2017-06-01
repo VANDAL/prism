@@ -1,4 +1,5 @@
 #include "Config.hpp"
+#include <numeric>
 
 namespace sigil2
 {
@@ -25,17 +26,23 @@ auto Config::parseCommandLine(int argc, char* argv[]) -> Config&
     Parser parser(argc, argv);
 
     _threads = parser.threads();
+    _timed = parser.timed();
 
-    std::string beName;
+    auto execArgs = parser.executable();
+    executableName = std::accumulate(execArgs.begin()+1, execArgs.end(), std::string{execArgs.front()},
+                                     [](const std::string &a, const std::string &b) {
+                                         return (a + " " + b); });
+                        
     std::vector<std::string> beArgs;
-    std::tie(beName, beArgs) = parser.backend();
-    _backend = beFactory.create(beName, beArgs);
+    std::tie(backendName, beArgs) = parser.backend();
+    _backend = beFactory.create(backendName, beArgs);
 
-    std::string feName;
     std::vector<std::string> feArgs;
-    std::tie(feName, feArgs) = parser.frontend();
-    _startFrontend = feFactory.create(feName,
+    std::tie(frontendName, feArgs) = parser.frontend();
+    _startFrontend = feFactory.create(frontendName,
                                       std::make_tuple(parser.executable(), feArgs, _threads));
+
+    parsed = true;
 
     return *this;
 }

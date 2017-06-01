@@ -67,6 +67,7 @@ class Parser
     auto backend()    -> ToolTuple;
     auto frontend()   -> ToolTuple;
     auto executable() -> Args;
+    auto timed()      -> bool;
 
     auto tool(const char* option) -> ToolTuple;
     /* get tool options in the form of a name and consecutive options:
@@ -78,6 +79,7 @@ class Parser
     static constexpr char backendOption[]    = "backend";
     static constexpr char executableOption[] = "executable";
     static constexpr char numThreadsOption[] = "num-threads";
+    static constexpr char timeOption[]       = "sgl-time";
 };
 
 }; //end namespace sigil2

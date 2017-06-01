@@ -12,6 +12,7 @@ constexpr char Parser::frontendOption[];
 constexpr char Parser::backendOption[];
 constexpr char Parser::executableOption[];
 constexpr char Parser::numThreadsOption[];
+constexpr char Parser::timeOption[];
 
 Parser::Parser(int argc, char* argv[])
 {
@@ -60,6 +61,25 @@ auto Parser::executable() -> Args
 {
     return parser.getGroup(executableOption);
 }
+
+
+auto Parser::timed() -> bool
+{
+    auto timeArg = parser.getOpt(timeOption);
+    if (timeArg.empty() == false)
+    {
+        std::transform(timeArg.begin(), timeArg.end(), timeArg.begin(), ::tolower);
+        if (timeArg == "on")
+            return true;
+        else if (timeArg == "off")
+            return false;
+        else
+            fatal("Invalid 'time' option specified: " + timeArg);
+    }
+
+    return false;
+}
+
 
 auto Parser::tool(const char* option) -> ToolTuple
 {
