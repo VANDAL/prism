@@ -15,10 +15,28 @@ class Handler : public BackendIface
     virtual auto onCFEv(const SglCFEv &ev) -> void override;
     virtual auto onCxtEv(const sigil2::CxtEvent &ev) -> void override;
 
+    unsigned long read_cnt{0};
+    unsigned long write_cnt{0};
     unsigned long mem_cnt{0};
+
+    unsigned long iop_cnt{0};
+    unsigned long flop_cnt{0};
     unsigned long comp_cnt{0};
+
+    unsigned long swap_cnt{0};
     unsigned long sync_cnt{0};
+    unsigned long spawn_cnt{0};
+    unsigned long join_cnt{0};
+    unsigned long lock_cnt{0};
+    unsigned long unlock_cnt{0};
+    unsigned long barrier_cnt{0};
+    unsigned long wait_cnt{0};
+    unsigned long sig_cnt{0};
+    unsigned long broad_cnt{0};
+
     unsigned long cf_cnt{0};
+
+    unsigned long instr_cnt{0};
     unsigned long cxt_cnt{0};
 
   public:

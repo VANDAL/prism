@@ -142,10 +142,10 @@ auto startSigil2(const Config& config) -> int
         fatal("Backend arguments provided, but Backend has no parser");
 
     info("executable : " + config.executablePrintable());
-    info("frontend   : " + config.frontendPrintable());
+    info("frontend   : " + (config.frontendPrintable().empty() ? "default" : config.frontendPrintable()));
     info("backend    : " + config.backendPrintable());
     info("threads    : " + config.threadsPrintable());
-    info("timed      : " + (timed ? std::string("true") : std::string("false")));
+    info("timed      : " + (timed ? std::string("on") : std::string("off")));
 
     high_resolution_clock::time_point start, end;
     if (timed == true)
