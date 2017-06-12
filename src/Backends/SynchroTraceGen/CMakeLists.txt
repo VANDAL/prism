@@ -32,8 +32,8 @@ set(SOURCES
 add_library(STGenCore STATIC ${SOURCES})
 
 # Link CapnProto w/ SynchroTraceGen
-set(KJ_LIB ${THIRD_PARTY}/capnproto/lib/libkj.a)
-set(CAPNP_LIB ${THIRD_PARTY}/capnproto/lib/libcapnp.a)
+set(KJ_LIB ${THIRD_PARTY}/capnproto/lib64/libkj.a)
+set(CAPNP_LIB ${THIRD_PARTY}/capnproto/lib64/libcapnp.a)
 set(STGEN_LIB ${CMAKE_CURRENT_BINARY_DIR}/libSTGen.a)
 set(STGEN_LIB ${STGEN_LIB} PARENT_SCOPE) 
 add_custom_target(STGen ALL

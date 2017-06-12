@@ -1,9 +1,6 @@
 [submodule "include/Catch"]
 	path = third_party/Catch
 	url = https://github.com/philsquared/Catch
-[submodule "include/spdlog"]
-	path = third_party/spdlog
-	url = https://github.com/mikelui/spdlog
 [submodule "include/whereami"]
 	path = third_party/whereami
 	url = https://github.com/gpakosz/whereami
@@ -28,3 +25,6 @@
 [submodule "src/Frontends/PerfPT/mbuild"]
 	path = src/Frontends/PerfPT/mbuild
 	url = https://github.com/intelxed/mbuild
+[submodule "third_party/spdlog"]
+	path = third_party/spdlog
+	url = https://github.com/gabime/spdlog

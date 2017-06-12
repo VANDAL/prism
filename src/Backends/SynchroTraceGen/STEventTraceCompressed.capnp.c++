@@ -694,91 +694,67 @@ const ::capnp::_::RawSchema s_86453f87c831d9e8 = {
 
 
 // EventStreamCompressed
-#ifndef _MSC_VER
 constexpr uint16_t EventStreamCompressed::_capnpPrivate::dataWordSize;
 constexpr uint16_t EventStreamCompressed::_capnpPrivate::pointerCount;
-#endif
 #if !CAPNP_LITE
 constexpr ::capnp::Kind EventStreamCompressed::_capnpPrivate::kind;
 constexpr ::capnp::_::RawSchema const* EventStreamCompressed::_capnpPrivate::schema;
-constexpr ::capnp::_::RawBrandedSchema const* EventStreamCompressed::_capnpPrivate::brand;
 #endif  // !CAPNP_LITE
 
 // EventStreamCompressed::Event
-#ifndef _MSC_VER
 constexpr uint16_t EventStreamCompressed::Event::_capnpPrivate::dataWordSize;
 constexpr uint16_t EventStreamCompressed::Event::_capnpPrivate::pointerCount;
-#endif
 #if !CAPNP_LITE
 constexpr ::capnp::Kind EventStreamCompressed::Event::_capnpPrivate::kind;
 constexpr ::capnp::_::RawSchema const* EventStreamCompressed::Event::_capnpPrivate::schema;
-constexpr ::capnp::_::RawBrandedSchema const* EventStreamCompressed::Event::_capnpPrivate::brand;
 #endif  // !CAPNP_LITE
 
 // EventStreamCompressed::Event::AddrRange
-#ifndef _MSC_VER
 constexpr uint16_t EventStreamCompressed::Event::AddrRange::_capnpPrivate::dataWordSize;
 constexpr uint16_t EventStreamCompressed::Event::AddrRange::_capnpPrivate::pointerCount;
-#endif
 #if !CAPNP_LITE
 constexpr ::capnp::Kind EventStreamCompressed::Event::AddrRange::_capnpPrivate::kind;
 constexpr ::capnp::_::RawSchema const* EventStreamCompressed::Event::AddrRange::_capnpPrivate::schema;
-constexpr ::capnp::_::RawBrandedSchema const* EventStreamCompressed::Event::AddrRange::_capnpPrivate::brand;
 #endif  // !CAPNP_LITE
 
 // EventStreamCompressed::Event::CommEdge
-#ifndef _MSC_VER
 constexpr uint16_t EventStreamCompressed::Event::CommEdge::_capnpPrivate::dataWordSize;
 constexpr uint16_t EventStreamCompressed::Event::CommEdge::_capnpPrivate::pointerCount;
-#endif
 #if !CAPNP_LITE
 constexpr ::capnp::Kind EventStreamCompressed::Event::CommEdge::_capnpPrivate::kind;
 constexpr ::capnp::_::RawSchema const* EventStreamCompressed::Event::CommEdge::_capnpPrivate::schema;
-constexpr ::capnp::_::RawBrandedSchema const* EventStreamCompressed::Event::CommEdge::_capnpPrivate::brand;
 #endif  // !CAPNP_LITE
 
 // EventStreamCompressed::Event::Comp
-#ifndef _MSC_VER
 constexpr uint16_t EventStreamCompressed::Event::Comp::_capnpPrivate::dataWordSize;
 constexpr uint16_t EventStreamCompressed::Event::Comp::_capnpPrivate::pointerCount;
-#endif
 #if !CAPNP_LITE
 constexpr ::capnp::Kind EventStreamCompressed::Event::Comp::_capnpPrivate::kind;
 constexpr ::capnp::_::RawSchema const* EventStreamCompressed::Event::Comp::_capnpPrivate::schema;
-constexpr ::capnp::_::RawBrandedSchema const* EventStreamCompressed::Event::Comp::_capnpPrivate::brand;
 #endif  // !CAPNP_LITE
 
 // EventStreamCompressed::Event::Comm
-#ifndef _MSC_VER
 constexpr uint16_t EventStreamCompressed::Event::Comm::_capnpPrivate::dataWordSize;
 constexpr uint16_t EventStreamCompressed::Event::Comm::_capnpPrivate::pointerCount;
-#endif
 #if !CAPNP_LITE
 constexpr ::capnp::Kind EventStreamCompressed::Event::Comm::_capnpPrivate::kind;
 constexpr ::capnp::_::RawSchema const* EventStreamCompressed::Event::Comm::_capnpPrivate::schema;
-constexpr ::capnp::_::RawBrandedSchema const* EventStreamCompressed::Event::Comm::_capnpPrivate::brand;
 #endif  // !CAPNP_LITE
 
 // EventStreamCompressed::Event::Sync
-#ifndef _MSC_VER
 constexpr uint16_t EventStreamCompressed::Event::Sync::_capnpPrivate::dataWordSize;
 constexpr uint16_t EventStreamCompressed::Event::Sync::_capnpPrivate::pointerCount;
-#endif
 #if !CAPNP_LITE
 constexpr ::capnp::Kind EventStreamCompressed::Event::Sync::_capnpPrivate::kind;
 constexpr ::capnp::_::RawSchema const* EventStreamCompressed::Event::Sync::_capnpPrivate::schema;
-constexpr ::capnp::_::RawBrandedSchema const* EventStreamCompressed::Event::Sync::_capnpPrivate::brand;
 #endif  // !CAPNP_LITE
 
 // EventStreamCompressed::Event::Marker
-#ifndef _MSC_VER
 constexpr uint16_t EventStreamCompressed::Event::Marker::_capnpPrivate::dataWordSize;
 constexpr uint16_t EventStreamCompressed::Event::Marker::_capnpPrivate::pointerCount;
-#endif
 #if !CAPNP_LITE
 constexpr ::capnp::Kind EventStreamCompressed::Event::Marker::_capnpPrivate::kind;
 constexpr ::capnp::_::RawSchema const* EventStreamCompressed::Event::Marker::_capnpPrivate::schema;
-constexpr ::capnp::_::RawBrandedSchema const* EventStreamCompressed::Event::Marker::_capnpPrivate::brand;
 #endif  // !CAPNP_LITE
 
 

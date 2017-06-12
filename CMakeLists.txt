@@ -27,6 +27,9 @@ get_filename_component(THIRD_PARTY   third_party   ABSOLUTE)
 execute_process(
 	COMMAND git submodule update --init ${THIRD_PARTY}
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+execute_process(
+	COMMAND git -C ${THIRD_PARTY}/spdlog apply --whitespace=nowarn ${CMAKE_SOURCE_DIR}/gitpatches/spdlog.patch)
+
 include_directories(${THIRD_PARTY}/Catch/include)
 include_directories(${THIRD_PARTY}/whereami/src)
 include_directories(${THIRD_PARTY}/spdlog/include)

@@ -1,0 +1,61 @@
+From dfff6a42cd27306267269ebefb659e5ee63e1fc9 Mon Sep 17 00:00:00 2001
+From: Mike Lui <mike.d.lui@gmail.com>
+Date: Mon, 12 Jun 2017 17:49:59 -0400
+Subject: [PATCH] patch
+
+---
+ include/spdlog/tweakme.h | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/include/spdlog/tweakme.h b/include/spdlog/tweakme.h
+index d1b63c0..825d975 100644
+--- a/include/spdlog/tweakme.h
++++ b/include/spdlog/tweakme.h
+@@ -17,7 +17,7 @@
+ // This clock is less accurate - can be off by dozens of millis - depending on the kernel HZ.
+ // Uncomment to use it instead of the regular clock.
+ //
+-// #define SPDLOG_CLOCK_COARSE
++#define SPDLOG_CLOCK_COARSE
+ ///////////////////////////////////////////////////////////////////////////////
+ 
+ 
+@@ -28,7 +28,7 @@
+ // WARNING: If the log pattern contains any date/time while this flag is on, the result is undefined.
+ //          You must set new pattern(spdlog::set_pattern(..") without any date/time in it
+ //
+-// #define SPDLOG_NO_DATETIME
++#define SPDLOG_NO_DATETIME
+ ///////////////////////////////////////////////////////////////////////////////
+ 
+ 
+@@ -38,7 +38,7 @@
+ //
+ // WARNING: If the log pattern contains thread id (i.e, %t) while this flag is on, the result is undefined.
+ //
+-// #define SPDLOG_NO_THREAD_ID
++#define SPDLOG_NO_THREAD_ID
+ ///////////////////////////////////////////////////////////////////////////////
+ 
+ 
+@@ -46,7 +46,7 @@
+ // Uncomment if logger name logging is not needed.
+ // This will prevent spdlog from copying the logger name  on each log call.
+ //
+-// #define SPDLOG_NO_NAME
++#define SPDLOG_NO_NAME
+ ///////////////////////////////////////////////////////////////////////////////
+ 
+ ///////////////////////////////////////////////////////////////////////////////
+@@ -122,7 +122,7 @@
+ // mode with recent compilers. See GCC's documentation for -Wsuggest-final-types
+ // for instance.
+ //
+-// #define SPDLOG_FINAL final
++#define SPDLOG_FINAL final
+ ///////////////////////////////////////////////////////////////////////////////
+ 
+ 
+-- 
+2.13.1
+

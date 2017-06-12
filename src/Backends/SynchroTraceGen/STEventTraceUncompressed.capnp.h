@@ -6,7 +6,7 @@
 
 #include <capnp/generated-header-support.h>
 
-#if CAPNP_VERSION != 5003
+#if CAPNP_VERSION != 6001
 #error "Version mismatch between generated code and library headers.  You must use the same version of the Cap'n Proto compiler and library."
 #endif
 
@@ -58,7 +58,7 @@ struct EventStreamUncompressed {
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(e8add7b262110ea6, 0, 1)
     #if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const* brand = &schema->defaultBrand;
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
     #endif  // !CAPNP_LITE
   };
 };
@@ -87,7 +87,7 @@ struct EventStreamUncompressed::Event {
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(cafa57e6b5bbbc84, 4, 0)
     #if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const* brand = &schema->defaultBrand;
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
     #endif  // !CAPNP_LITE
   };
 };
@@ -102,7 +102,7 @@ struct EventStreamUncompressed::Event::Comp {
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(f898e2aa0b98c862, 4, 0)
     #if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const* brand = &schema->defaultBrand;
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
     #endif  // !CAPNP_LITE
   };
 };
@@ -117,7 +117,7 @@ struct EventStreamUncompressed::Event::Comm {
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(cea4422c054b82ae, 4, 0)
     #if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const* brand = &schema->defaultBrand;
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
     #endif  // !CAPNP_LITE
   };
 };
@@ -132,7 +132,7 @@ struct EventStreamUncompressed::Event::Sync {
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(f2caf87d6a7e9c4c, 4, 0)
     #if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const* brand = &schema->defaultBrand;
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
     #endif  // !CAPNP_LITE
   };
 };
@@ -147,7 +147,7 @@ struct EventStreamUncompressed::Event::Marker {
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(b4799e0eca973d32, 4, 0)
     #if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const* brand = &schema->defaultBrand;
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
     #endif  // !CAPNP_LITE
   };
 };
@@ -167,7 +167,7 @@ public:
 
 #if !CAPNP_LITE
   inline ::kj::StringTree toString() const {
-    return ::capnp::_::structString(_reader, *_capnpPrivate::brand);
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
   }
 #endif  // !CAPNP_LITE
 
@@ -248,22 +248,22 @@ public:
 
 #if !CAPNP_LITE
   inline ::kj::StringTree toString() const {
-    return ::capnp::_::structString(_reader, *_capnpPrivate::brand);
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
   }
 #endif  // !CAPNP_LITE
 
   inline Which which() const;
   inline bool isComp() const;
-  inline Comp::Reader getComp() const;
+  inline typename Comp::Reader getComp() const;
 
   inline bool isComm() const;
-  inline Comm::Reader getComm() const;
+  inline typename Comm::Reader getComm() const;
 
   inline bool isSync() const;
-  inline Sync::Reader getSync() const;
+  inline typename Sync::Reader getSync() const;
 
   inline bool isMarker() const;
-  inline Marker::Reader getMarker() const;
+  inline typename Marker::Reader getMarker() const;
 
 private:
   ::capnp::_::StructReader _reader;
@@ -295,20 +295,20 @@ public:
 
   inline Which which();
   inline bool isComp();
-  inline Comp::Builder getComp();
-  inline Comp::Builder initComp();
+  inline typename Comp::Builder getComp();
+  inline typename Comp::Builder initComp();
 
   inline bool isComm();
-  inline Comm::Builder getComm();
-  inline Comm::Builder initComm();
+  inline typename Comm::Builder getComm();
+  inline typename Comm::Builder initComm();
 
   inline bool isSync();
-  inline Sync::Builder getSync();
-  inline Sync::Builder initSync();
+  inline typename Sync::Builder getSync();
+  inline typename Sync::Builder initSync();
 
   inline bool isMarker();
-  inline Marker::Builder getMarker();
-  inline Marker::Builder initMarker();
+  inline typename Marker::Builder getMarker();
+  inline typename Marker::Builder initMarker();
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -349,7 +349,7 @@ public:
 
 #if !CAPNP_LITE
   inline ::kj::StringTree toString() const {
-    return ::capnp::_::structString(_reader, *_capnpPrivate::brand);
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
   }
 #endif  // !CAPNP_LITE
 
@@ -445,7 +445,7 @@ public:
 
 #if !CAPNP_LITE
   inline ::kj::StringTree toString() const {
-    return ::capnp::_::structString(_reader, *_capnpPrivate::brand);
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
   }
 #endif  // !CAPNP_LITE
 
@@ -536,7 +536,7 @@ public:
 
 #if !CAPNP_LITE
   inline ::kj::StringTree toString() const {
-    return ::capnp::_::structString(_reader, *_capnpPrivate::brand);
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
   }
 #endif  // !CAPNP_LITE
 
@@ -617,7 +617,7 @@ public:
 
 #if !CAPNP_LITE
   inline ::kj::StringTree toString() const {
-    return ::capnp::_::structString(_reader, *_capnpPrivate::brand);
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
   }
 #endif  // !CAPNP_LITE
 
@@ -683,42 +683,46 @@ private:
 // =======================================================================================
 
 inline bool EventStreamUncompressed::Reader::hasEvents() const {
-  return !_reader.getPointerField(0 * ::capnp::POINTERS).isNull();
+  return !_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
 inline bool EventStreamUncompressed::Builder::hasEvents() {
-  return !_builder.getPointerField(0 * ::capnp::POINTERS).isNull();
+  return !_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
 inline  ::capnp::List< ::EventStreamUncompressed::Event>::Reader EventStreamUncompressed::Reader::getEvents() const {
-  return ::capnp::_::PointerHelpers< ::capnp::List< ::EventStreamUncompressed::Event>>::get(
-      _reader.getPointerField(0 * ::capnp::POINTERS));
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::EventStreamUncompressed::Event>>::get(_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 inline  ::capnp::List< ::EventStreamUncompressed::Event>::Builder EventStreamUncompressed::Builder::getEvents() {
-  return ::capnp::_::PointerHelpers< ::capnp::List< ::EventStreamUncompressed::Event>>::get(
-      _builder.getPointerField(0 * ::capnp::POINTERS));
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::EventStreamUncompressed::Event>>::get(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 inline void EventStreamUncompressed::Builder::setEvents( ::capnp::List< ::EventStreamUncompressed::Event>::Reader value) {
-  ::capnp::_::PointerHelpers< ::capnp::List< ::EventStreamUncompressed::Event>>::set(
-      _builder.getPointerField(0 * ::capnp::POINTERS), value);
+  ::capnp::_::PointerHelpers< ::capnp::List< ::EventStreamUncompressed::Event>>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
 }
 inline  ::capnp::List< ::EventStreamUncompressed::Event>::Builder EventStreamUncompressed::Builder::initEvents(unsigned int size) {
-  return ::capnp::_::PointerHelpers< ::capnp::List< ::EventStreamUncompressed::Event>>::init(
-      _builder.getPointerField(0 * ::capnp::POINTERS), size);
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::EventStreamUncompressed::Event>>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), size);
 }
 inline void EventStreamUncompressed::Builder::adoptEvents(
     ::capnp::Orphan< ::capnp::List< ::EventStreamUncompressed::Event>>&& value) {
-  ::capnp::_::PointerHelpers< ::capnp::List< ::EventStreamUncompressed::Event>>::adopt(
-      _builder.getPointerField(0 * ::capnp::POINTERS), kj::mv(value));
+  ::capnp::_::PointerHelpers< ::capnp::List< ::EventStreamUncompressed::Event>>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
 }
 inline ::capnp::Orphan< ::capnp::List< ::EventStreamUncompressed::Event>> EventStreamUncompressed::Builder::disownEvents() {
-  return ::capnp::_::PointerHelpers< ::capnp::List< ::EventStreamUncompressed::Event>>::disown(
-      _builder.getPointerField(0 * ::capnp::POINTERS));
+  return ::capnp::_::PointerHelpers< ::capnp::List< ::EventStreamUncompressed::Event>>::disown(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
 inline  ::EventStreamUncompressed::Event::Which EventStreamUncompressed::Event::Reader::which() const {
-  return _reader.getDataField<Which>(12 * ::capnp::ELEMENTS);
+  return _reader.getDataField<Which>(
+      ::capnp::bounded<12>() * ::capnp::ELEMENTS);
 }
 inline  ::EventStreamUncompressed::Event::Which EventStreamUncompressed::Event::Builder::which() {
-  return _builder.getDataField<Which>(12 * ::capnp::ELEMENTS);
+  return _builder.getDataField<Which>(
+      ::capnp::bounded<12>() * ::capnp::ELEMENTS);
 }
 
 inline bool EventStreamUncompressed::Event::Reader::isComp() const {
@@ -727,25 +731,25 @@ inline bool EventStreamUncompressed::Event::Reader::isComp() const {
 inline bool EventStreamUncompressed::Event::Builder::isComp() {
   return which() == EventStreamUncompressed::Event::COMP;
 }
-inline EventStreamUncompressed::Event::Comp::Reader EventStreamUncompressed::Event::Reader::getComp() const {
-  KJ_IREQUIRE(which() == EventStreamUncompressed::Event::COMP,
+inline typename EventStreamUncompressed::Event::Comp::Reader EventStreamUncompressed::Event::Reader::getComp() const {
+  KJ_IREQUIRE((which() == EventStreamUncompressed::Event::COMP),
               "Must check which() before get()ing a union member.");
-  return EventStreamUncompressed::Event::Comp::Reader(_reader);
+  return typename EventStreamUncompressed::Event::Comp::Reader(_reader);
 }
-inline EventStreamUncompressed::Event::Comp::Builder EventStreamUncompressed::Event::Builder::getComp() {
-  KJ_IREQUIRE(which() == EventStreamUncompressed::Event::COMP,
+inline typename EventStreamUncompressed::Event::Comp::Builder EventStreamUncompressed::Event::Builder::getComp() {
+  KJ_IREQUIRE((which() == EventStreamUncompressed::Event::COMP),
               "Must check which() before get()ing a union member.");
-  return EventStreamUncompressed::Event::Comp::Builder(_builder);
+  return typename EventStreamUncompressed::Event::Comp::Builder(_builder);
 }
-inline EventStreamUncompressed::Event::Comp::Builder EventStreamUncompressed::Event::Builder::initComp() {
+inline typename EventStreamUncompressed::Event::Comp::Builder EventStreamUncompressed::Event::Builder::initComp() {
   _builder.setDataField<EventStreamUncompressed::Event::Which>(
-      12 * ::capnp::ELEMENTS, EventStreamUncompressed::Event::COMP);
-  _builder.setDataField< ::uint16_t>(0 * ::capnp::ELEMENTS, 0);
-  _builder.setDataField< ::uint16_t>(1 * ::capnp::ELEMENTS, 0);
-  _builder.setDataField< ::uint16_t>(2 * ::capnp::ELEMENTS, 0);
-  _builder.setDataField< ::uint64_t>(1 * ::capnp::ELEMENTS, 0);
-  _builder.setDataField< ::uint64_t>(2 * ::capnp::ELEMENTS, 0);
-  return EventStreamUncompressed::Event::Comp::Builder(_builder);
+      ::capnp::bounded<12>() * ::capnp::ELEMENTS, EventStreamUncompressed::Event::COMP);
+  _builder.setDataField< ::uint16_t>(::capnp::bounded<0>() * ::capnp::ELEMENTS, 0);
+  _builder.setDataField< ::uint16_t>(::capnp::bounded<1>() * ::capnp::ELEMENTS, 0);
+  _builder.setDataField< ::uint16_t>(::capnp::bounded<2>() * ::capnp::ELEMENTS, 0);
+  _builder.setDataField< ::uint64_t>(::capnp::bounded<1>() * ::capnp::ELEMENTS, 0);
+  _builder.setDataField< ::uint64_t>(::capnp::bounded<2>() * ::capnp::ELEMENTS, 0);
+  return typename EventStreamUncompressed::Event::Comp::Builder(_builder);
 }
 inline bool EventStreamUncompressed::Event::Reader::isComm() const {
   return which() == EventStreamUncompressed::Event::COMM;
@@ -753,24 +757,24 @@ inline bool EventStreamUncompressed::Event::Reader::isComm() const {
 inline bool EventStreamUncompressed::Event::Builder::isComm() {
   return which() == EventStreamUncompressed::Event::COMM;
 }
-inline EventStreamUncompressed::Event::Comm::Reader EventStreamUncompressed::Event::Reader::getComm() const {
-  KJ_IREQUIRE(which() == EventStreamUncompressed::Event::COMM,
+inline typename EventStreamUncompressed::Event::Comm::Reader EventStreamUncompressed::Event::Reader::getComm() const {
+  KJ_IREQUIRE((which() == EventStreamUncompressed::Event::COMM),
               "Must check which() before get()ing a union member.");
-  return EventStreamUncompressed::Event::Comm::Reader(_reader);
+  return typename EventStreamUncompressed::Event::Comm::Reader(_reader);
 }
-inline EventStreamUncompressed::Event::Comm::Builder EventStreamUncompressed::Event::Builder::getComm() {
-  KJ_IREQUIRE(which() == EventStreamUncompressed::Event::COMM,
+inline typename EventStreamUncompressed::Event::Comm::Builder EventStreamUncompressed::Event::Builder::getComm() {
+  KJ_IREQUIRE((which() == EventStreamUncompressed::Event::COMM),
               "Must check which() before get()ing a union member.");
-  return EventStreamUncompressed::Event::Comm::Builder(_builder);
+  return typename EventStreamUncompressed::Event::Comm::Builder(_builder);
 }
-inline EventStreamUncompressed::Event::Comm::Builder EventStreamUncompressed::Event::Builder::initComm() {
+inline typename EventStreamUncompressed::Event::Comm::Builder EventStreamUncompressed::Event::Builder::initComm() {
   _builder.setDataField<EventStreamUncompressed::Event::Which>(
-      12 * ::capnp::ELEMENTS, EventStreamUncompressed::Event::COMM);
-  _builder.setDataField< ::uint16_t>(0 * ::capnp::ELEMENTS, 0);
-  _builder.setDataField< ::uint32_t>(1 * ::capnp::ELEMENTS, 0);
-  _builder.setDataField< ::uint64_t>(1 * ::capnp::ELEMENTS, 0);
-  _builder.setDataField< ::uint64_t>(2 * ::capnp::ELEMENTS, 0);
-  return EventStreamUncompressed::Event::Comm::Builder(_builder);
+      ::capnp::bounded<12>() * ::capnp::ELEMENTS, EventStreamUncompressed::Event::COMM);
+  _builder.setDataField< ::uint16_t>(::capnp::bounded<0>() * ::capnp::ELEMENTS, 0);
+  _builder.setDataField< ::uint32_t>(::capnp::bounded<1>() * ::capnp::ELEMENTS, 0);
+  _builder.setDataField< ::uint64_t>(::capnp::bounded<1>() * ::capnp::ELEMENTS, 0);
+  _builder.setDataField< ::uint64_t>(::capnp::bounded<2>() * ::capnp::ELEMENTS, 0);
+  return typename EventStreamUncompressed::Event::Comm::Builder(_builder);
 }
 inline bool EventStreamUncompressed::Event::Reader::isSync() const {
   return which() == EventStreamUncompressed::Event::SYNC;
@@ -778,22 +782,22 @@ inline bool EventStreamUncompressed::Event::Reader::isSync() const {
 inline bool EventStreamUncompressed::Event::Builder::isSync() {
   return which() == EventStreamUncompressed::Event::SYNC;
 }
-inline EventStreamUncompressed::Event::Sync::Reader EventStreamUncompressed::Event::Reader::getSync() const {
-  KJ_IREQUIRE(which() == EventStreamUncompressed::Event::SYNC,
+inline typename EventStreamUncompressed::Event::Sync::Reader EventStreamUncompressed::Event::Reader::getSync() const {
+  KJ_IREQUIRE((which() == EventStreamUncompressed::Event::SYNC),
               "Must check which() before get()ing a union member.");
-  return EventStreamUncompressed::Event::Sync::Reader(_reader);
+  return typename EventStreamUncompressed::Event::Sync::Reader(_reader);
 }
-inline EventStreamUncompressed::Event::Sync::Builder EventStreamUncompressed::Event::Builder::getSync() {
-  KJ_IREQUIRE(which() == EventStreamUncompressed::Event::SYNC,
+inline typename EventStreamUncompressed::Event::Sync::Builder EventStreamUncompressed::Event::Builder::getSync() {
+  KJ_IREQUIRE((which() == EventStreamUncompressed::Event::SYNC),
               "Must check which() before get()ing a union member.");
-  return EventStreamUncompressed::Event::Sync::Builder(_builder);
+  return typename EventStreamUncompressed::Event::Sync::Builder(_builder);
 }
-inline EventStreamUncompressed::Event::Sync::Builder EventStreamUncompressed::Event::Builder::initSync() {
+inline typename EventStreamUncompressed::Event::Sync::Builder EventStreamUncompressed::Event::Builder::initSync() {
   _builder.setDataField<EventStreamUncompressed::Event::Which>(
-      12 * ::capnp::ELEMENTS, EventStreamUncompressed::Event::SYNC);
-  _builder.setDataField< ::uint16_t>(0 * ::capnp::ELEMENTS, 0);
-  _builder.setDataField< ::uint64_t>(1 * ::capnp::ELEMENTS, 0);
-  return EventStreamUncompressed::Event::Sync::Builder(_builder);
+      ::capnp::bounded<12>() * ::capnp::ELEMENTS, EventStreamUncompressed::Event::SYNC);
+  _builder.setDataField< ::uint16_t>(::capnp::bounded<0>() * ::capnp::ELEMENTS, 0);
+  _builder.setDataField< ::uint64_t>(::capnp::bounded<1>() * ::capnp::ELEMENTS, 0);
+  return typename EventStreamUncompressed::Event::Sync::Builder(_builder);
 }
 inline bool EventStreamUncompressed::Event::Reader::isMarker() const {
   return which() == EventStreamUncompressed::Event::MARKER;
@@ -801,188 +805,188 @@ inline bool EventStreamUncompressed::Event::Reader::isMarker() const {
 inline bool EventStreamUncompressed::Event::Builder::isMarker() {
   return which() == EventStreamUncompressed::Event::MARKER;
 }
-inline EventStreamUncompressed::Event::Marker::Reader EventStreamUncompressed::Event::Reader::getMarker() const {
-  KJ_IREQUIRE(which() == EventStreamUncompressed::Event::MARKER,
+inline typename EventStreamUncompressed::Event::Marker::Reader EventStreamUncompressed::Event::Reader::getMarker() const {
+  KJ_IREQUIRE((which() == EventStreamUncompressed::Event::MARKER),
               "Must check which() before get()ing a union member.");
-  return EventStreamUncompressed::Event::Marker::Reader(_reader);
+  return typename EventStreamUncompressed::Event::Marker::Reader(_reader);
 }
-inline EventStreamUncompressed::Event::Marker::Builder EventStreamUncompressed::Event::Builder::getMarker() {
-  KJ_IREQUIRE(which() == EventStreamUncompressed::Event::MARKER,
+inline typename EventStreamUncompressed::Event::Marker::Builder EventStreamUncompressed::Event::Builder::getMarker() {
+  KJ_IREQUIRE((which() == EventStreamUncompressed::Event::MARKER),
               "Must check which() before get()ing a union member.");
-  return EventStreamUncompressed::Event::Marker::Builder(_builder);
+  return typename EventStreamUncompressed::Event::Marker::Builder(_builder);
 }
-inline EventStreamUncompressed::Event::Marker::Builder EventStreamUncompressed::Event::Builder::initMarker() {
+inline typename EventStreamUncompressed::Event::Marker::Builder EventStreamUncompressed::Event::Builder::initMarker() {
   _builder.setDataField<EventStreamUncompressed::Event::Which>(
-      12 * ::capnp::ELEMENTS, EventStreamUncompressed::Event::MARKER);
-  _builder.setDataField< ::uint16_t>(0 * ::capnp::ELEMENTS, 0);
-  return EventStreamUncompressed::Event::Marker::Builder(_builder);
+      ::capnp::bounded<12>() * ::capnp::ELEMENTS, EventStreamUncompressed::Event::MARKER);
+  _builder.setDataField< ::uint16_t>(::capnp::bounded<0>() * ::capnp::ELEMENTS, 0);
+  return typename EventStreamUncompressed::Event::Marker::Builder(_builder);
 }
 inline  ::uint16_t EventStreamUncompressed::Event::Comp::Reader::getIops() const {
   return _reader.getDataField< ::uint16_t>(
-      0 * ::capnp::ELEMENTS);
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 
 inline  ::uint16_t EventStreamUncompressed::Event::Comp::Builder::getIops() {
   return _builder.getDataField< ::uint16_t>(
-      0 * ::capnp::ELEMENTS);
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 inline void EventStreamUncompressed::Event::Comp::Builder::setIops( ::uint16_t value) {
   _builder.setDataField< ::uint16_t>(
-      0 * ::capnp::ELEMENTS, value);
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
 inline  ::uint16_t EventStreamUncompressed::Event::Comp::Reader::getFlops() const {
   return _reader.getDataField< ::uint16_t>(
-      1 * ::capnp::ELEMENTS);
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
 inline  ::uint16_t EventStreamUncompressed::Event::Comp::Builder::getFlops() {
   return _builder.getDataField< ::uint16_t>(
-      1 * ::capnp::ELEMENTS);
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 inline void EventStreamUncompressed::Event::Comp::Builder::setFlops( ::uint16_t value) {
   _builder.setDataField< ::uint16_t>(
-      1 * ::capnp::ELEMENTS, value);
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
 inline  ::EventStreamUncompressed::Event::MemType EventStreamUncompressed::Event::Comp::Reader::getMem() const {
   return _reader.getDataField< ::EventStreamUncompressed::Event::MemType>(
-      2 * ::capnp::ELEMENTS);
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
 }
 
 inline  ::EventStreamUncompressed::Event::MemType EventStreamUncompressed::Event::Comp::Builder::getMem() {
   return _builder.getDataField< ::EventStreamUncompressed::Event::MemType>(
-      2 * ::capnp::ELEMENTS);
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
 }
 inline void EventStreamUncompressed::Event::Comp::Builder::setMem( ::EventStreamUncompressed::Event::MemType value) {
   _builder.setDataField< ::EventStreamUncompressed::Event::MemType>(
-      2 * ::capnp::ELEMENTS, value);
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
 }
 
 inline  ::uint64_t EventStreamUncompressed::Event::Comp::Reader::getStartAddr() const {
   return _reader.getDataField< ::uint64_t>(
-      1 * ::capnp::ELEMENTS);
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
 inline  ::uint64_t EventStreamUncompressed::Event::Comp::Builder::getStartAddr() {
   return _builder.getDataField< ::uint64_t>(
-      1 * ::capnp::ELEMENTS);
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 inline void EventStreamUncompressed::Event::Comp::Builder::setStartAddr( ::uint64_t value) {
   _builder.setDataField< ::uint64_t>(
-      1 * ::capnp::ELEMENTS, value);
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
 inline  ::uint64_t EventStreamUncompressed::Event::Comp::Reader::getEndAddr() const {
   return _reader.getDataField< ::uint64_t>(
-      2 * ::capnp::ELEMENTS);
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
 }
 
 inline  ::uint64_t EventStreamUncompressed::Event::Comp::Builder::getEndAddr() {
   return _builder.getDataField< ::uint64_t>(
-      2 * ::capnp::ELEMENTS);
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
 }
 inline void EventStreamUncompressed::Event::Comp::Builder::setEndAddr( ::uint64_t value) {
   _builder.setDataField< ::uint64_t>(
-      2 * ::capnp::ELEMENTS, value);
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
 }
 
 inline  ::uint16_t EventStreamUncompressed::Event::Comm::Reader::getProducerThread() const {
   return _reader.getDataField< ::uint16_t>(
-      0 * ::capnp::ELEMENTS);
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 
 inline  ::uint16_t EventStreamUncompressed::Event::Comm::Builder::getProducerThread() {
   return _builder.getDataField< ::uint16_t>(
-      0 * ::capnp::ELEMENTS);
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 inline void EventStreamUncompressed::Event::Comm::Builder::setProducerThread( ::uint16_t value) {
   _builder.setDataField< ::uint16_t>(
-      0 * ::capnp::ELEMENTS, value);
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
 inline  ::uint32_t EventStreamUncompressed::Event::Comm::Reader::getProducerEvent() const {
   return _reader.getDataField< ::uint32_t>(
-      1 * ::capnp::ELEMENTS);
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
 inline  ::uint32_t EventStreamUncompressed::Event::Comm::Builder::getProducerEvent() {
   return _builder.getDataField< ::uint32_t>(
-      1 * ::capnp::ELEMENTS);
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 inline void EventStreamUncompressed::Event::Comm::Builder::setProducerEvent( ::uint32_t value) {
   _builder.setDataField< ::uint32_t>(
-      1 * ::capnp::ELEMENTS, value);
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
 inline  ::uint64_t EventStreamUncompressed::Event::Comm::Reader::getStartAddr() const {
   return _reader.getDataField< ::uint64_t>(
-      1 * ::capnp::ELEMENTS);
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
 inline  ::uint64_t EventStreamUncompressed::Event::Comm::Builder::getStartAddr() {
   return _builder.getDataField< ::uint64_t>(
-      1 * ::capnp::ELEMENTS);
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 inline void EventStreamUncompressed::Event::Comm::Builder::setStartAddr( ::uint64_t value) {
   _builder.setDataField< ::uint64_t>(
-      1 * ::capnp::ELEMENTS, value);
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
 inline  ::uint64_t EventStreamUncompressed::Event::Comm::Reader::getEndAddr() const {
   return _reader.getDataField< ::uint64_t>(
-      2 * ::capnp::ELEMENTS);
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
 }
 
 inline  ::uint64_t EventStreamUncompressed::Event::Comm::Builder::getEndAddr() {
   return _builder.getDataField< ::uint64_t>(
-      2 * ::capnp::ELEMENTS);
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
 }
 inline void EventStreamUncompressed::Event::Comm::Builder::setEndAddr( ::uint64_t value) {
   _builder.setDataField< ::uint64_t>(
-      2 * ::capnp::ELEMENTS, value);
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
 }
 
 inline  ::EventStreamUncompressed::Event::SyncType EventStreamUncompressed::Event::Sync::Reader::getType() const {
   return _reader.getDataField< ::EventStreamUncompressed::Event::SyncType>(
-      0 * ::capnp::ELEMENTS);
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 
 inline  ::EventStreamUncompressed::Event::SyncType EventStreamUncompressed::Event::Sync::Builder::getType() {
   return _builder.getDataField< ::EventStreamUncompressed::Event::SyncType>(
-      0 * ::capnp::ELEMENTS);
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 inline void EventStreamUncompressed::Event::Sync::Builder::setType( ::EventStreamUncompressed::Event::SyncType value) {
   _builder.setDataField< ::EventStreamUncompressed::Event::SyncType>(
-      0 * ::capnp::ELEMENTS, value);
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
 inline  ::uint64_t EventStreamUncompressed::Event::Sync::Reader::getId() const {
   return _reader.getDataField< ::uint64_t>(
-      1 * ::capnp::ELEMENTS);
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
 inline  ::uint64_t EventStreamUncompressed::Event::Sync::Builder::getId() {
   return _builder.getDataField< ::uint64_t>(
-      1 * ::capnp::ELEMENTS);
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 inline void EventStreamUncompressed::Event::Sync::Builder::setId( ::uint64_t value) {
   _builder.setDataField< ::uint64_t>(
-      1 * ::capnp::ELEMENTS, value);
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
 inline  ::uint16_t EventStreamUncompressed::Event::Marker::Reader::getCount() const {
   return _reader.getDataField< ::uint16_t>(
-      0 * ::capnp::ELEMENTS);
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 
 inline  ::uint16_t EventStreamUncompressed::Event::Marker::Builder::getCount() {
   return _builder.getDataField< ::uint16_t>(
-      0 * ::capnp::ELEMENTS);
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 inline void EventStreamUncompressed::Event::Marker::Builder::setCount( ::uint16_t value) {
   _builder.setDataField< ::uint16_t>(
-      0 * ::capnp::ELEMENTS, value);
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
 

@@ -8,7 +8,7 @@ if (${PERF_ENABLE})
 
 execute_process(COMMAND grep -c intel_pt /proc/cpuinfo OUTPUT_VARIABLE INTEL_PT_SUPPORT)
 if (${INTEL_PT_SUPPORT} EQUAL 0)
-	message(FATAL_ERROR "Intel Process Trace not supported on this machine")
+	message(WARNING "Intel Process Trace via `perf record` not supported on this machine")
 endif (${INTEL_PT_SUPPORT} EQUAL 0)
 
 # Build destinations

@@ -1,18 +1,20 @@
-From d53fda29f17bbfaa21eb636c99427aa007838f5f Mon Sep 17 00:00:00 2001
+From 1258f64ab0995b10910e69f42c0fe247a6500320 Mon Sep 17 00:00:00 2001
 From: Mike Lui <mike.d.lui@gmail.com>
-Date: Thu, 11 May 2017 00:34:42 -0400
-Subject: [PATCH] patch
+Date: Mon, 12 Jun 2017 14:13:40 -0400
+Subject: [PATCH] sigil2 patch
 
 ---
- tools/perf/Build                     |  10 ++
- tools/perf/Makefile.perf             |   5 +
- tools/perf/builtin-script.c          | 272 +++++++++++++++++++++++++++-
- tools/perf/sigil2/Build              |  16 ++
- tools/perf/sigil2/ipc.c              | 332 ++++++++++++++++++++++++++++++++++
- tools/perf/sigil2/ipc.h              |  20 +++
- tools/perf/sigil2/xed-decode-cache.c | 333 +++++++++++++++++++++++++++++++++++
- tools/perf/sigil2/xed-decode-cache.h |  42 +++++
- 8 files changed, 1029 insertions(+), 1 deletion(-)
+ tools/perf/Build                        |  16 ++
+ tools/perf/Makefile.config              |   2 +-
+ tools/perf/Makefile.perf                |   5 +
+ tools/perf/builtin-script.c             | 272 +++++++++++++++++++++++++-
+ tools/perf/sigil2/Build                 |  25 +++
+ tools/perf/sigil2/ipc.c                 | 332 +++++++++++++++++++++++++++++++
+ tools/perf/sigil2/ipc.h                 |  20 ++
+ tools/perf/sigil2/xed-decode-cache.c    | 333 ++++++++++++++++++++++++++++++++
+ tools/perf/sigil2/xed-decode-cache.h    |  42 ++++
+ tools/perf/util/scripting-engines/Build |   1 +
+ 10 files changed, 1046 insertions(+), 2 deletions(-)
  create mode 100644 tools/perf/sigil2/Build
  create mode 100644 tools/perf/sigil2/ipc.c
  create mode 100644 tools/perf/sigil2/ipc.h
@@ -20,26 +22,45 @@ Subject: [PATCH] patch
  create mode 100644 tools/perf/sigil2/xed-decode-cache.h
 
 diff --git a/tools/perf/Build b/tools/perf/Build
-index b12d5d1..cc0055e 100644
+index b12d5d1666e3..3c58b8f63010 100644
 --- a/tools/perf/Build
 +++ b/tools/perf/Build
-@@ -50,4 +50,14 @@ libperf-y += arch/
+@@ -50,4 +50,20 @@ libperf-y += arch/
  libperf-y += ui/
  libperf-y += scripts/
  
-+SIGIL2_SRC_PATH := $(shell readlink -f ~mdl45/github/sigil2/src)
++SIGIL2_SRC_PATH := $(shell readlink -f ../../../../..)
++XED_INCLUDE_PATH := $(shell readlink -f ../../../xed/include/public)
++XED_XED_INCLUDE_PATH := $(shell readlink -f ../../../xed/include/public/xed)
++XED_BUILD_PATH := $(shell readlink -f ../../../../../../build/src/Frontends/PerfPT/xed/src/xed-build/obj)
 +libperf-y += sigil2/
++
++CFLAGS_builtin-script.o += -I$(SIGIL2_SRC_PATH) -I$(XED_INCLUDE_PATH) -I$(XED_BUILD_PATH)
++CFLAGS_builtin-script.o += -I$(XED_INCLUDE_PATH)
++CFLAGS_builtin-script.o += -I$(XED_XED_INCLUDE_PATH)
++CFLAGS_builtin-script.o += -I$(XED_BUILD_PATH)
 +CFLAGS_builtin-script.o += -Wno-unused-variable
 +CFLAGS_builtin-script.o += -Wno-unused-but-set-variable
 +CFLAGS_builtin-script.o += -Wno-old-style-declaration
 +CFLAGS_builtin-script.o += -Wno-switch-enum
 +CFLAGS_builtin-script.o += -Wno-packed
-+CFLAGS_builtin-script.o += -I/home/mdl45/github/xed_build/kits/xed-install-base-2017-04-18-lin-x86-64/include
-+CFLAGS_builtin-script.o += "-I$(SIGIL2_SRC_PATH)"
 +
  gtk-y += ui/gtk/
+diff --git a/tools/perf/Makefile.config b/tools/perf/Makefile.config
+index 76c84f0eec52..827a79d6732e 100644
+--- a/tools/perf/Makefile.config
++++ b/tools/perf/Makefile.config
+@@ -15,7 +15,7 @@ $(shell printf "" > $(OUTPUT).config-detected)
+ detected     = $(shell echo "$(1)=y"       >> $(OUTPUT).config-detected)
+ detected_var = $(shell echo "$(1)=$($(1))" >> $(OUTPUT).config-detected)
+ 
+-CFLAGS := $(EXTRA_CFLAGS) $(EXTRA_WARNINGS)
++CFLAGS := -Wno-format-truncation -Wno-implicit-fallthrough $(EXTRA_CFLAGS) $(EXTRA_WARNINGS)
+ 
+ include $(srctree)/tools/scripts/Makefile.arch
+ 
 diff --git a/tools/perf/Makefile.perf b/tools/perf/Makefile.perf
-index 8bb16aa..198207b 100644
+index 8bb16aa9d661..f11b398eb695 100644
 --- a/tools/perf/Makefile.perf
 +++ b/tools/perf/Makefile.perf
 @@ -369,6 +369,11 @@ ifeq ($(USE_CXX), 1)
@@ -49,13 +70,13 @@ index 8bb16aa..198207b 100644
 +##############
 +# SIGIL2 XED #
 +##############
-+LIBS += -L../../../xed/obj -lxed
++LIBS += -L../../../../../../build/src/Frontends/PerfPT/xed/src/xed-build/obj -lxed
 +
  export INSTALL SHELL_PATH
  
  ### Build rules
 diff --git a/tools/perf/builtin-script.c b/tools/perf/builtin-script.c
-index 2f3ff69..e1adc9b 100644
+index 2f3ff69fc4e7..e1adc9b03a08 100644
 --- a/tools/perf/builtin-script.c
 +++ b/tools/perf/builtin-script.c
 @@ -29,6 +29,14 @@
@@ -380,29 +401,38 @@ index 2f3ff69..e1adc9b 100644
  }
 diff --git a/tools/perf/sigil2/Build b/tools/perf/sigil2/Build
 new file mode 100644
-index 0000000..3051c02
+index 000000000000..fb47b0b54139
 --- /dev/null
 +++ b/tools/perf/sigil2/Build
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,25 @@
 +libperf-y += ipc.o
 +libperf-y += xed-decode-cache.o
 +
-+SIGIL2_SRC_PATH := $(shell readlink -f ~mdl45/github/sigil2/src)
++# These paths are based on this git repo being a submodule in Sigil2
++SIGIL2_SRC_PATH := $(shell readlink -f ../../../../..)
++XED_INCLUDE_PATH := $(shell readlink -f ../../../xed/include/public)
++XED_XED_INCLUDE_PATH := $(shell readlink -f ../../../xed/include/public/xed)
 +
-+CFLAGS_ipc.o += "-I$(SIGIL2_SRC_PATH)"
-+CFLAGS_ipc.o += "-Wno-packed"
-+CFLAGS_ipc.o += "-Wno-unused-function"
++# xed, for Sigil2 PerfPT, is built by CMake
++# TODO is there a better way to find this dir?
++XED_BUILD_PATH := $(shell readlink -f ../../../../../../build/src/Frontends/PerfPT/xed/src/xed-build/obj)
 +
-+CFLAGS_xed-decode-cache.o += "-Wno-old-style-declaration"
-+CFLAGS_xed-decode-cache.o += "-Wno-old-style-definition"
-+CFLAGS_xed-decode-cache.o += "-Wno-switch-enum"
-+CFLAGS_xed-decode-cache.o += "-Wno-declaration-after-statement"
-+CFLAGS_xed-decode-cache.o += "-Wno-packed"
-+CFLAGS_xed-decode-cache.o += "-I$(SIGIL2_SRC_PATH)"
-+CFLAGS_xed-decode-cache.o += "-I/home/mdl45/github/xed_build/kits/xed-install-base-2017-04-18-lin-x86-64/include"
++CFLAGS_ipc.o += -I$(SIGIL2_SRC_PATH)
++CFLAGS_ipc.o += -Wno-packed
++CFLAGS_ipc.o += -Wno-unused-function
++
++CFLAGS_xed-decode-cache.o += -Wno-old-style-declaration
++CFLAGS_xed-decode-cache.o += -Wno-old-style-definition
++CFLAGS_xed-decode-cache.o += -Wno-switch-enum
++CFLAGS_xed-decode-cache.o += -Wno-declaration-after-statement
++CFLAGS_xed-decode-cache.o += -Wno-packed
++CFLAGS_xed-decode-cache.o += -I$(SIGIL2_SRC_PATH)
++CFLAGS_xed-decode-cache.o += -I$(XED_INCLUDE_PATH)
++CFLAGS_xed-decode-cache.o += -I$(XED_XED_INCLUDE_PATH)
++CFLAGS_xed-decode-cache.o += -I$(XED_BUILD_PATH)
 diff --git a/tools/perf/sigil2/ipc.c b/tools/perf/sigil2/ipc.c
 new file mode 100644
-index 0000000..6ad764e
+index 000000000000..6ad764e2a5b3
 --- /dev/null
 +++ b/tools/perf/sigil2/ipc.c
 @@ -0,0 +1,332 @@
@@ -740,7 +770,7 @@ index 0000000..6ad764e
 +}
 diff --git a/tools/perf/sigil2/ipc.h b/tools/perf/sigil2/ipc.h
 new file mode 100644
-index 0000000..97bdb82
+index 000000000000..97bdb82e7a31
 --- /dev/null
 +++ b/tools/perf/sigil2/ipc.h
 @@ -0,0 +1,20 @@
@@ -766,7 +796,7 @@ index 0000000..97bdb82
 +#endif
 diff --git a/tools/perf/sigil2/xed-decode-cache.c b/tools/perf/sigil2/xed-decode-cache.c
 new file mode 100644
-index 0000000..ea7dbf9
+index 000000000000..ea7dbf916d53
 --- /dev/null
 +++ b/tools/perf/sigil2/xed-decode-cache.c
 @@ -0,0 +1,333 @@
@@ -1105,7 +1135,7 @@ index 0000000..ea7dbf9
 +}
 diff --git a/tools/perf/sigil2/xed-decode-cache.h b/tools/perf/sigil2/xed-decode-cache.h
 new file mode 100644
-index 0000000..4fbae1e
+index 000000000000..4fbae1ee00d3
 --- /dev/null
 +++ b/tools/perf/sigil2/xed-decode-cache.h
 @@ -0,0 +1,42 @@
@@ -1151,6 +1181,17 @@ index 0000000..4fbae1e
 +		       unsigned insn_len, const xed_uint8_t *insn);
 +
 +void xed_cached_decode_init(void);
+diff --git a/tools/perf/util/scripting-engines/Build b/tools/perf/util/scripting-engines/Build
+index 6516e220c247..283869c1197e 100644
+--- a/tools/perf/util/scripting-engines/Build
++++ b/tools/perf/util/scripting-engines/Build
+@@ -2,5 +2,6 @@ libperf-$(CONFIG_LIBPERL)   += trace-event-perl.o
+ libperf-$(CONFIG_LIBPYTHON) += trace-event-python.o
+ 
+ CFLAGS_trace-event-perl.o += $(PERL_EMBED_CCOPTS) -Wno-redundant-decls -Wno-strict-prototypes -Wno-unused-parameter -Wno-shadow -Wno-undef -Wno-switch-default
++CFLAGS_trace-event-perl.o += -Wno-nested-externs
+ 
+ CFLAGS_trace-event-python.o += $(PYTHON_EMBED_CCOPTS) -Wno-redundant-decls -Wno-strict-prototypes -Wno-unused-parameter -Wno-shadow
 -- 
-2.9.3
+2.13.1
 
