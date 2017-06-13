@@ -27,8 +27,26 @@ get_filename_component(THIRD_PARTY   third_party   ABSOLUTE)
 execute_process(
 	COMMAND git submodule update --init ${THIRD_PARTY}
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+# Apply patch, or check if already applied
 execute_process(
-	COMMAND git -C ${THIRD_PARTY}/spdlog apply --whitespace=nowarn ${CMAKE_SOURCE_DIR}/gitpatches/spdlog.patch)
+	COMMAND git apply --check ${CMAKE_SOURCE_DIR}/gitpatches/spdlog.patch
+	WORKING_DIRECTORY ${THIRD_PARTY}/spdlog
+	RESULT_VARIABLE PATCH_RESULT
+	OUTPUT_QUIET
+	ERROR_QUIET)
+if (${PATCH_RESULT} EQUAL 0)
+	execute_process(
+		COMMAND git apply --whitespace=nowarn ${CMAKE_SOURCE_DIR}/gitpatches/spdlog.patch
+		WORKING_DIRECTORY ${THIRD_PARTY}/spdlog)
+else()
+	execute_process(
+		COMMAND git apply --check -R ${CMAKE_SOURCE_DIR}/gitpatches/spdlog.patch
+		WORKING_DIRECTORY ${THIRD_PARTY}/spdlog
+		RESULT_VARIABLE PATCH_RESULT)
+	if (NOT ${PATCH_RESULT} EQUAL 0)
+		message(FATAL_ERROR "could not git patch spdlog library")
+	endif()
+endif()
 
 include_directories(${THIRD_PARTY}/Catch/include)
 include_directories(${THIRD_PARTY}/whereami/src)

@@ -28,7 +28,8 @@ class TextLoggerCompressed : public STLoggerCompressed
 
     auto flush(const STCompEventCompressed &ev, EID eid, TID tid) -> void override final;
     auto flush(const STCommEventCompressed &ev, EID eid, TID tid) -> void override final;
-    auto flush(unsigned char syncType, Addr syncAddr, EID eid, TID tid) -> void override final;
+    auto flush(unsigned char syncType, unsigned numArgs, Addr *syncArgs,
+               EID eid, TID tid) -> void override final;
     auto instrMarker(int limit) -> void override final;
 
   private:
@@ -55,7 +56,8 @@ class TextLoggerUncompressed : public STLoggerUncompressed
                        EID eid, TID tid) -> void override final;
     auto flush(EID producerEID, TID producerTID, Addr start, Addr end,
                        EID eid, TID tid) -> void override final;
-    auto flush(unsigned char syncType, Addr syncAddr, EID eid, TID tid) -> void override final;
+    auto flush(unsigned char syncType, unsigned numArgs, Addr *syncArgs,
+               EID eid, TID tid) -> void override final;
     auto instrMarker(int limit) -> void override final;
 
   private:

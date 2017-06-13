@@ -129,13 +129,17 @@ auto ThreadContextCompressed::onWrite(Addr start, Addr bytes) -> void
 }
 
 
-auto ThreadContextCompressed::onSync(unsigned char syncType, Addr syncAddr) -> void
+auto ThreadContextCompressed::onSync(unsigned char syncType,
+                                     unsigned numArgs, Addr *syncArgs) -> void
 {
     compFlushIfActive();
     commFlushIfActive();
 
-    stats.incSyncs(syncType, syncAddr);
-    logger->flush(syncType, syncAddr, events, tid);
+    if (INCR_EID_OVERFLOW(events))
+        fatal("Event ID overflow detected in thread: " + std::to_string(tid));
+
+    stats.incSyncs(syncType, numArgs, syncArgs);
+    logger->flush(syncType, numArgs, syncArgs, events, tid);
 }
 
 
@@ -316,12 +320,16 @@ auto ThreadContextUncompressed::onWrite(Addr start, Addr bytes) -> void
 }
 
 
-auto ThreadContextUncompressed::onSync(unsigned char syncType, Addr syncAddr) -> void
+auto ThreadContextUncompressed::onSync(unsigned char syncType,
+                                       unsigned numArgs, Addr *syncArgs) -> void
 {
     compFlushIfActive();
 
-    stats.incSyncs(syncType, syncAddr);
-    logger->flush(syncType, syncAddr, events, tid);
+    if (INCR_EID_OVERFLOW(events))
+        fatal("Event ID overflow detected in thread: " + std::to_string(tid));
+
+    stats.incSyncs(syncType, numArgs, syncArgs);
+    logger->flush(syncType, numArgs, syncArgs, events, tid);
 }
 
 

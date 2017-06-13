@@ -32,8 +32,8 @@ class NullLogger : public STLoggerCompressed, public STLoggerUncompressed
     }
 
     auto flush(StatCounter iops, StatCounter flops,
-                       STCompEventUncompressed::MemType type, Addr start, Addr end,
-                       EID eid, TID tid) -> void override final
+               STCompEventUncompressed::MemType type, Addr start, Addr end,
+               EID eid, TID tid) -> void override final
     {
         (void)iops;
         (void)flops;
@@ -45,7 +45,7 @@ class NullLogger : public STLoggerCompressed, public STLoggerUncompressed
     }
 
     auto flush(EID producerEID, TID producerTID, Addr start, Addr end,
-                       EID eid, TID tid) -> void override final
+               EID eid, TID tid) -> void override final
     {
         (void)producerEID;
         (void)producerTID;
@@ -55,11 +55,12 @@ class NullLogger : public STLoggerCompressed, public STLoggerUncompressed
         (void)tid;
     }
 
-    auto flush(unsigned char syncType, Addr syncAddr,
+    auto flush(unsigned char syncType, unsigned numArgs, Addr *syncArgs,
                EID eid, TID tid) -> void override final
     {
         (void)syncType;
-        (void)syncAddr;
+        (void)numArgs;
+        (void)syncArgs;
         (void)eid;
         (void)tid;
     }

@@ -50,7 +50,7 @@ auto EventHandlers::onSyncEv(const sigil2::SyncEvent &ev) -> void
     else if (syncType == SyncTypeEnum::SGLPRIM_SYNC_BARRIER)
         onBarrier(syncID);
 
-    convertAndFlush(syncType, syncID);
+    convertAndFlush(ev);
 }
 
 
@@ -161,7 +161,7 @@ auto EventHandlers::onBarrier(Addr data) -> void
         barrierParticipants[idx].second.insert(currentTID);
 }
 
-auto EventHandlers::convertAndFlush(SyncType type, Addr data) -> void
+auto EventHandlers::convertAndFlush(const sigil2::SyncEvent &ev) -> void
 {
     /* Convert sync type to SynchroTrace's expected value
      * From SynchroTraceSim source code:
@@ -185,8 +185,15 @@ auto EventHandlers::convertAndFlush(SyncType type, Addr data) -> void
      * NOTE: semaphores are not supported in SynchroTraceGen
      */
 
+    constexpr unsigned maxArgs = 2;
+    unsigned numArgs = 1;
+    Addr args[maxArgs];
+    args[0] = ev.data();
+    /* default to common case; 1 argument to sync call */
+
     SyncType stSyncType = 0;
-    switch (type)
+
+    switch (ev.type())
     {
     case ::SGLPRIM_SYNC_LOCK:
         stSyncType = 1;
@@ -205,6 +212,9 @@ auto EventHandlers::convertAndFlush(SyncType type, Addr data) -> void
         break;
     case ::SGLPRIM_SYNC_CONDWAIT:
         stSyncType = 6;
+        numArgs = 2;
+        args[1] = ev.dataExtra();
+        /* uncommon case, condwaits have condition variable and mutex */
         break;
     case ::SGLPRIM_SYNC_CONDSIG:
         stSyncType = 7;
@@ -223,7 +233,7 @@ auto EventHandlers::convertAndFlush(SyncType type, Addr data) -> void
     }
 
     if (stSyncType > 0)
-        cachedTCxt->onSync(stSyncType, data);
+        cachedTCxt->onSync(stSyncType, numArgs, args);
 }
 
 

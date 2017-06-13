@@ -43,7 +43,8 @@ inline auto n2hexstr(char (&hexStr)[sizeof(I)*2+3], const I &w) -> const char*
 }
 
 
-auto flushSyncEvent(unsigned char syncType, Addr syncAddr, EID eid, TID tid,
+auto flushSyncEvent(unsigned char syncType, unsigned numArgs, Addr *syncArgs,
+                    EID eid, TID tid,
                     std::shared_ptr<spdlog::logger> &logger) -> void
 {
     char hexStr[sizeof(Addr)*2+3];
@@ -53,8 +54,11 @@ auto flushSyncEvent(unsigned char syncType, Addr syncAddr, EID eid, TID tid,
     logMsg += std::to_string(tid);
     logMsg += ",pth_ty:";
     logMsg += std::to_string(syncType);
-    logMsg += "^";
-    logMsg += n2hexstr(hexStr, syncAddr);
+    for (unsigned i=0; i<numArgs; ++i)
+    {
+        logMsg += "^";
+        logMsg += n2hexstr(hexStr, syncArgs[i]);
+    }
     logger->info(logMsg);
 }
 
@@ -155,9 +159,10 @@ auto TextLoggerCompressed::flush(const STCommEventCompressed& ev, EID eid, TID t
 }
 
 
-auto TextLoggerCompressed::flush(unsigned char syncType, Addr syncAddr, EID eid, TID tid) -> void
+auto TextLoggerCompressed::flush(unsigned char syncType, unsigned numArgs, Addr *syncArgs,
+                                 EID eid, TID tid) -> void
 {
-    flushSyncEvent(syncType, syncAddr, eid, tid, logger);
+    flushSyncEvent(syncType, numArgs, syncArgs, eid, tid, logger);
 }
 
 
@@ -188,8 +193,8 @@ TextLoggerUncompressed::~TextLoggerUncompressed()
 
 
 auto TextLoggerUncompressed::flush(StatCounter iops, StatCounter flops,
-                   STCompEventUncompressed::MemType type, Addr start, Addr end,
-                   EID eid, TID tid) -> void
+                                   STCompEventUncompressed::MemType type, Addr start, Addr end,
+                                   EID eid, TID tid) -> void
 {
     /* http://stackoverflow.com/a/18892355 */
     logMsg += std::to_string(eid);
@@ -255,9 +260,10 @@ auto TextLoggerUncompressed::flush(EID producerEID, TID producerTID, Addr start,
 }
 
 
-auto TextLoggerUncompressed::flush(unsigned char syncType, Addr syncAddr, EID eid, TID tid) -> void
+auto TextLoggerUncompressed::flush(unsigned char syncType, unsigned numArgs, Addr *syncArgs,
+                                   EID eid, TID tid) -> void
 {
-    flushSyncEvent(syncType, syncAddr, eid, tid, logger);
+    flushSyncEvent(syncType, numArgs, syncArgs, eid, tid, logger);
 }
 
 

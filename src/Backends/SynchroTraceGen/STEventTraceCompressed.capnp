@@ -59,7 +59,7 @@ struct EventStreamCompressed {
       sync :group {
         # synchronization event
         type @7 :SyncType;
-        id   @8 :UInt64;
+        args @8 :List(UInt64);
       }
 
       marker :group {

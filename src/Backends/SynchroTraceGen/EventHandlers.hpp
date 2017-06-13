@@ -29,7 +29,7 @@ class EventHandlers : public BackendIface
     auto onSwapTCxt(TID newTID) -> void;
     auto onCreate(Addr data) -> void;
     auto onBarrier(Addr data) -> void;
-    auto convertAndFlush(SyncType type, Addr data) -> void;
+    auto convertAndFlush(const sigil2::SyncEvent &ev) -> void;
     /* helpers */
 
     std::unordered_map<TID, std::unique_ptr<ThreadContext>> tcxts;

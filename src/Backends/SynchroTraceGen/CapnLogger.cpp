@@ -52,14 +52,16 @@ namespace
 /* Common between compressed/uncompressed */
 
 template <typename Event, typename OrphanagePtr, typename OrphanList>
-auto flushSyncEvent(unsigned char syncType, Addr syncAddr,
+auto flushSyncEvent(unsigned char syncType, unsigned numArgs, Addr *syncArgs,
                     OrphanagePtr &orphanage, OrphanList &orphans) -> void
 {
     auto orphan = orphanage->getOrphanage().template newOrphan<Event>();
     auto syncBuilder = orphan.get().initSync();
 
     /* translate type to CapnProto enum */
-    syncBuilder.setId(syncAddr);
+    assert(numArgs > 0);
+    auto argsBuilder = syncBuilder.initArgs(numArgs);
+    argsBuilder.set(0, syncArgs[0]);
     switch (syncType)
     {
     case 1:
@@ -79,6 +81,7 @@ auto flushSyncEvent(unsigned char syncType, Addr syncAddr,
         break;
     case 6:
         syncBuilder.setType(Event::SyncType::COND_WAIT);
+        argsBuilder.set(1, syncArgs[1]);
         break;
     case 7:
         syncBuilder.setType(Event::SyncType::COND_SIGNAL);
@@ -236,12 +239,13 @@ auto CapnLoggerCompressed::flush(const STCommEventCompressed& ev, EID eid, TID t
 }
 
 
-auto CapnLoggerCompressed::flush(unsigned char syncType, Addr syncAddr, EID eid, TID tid) -> void
+auto CapnLoggerCompressed::flush(unsigned char syncType, unsigned numArgs, Addr *syncArgs,
+                                 EID eid, TID tid) -> void
 {
     (void)eid;
     (void)tid;
 
-    flushSyncEvent<Event>(syncType, syncAddr, orphanage, orphans);
+    flushSyncEvent<Event>(syncType, numArgs, syncArgs, orphanage, orphans);
     flushOrphansOnMaxEvents();
 }
 
@@ -357,13 +361,13 @@ auto CapnLoggerUncompressed::flush(EID producerEID, TID producerTID, Addr start,
 }
 
 
-auto CapnLoggerUncompressed::flush(unsigned char syncType, Addr syncAddr,
+auto CapnLoggerUncompressed::flush(unsigned char syncType, unsigned numArgs, Addr *syncArgs,
                                    EID eid, TID tid) -> void
 {
     (void)eid;
     (void)tid;
 
-    flushSyncEvent<Event>(syncType, syncAddr, orphanage, orphans);
+    flushSyncEvent<Event>(syncType, numArgs, syncArgs, orphanage, orphans);
     flushOrphansOnMaxEvents();
 }
 

@@ -24,7 +24,8 @@ class STLoggerCompressed
     virtual auto flush(const STCommEventCompressed& ev, EID eid, TID tid) -> void = 0;
     /* Log a SynchroTrace Communication Event */
 
-    virtual auto flush(unsigned char syncType, Addr syncAddr, EID eid, TID tid) -> void = 0;
+    virtual auto flush(unsigned char syncType, unsigned numArgs, Addr *syncArgs,
+                       EID eid, TID tid) -> void = 0;
     /* Log a SynchroTrace Synchronization Event */
 
     virtual auto instrMarker(int limit) -> void = 0;
@@ -45,7 +46,8 @@ class STLoggerUncompressed
                        EID eid, TID tid) -> void = 0;
     /* Log a SynchroTrace Communication Event */
 
-    virtual auto flush(unsigned char syncType, Addr syncAddr, EID eid, TID tid) -> void = 0;
+    virtual auto flush(unsigned char syncType, unsigned numArgs, Addr *syncArgs,
+                       EID eid, TID tid) -> void = 0;
     /* Log a SynchroTrace Synchronization Event */
 
     virtual auto instrMarker(int limit) -> void = 0;

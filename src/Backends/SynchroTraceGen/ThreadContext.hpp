@@ -39,7 +39,10 @@ class ThreadContext
     virtual auto onFlop() -> void = 0;
     virtual auto onRead(Addr start, Addr bytes) -> void = 0;
     virtual auto onWrite(Addr start, Addr bytes) -> void = 0;
-    virtual auto onSync(unsigned char syncType, Addr syncAddr) -> void = 0;
+    virtual auto onSync(unsigned char syncType, unsigned numArgs, Addr *syncArgs) -> void = 0;
+    /* sync functions support one or two arguments;
+     * the second argument is optional */
+
     virtual auto onInstr() -> void = 0;
     virtual auto flushAll() -> void = 0;
 
@@ -61,7 +64,7 @@ class ThreadContextCompressed : public ThreadContext
     auto onFlop() -> void override final;
     auto onRead(Addr start, Addr bytes) -> void override final;
     auto onWrite(Addr start, Addr bytes) -> void override final;
-    auto onSync(unsigned char syncType, Addr syncAddr) -> void override final;
+    auto onSync(unsigned char syncType, unsigned numArgs, Addr *syncArgs) -> void override final;
     auto onInstr() -> void override final;
     auto flushAll() -> void override final;
 
@@ -99,7 +102,7 @@ class ThreadContextUncompressed : public ThreadContext
     auto onFlop() -> void override final;
     auto onRead(Addr start, Addr bytes) -> void override final;
     auto onWrite(Addr start, Addr bytes) -> void override final;
-    auto onSync(unsigned char syncType, Addr syncAddr) -> void override final;
+    auto onSync(unsigned char syncType, unsigned numArgs, Addr *syncArgs) -> void override final;
     auto onInstr() -> void override final;
     auto flushAll() -> void override final;
 

@@ -155,8 +155,9 @@ class PerThreadStats
         lockStats.incComm();
     }
 
-    auto incSyncs(unsigned char type, Addr id) -> void
+    auto incSyncs(unsigned char type, unsigned numArgs, Addr *args) -> void
     {
+        assert(numArgs > 0);
         /* #define P_MUTEX_LK              1 */
         /* #define P_MUTEX_ULK             2 */
         /* ...                               */
@@ -168,11 +169,11 @@ class PerThreadStats
         }
         else if (type == 2)
         {
-            lockStats.unlock(id);
+            lockStats.unlock(args[0]);
         }
         else if (type == 5)
         {
-            barrierStats.barrier(id);
+            barrierStats.barrier(args[0]);
         }
     }
 
