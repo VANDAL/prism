@@ -47,6 +47,7 @@ auto flushSyncEvent(unsigned char syncType, unsigned numArgs, Addr *syncArgs,
                     EID eid, TID tid,
                     std::shared_ptr<spdlog::logger> &logger) -> void
 {
+    assert(numArgs > 0);
     char hexStr[sizeof(Addr)*2+3];
     std::string logMsg;
     logMsg += std::to_string(eid);
@@ -54,9 +55,11 @@ auto flushSyncEvent(unsigned char syncType, unsigned numArgs, Addr *syncArgs,
     logMsg += std::to_string(tid);
     logMsg += ",pth_ty:";
     logMsg += std::to_string(syncType);
-    for (unsigned i=0; i<numArgs; ++i)
+    logMsg += "^";
+    logMsg += n2hexstr(hexStr, syncArgs[0]);
+    for (unsigned i=1; i<numArgs; ++i)
     {
-        logMsg += "^";
+        logMsg += "&";
         logMsg += n2hexstr(hexStr, syncArgs[i]);
     }
     logger->info(logMsg);
