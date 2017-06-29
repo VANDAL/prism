@@ -113,8 +113,9 @@ auto configureDynamoRIO(const std::vector<std::string> &user_exec,
 auto configureIpcDir() -> std::string
 {
     /* check IPC path */
-    std::string shm_path = getenv("SIGIL2_SHM_DIR") != nullptr ?
-                           getenv("SIGIL2_SHM_DIR") : "/dev/shm";
+    std::string shm_path = getenv("SIGIL2_SHM_DIR") != nullptr ?  getenv("SIGIL2_SHM_DIR") :
+                           getenv("XDG_RUNTIME_DIR") != nullptr ? getenv("XDG_RUNTIME_DIR") :
+                           "/dev/shm";
     struct stat info;
     if (stat(shm_path.c_str(), &info) != 0)
         fatal(std::string{shm_path} + " not found\n" +
