@@ -1,30 +1,30 @@
-From a0c5d5a06440a6a4cbb0c52b09f869ea5df8d128 Mon Sep 17 00:00:00 2001
+From 99a9af7f870b2485bd3582e1a836baf4382079b5 Mon Sep 17 00:00:00 2001
 From: Mike Lui <mike.d.lui@gmail.com>
-Date: Thu, 20 Jul 2017 14:29:46 -0400
+Date: Thu, 20 Jul 2017 15:24:21 -0400
 Subject: [PATCH] patch
 
 ---
  clients/drsigil/CMakeLists.txt         |  27 ++
  clients/drsigil/drsigil.c              | 259 ++++++++++++++
  clients/drsigil/drsigil.h              | 301 +++++++++++++++++
- clients/drsigil/drsigil_instrument.c   | 602 +++++++++++++++++++++++++++++++++
- clients/drsigil/drsigil_ipc.c          | 376 ++++++++++++++++++++
- clients/drsigil/drsigil_parser.c       |  55 +++
+ clients/drsigil/instrument.c           | 602 +++++++++++++++++++++++++++++++++
+ clients/drsigil/ipc.c                  | 376 ++++++++++++++++++++
+ clients/drsigil/parser.c               |  55 +++
  clients/drsigil/pthread_defines.h      | 283 ++++++++++++++++
  clients/drsigil/start_stop_functions.h |  50 +++
  8 files changed, 1953 insertions(+)
  create mode 100644 clients/drsigil/CMakeLists.txt
  create mode 100644 clients/drsigil/drsigil.c
  create mode 100644 clients/drsigil/drsigil.h
- create mode 100644 clients/drsigil/drsigil_instrument.c
- create mode 100644 clients/drsigil/drsigil_ipc.c
- create mode 100644 clients/drsigil/drsigil_parser.c
+ create mode 100644 clients/drsigil/instrument.c
+ create mode 100644 clients/drsigil/ipc.c
+ create mode 100644 clients/drsigil/parser.c
  create mode 100644 clients/drsigil/pthread_defines.h
  create mode 100644 clients/drsigil/start_stop_functions.h
 
 diff --git a/clients/drsigil/CMakeLists.txt b/clients/drsigil/CMakeLists.txt
 new file mode 100644
-index 00000000..0e38aff6
+index 00000000..728be3c2
 --- /dev/null
 +++ b/clients/drsigil/CMakeLists.txt
 @@ -0,0 +1,27 @@
@@ -34,7 +34,7 @@ index 00000000..0e38aff6
 +# also simplifies relocation in DR
 +# set(DynamoRIO_USE_LIBC OFF)
 +
-+add_library(drsigil SHARED drsigil.c drsigil_instrument.c drsigil_ipc.c drsigil_parser.c)
++add_library(drsigil SHARED drsigil.c instrument.c ipc.c parser.c)
 +find_package(DynamoRIO)
 +if (NOT DynamoRIO_FOUND)
 +  message(FATAL_ERROR "DynamoRIO package required to build")
@@ -627,11 +627,11 @@ index 00000000..546192d7
 +void parse(int argc, char *argv[], command_line_options *clo);
 +
 +#endif
-diff --git a/clients/drsigil/drsigil_instrument.c b/clients/drsigil/drsigil_instrument.c
+diff --git a/clients/drsigil/instrument.c b/clients/drsigil/instrument.c
 new file mode 100644
 index 00000000..05d9868b
 --- /dev/null
-+++ b/clients/drsigil/drsigil_instrument.c
++++ b/clients/drsigil/instrument.c
 @@ -0,0 +1,602 @@
 +#include "drsigil.h"
 +#include "drmgr.h"
@@ -1235,11 +1235,11 @@ index 00000000..05d9868b
 +    dr_restore_reg(drcontext, ilist, where, xax, spill_xax);
 +    dr_restore_arith_flags(drcontext, ilist, where, spill_aflags);
 +}
-diff --git a/clients/drsigil/drsigil_ipc.c b/clients/drsigil/drsigil_ipc.c
+diff --git a/clients/drsigil/ipc.c b/clients/drsigil/ipc.c
 new file mode 100644
 index 00000000..ca9a8a5f
 --- /dev/null
-+++ b/clients/drsigil/drsigil_ipc.c
++++ b/clients/drsigil/ipc.c
 @@ -0,0 +1,376 @@
 +#include "drsigil.h"
 +#include <string.h>
@@ -1617,11 +1617,11 @@ index 00000000..ca9a8a5f
 +    dr_global_free((void*)channel->ticket_queue.head, sizeof(ticket_queue_t));
 +    dr_mutex_destroy(channel->queue_lock);
 +}
-diff --git a/clients/drsigil/drsigil_parser.c b/clients/drsigil/drsigil_parser.c
+diff --git a/clients/drsigil/parser.c b/clients/drsigil/parser.c
 new file mode 100644
 index 00000000..0d0ced3a
 --- /dev/null
-+++ b/clients/drsigil/drsigil_parser.c
++++ b/clients/drsigil/parser.c
 @@ -0,0 +1,55 @@
 +#include <string.h>
 +#include <getopt.h>
