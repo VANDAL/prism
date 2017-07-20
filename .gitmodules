@@ -7,9 +7,6 @@
 [submodule "include/zlib"]
 	path = third_party/zlib
 	url = https://github.com/madler/zlib
-[submodule "src/Frontends/DrSigil/dynamorio-sigil2"]
-	path = src/Frontends/DrSigil/dynamorio-sigil2
-	url = https://github.com/VANDAL/dynamorio-sigil2
 [submodule "src/Frontends/Sigrind/valgrind-sigil2"]
 	path = src/Frontends/Sigrind/valgrind-sigil2
 	url = https://github.com/VANDAL/valgrind-sigil2
@@ -28,3 +25,6 @@
 [submodule "third_party/spdlog"]
 	path = third_party/spdlog
 	url = https://github.com/gabime/spdlog
+[submodule "src/Frontends/DrSigil/dynamorio"]
+	path = src/Frontends/DrSigil/dynamorio
+	url = https://github.com/DynamoRIO/dynamorio
