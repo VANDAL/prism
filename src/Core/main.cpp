@@ -154,10 +154,6 @@ auto startSigil2(const Config& config) -> int
     info("threads    : " + config.threadsPrintable());
     info("timed      : " + (timed ? std::string("on") : std::string("off")));
 
-    high_resolution_clock::time_point start, end;
-    if (timed == true)
-        start = high_resolution_clock::now();
-
     /* start frontend only once and get its interface */
     auto frontendIfaceGenerator = startFrontend();
     std::vector<std::thread> eventStreams;
@@ -165,6 +161,10 @@ auto startSigil2(const Config& config) -> int
         eventStreams.emplace_back(std::thread(consumeEvents,
                                               backend.generator,
                                               frontendIfaceGenerator));
+
+    high_resolution_clock::time_point start, end;
+    if (timed == true)
+        start = high_resolution_clock::now();
 
     /* wait for event handling to finish and then clean up */
     for(auto i = 0; i < threads; ++i)
