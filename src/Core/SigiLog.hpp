@@ -11,7 +11,7 @@ namespace
 class SigilLogger
 {
   public:
-    static std::shared_ptr<spdlog::logger>& instance()
+    static auto& instance()
     {
         static SigilLogger* l = new SigilLogger();
         return l->logger;
@@ -38,33 +38,33 @@ class SigilLogger
 
 namespace SigiLog
 {
-    inline auto enableDebug() -> void
+    inline auto enableDebug()
     {
         SigilLogger::instance()->set_level(spdlog::level::debug);
     }
 
-    inline auto info(const std::string &msg) -> void
+    inline auto info(const std::string &msg)
     {
         SigilLogger::instance()->info(msg);
     }
     
-    inline auto warn(const std::string &msg) -> void
+    inline auto warn(const std::string &msg)
     {
         SigilLogger::instance()->warn(msg);
     }
     
-    inline auto error(const std::string& msg) -> void
+    inline auto error(const std::string& msg)
     {
         SigilLogger::instance()->error(msg);
     }
     
-    inline auto debug(const std::string &msg) -> void
+    inline auto debug(const std::string &msg)
     {
         SigilLogger::instance()->debug(msg);
     }
     
     [[noreturn]]
-    inline auto fatal(const std::string &msg) -> void
+    inline auto fatal(const std::string &msg)
     {
         SigilLogger::instance()->critical(msg);
         std::exit(EXIT_FAILURE);

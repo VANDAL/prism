@@ -20,7 +20,7 @@ using signal_handler = void(*)(int);
 signal_handler prev_sigint_handler;
 signal_handler prev_sigsegv_handler;
 
-auto cleanupHandler() -> void
+auto cleanupHandler()
 {
     if (cleanupDir.empty() == false)
     {

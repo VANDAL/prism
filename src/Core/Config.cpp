@@ -27,7 +27,7 @@ auto Config::parseCommandLine(int argc, char* argv[]) -> Config&
     _timed = parser.timed();
 
     auto execArgs = parser.executable();
-    executableName = std::accumulate(execArgs.begin()+1, execArgs.end(), std::string{execArgs.front()},
+    executableName = std::accumulate(std::next(execArgs.begin()), execArgs.end(), std::string{execArgs.front()},
                                      [](const std::string &a, const std::string &b) { return (a + " " + b); });
 
     std::vector<std::string> beArgs;

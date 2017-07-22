@@ -213,7 +213,7 @@ enum availability
 
 using capabilities = std::vector<capability::availability>;
 
-inline auto initCaps() -> capabilities
+inline auto initCaps()
 {
     using namespace capability;
     return capabilities(NUM_CAPABILITIES, availability::nil);
@@ -222,7 +222,7 @@ inline auto initCaps() -> capabilities
 namespace
 {
 using capability::availability;
-inline auto resolveCaps_(availability fe, availability be) -> availability
+inline auto resolveCaps_(availability fe, availability be)
 {
     if (be == availability::enabled)
     {
@@ -236,7 +236,7 @@ inline auto resolveCaps_(availability fe, availability be) -> availability
 }
 };
 
-inline auto resolveCaps(const capabilities &feCaps, const capabilities &beReqs) -> capabilities
+inline auto resolveCaps(const capabilities &feCaps, const capabilities &beReqs)
 {
     using namespace capability;
 

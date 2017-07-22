@@ -23,7 +23,7 @@ Parser::Parser(int argc, char* argv[])
 }
 
 
-auto Parser::threads() -> int
+auto Parser::threads() const -> int
 {
     /* The number of 'threads' Sigil2 will use */
     /* MDL20160805 Currently only valid with DynamoRIO frontend.
@@ -45,25 +45,25 @@ auto Parser::threads() -> int
 }
 
 
-auto Parser::backend() -> ToolTuple
+auto Parser::backend() const -> ToolTuple
 {
     return tool(backendOption);
 }
 
 
-auto Parser::frontend() -> ToolTuple
+auto Parser::frontend() const -> ToolTuple
 {
     return tool(frontendOption);
 }
 
 
-auto Parser::executable() -> Args
+auto Parser::executable() const -> Args
 {
     return parser.getGroup(executableOption);
 }
 
 
-auto Parser::timed() -> bool
+auto Parser::timed() const -> bool
 {
     auto timeArg = parser.getOpt(timeOption);
     if (timeArg.empty() == false)
@@ -81,7 +81,7 @@ auto Parser::timed() -> bool
 }
 
 
-auto Parser::tool(const char* option) -> ToolTuple
+auto Parser::tool(const char* option) const -> ToolTuple
 {
     const auto args = parser.getGroup(option);
 

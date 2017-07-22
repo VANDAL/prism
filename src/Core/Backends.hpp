@@ -12,11 +12,11 @@ class BackendIface
 {
   public:
     virtual ~BackendIface() {}
-    virtual void onMemEv(const sigil2::MemEvent &) {}
-    virtual void onCompEv(const sigil2::CompEvent &) {}
-    virtual void onSyncEv(const sigil2::SyncEvent &) {}
-    virtual void onCxtEv(const sigil2::CxtEvent &) {}
-    virtual void onCFEv(const SglCFEv &) {}
+    virtual auto onMemEv(const sigil2::MemEvent &) -> void {}
+    virtual auto onCompEv(const sigil2::CompEvent &) -> void {}
+    virtual auto onSyncEv(const sigil2::SyncEvent &) -> void {}
+    virtual auto onCxtEv(const sigil2::CxtEvent &) -> void {}
+    virtual auto onCFEv(const SglCFEv &) -> void {}
 };
 
 using ToolName = std::string;

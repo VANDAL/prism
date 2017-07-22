@@ -22,7 +22,6 @@ class ArgGroup
      * Only allow long opts to avoid ambiguities.
      * Additionally imposes the constraint that the frontend,
      * backend, and executable cannot have any options that match.
-     *
      * TODO(cleanup) check if this comment is still valid */
 
     using Args = std::vector<std::string>;
@@ -63,13 +62,13 @@ class Parser
   public:
     Parser(int argc, char* argv[]);
 
-    auto threads()    -> int;
-    auto backend()    -> ToolTuple;
-    auto frontend()   -> ToolTuple;
-    auto executable() -> Args;
-    auto timed()      -> bool;
+    auto threads()    const -> int;
+    auto backend()    const -> ToolTuple;
+    auto frontend()   const -> ToolTuple;
+    auto executable() const -> Args;
+    auto timed()      const -> bool;
 
-    auto tool(const char* option) -> ToolTuple;
+    auto tool(const char* option) const -> ToolTuple;
     /* get tool options in the form of a name and consecutive options:
      * --option=name -and -a --list -of --arbitrary -options */
 

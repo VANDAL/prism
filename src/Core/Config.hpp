@@ -17,15 +17,15 @@ class Config
     auto parseCommandLine(int argc, char* argv[]) -> Config&;
     /* configuration */
 
-    auto timed() const -> bool { return _timed;   }
-    auto threads() const -> int { return _threads; }
-    auto backend() const -> Backend { return _backend; }
-    auto frontend() const -> Frontend { return _frontend; }
-    auto startFrontend() const -> FrontendStarterWrapper { return _startFrontend; }
-    auto threadsPrintable() const -> std::string { assert(parsed); return std::to_string(_threads); }
-    auto backendPrintable() const -> std::string { assert(parsed); return backendName; }
-    auto frontendPrintable() const -> std::string { assert(parsed); return frontendName; }
-    auto executablePrintable() const -> std::string { assert(parsed); return executableName; }
+    auto timed() const { return _timed;   }
+    auto threads() const { return _threads; }
+    auto backend() const { return _backend; }
+    auto frontend() const { return _frontend; }
+    auto startFrontend() const { return _startFrontend; }
+    auto threadsPrintable() const { assert(parsed); return std::to_string(_threads); }
+    auto backendPrintable() const { assert(parsed); return backendName; }
+    auto frontendPrintable() const { assert(parsed); return frontendName; }
+    auto executablePrintable() const { assert(parsed); return executableName; }
     /* accessors */
 
   private:
