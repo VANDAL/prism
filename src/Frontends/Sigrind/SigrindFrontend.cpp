@@ -1,9 +1,41 @@
 #include "Core/SigiLog.hpp"
-#include "AvailableFrontends.hpp"
+#include "SigrindFrontend.hpp"
 #include "FrontendShmemIPC.hpp"
 #include "elfio/elfio.hpp"
 #include "whereami.h"
 #include "glob.h"
+
+auto sigrindCapabilities() -> sigil2::capabilities 
+{
+    using namespace sigil2;
+    using namespace sigil2::capability;
+
+    auto caps = initCaps();
+
+    caps[MEMORY]         = availability::enabled;
+    caps[MEMORY_LDST]    = availability::enabled;
+    caps[MEMORY_SIZE]    = availability::enabled;
+    caps[MEMORY_ADDRESS] = availability::enabled;
+
+    caps[COMPUTE]              = availability::enabled;
+    caps[COMPUTE_INT_OR_FLOAT] = availability::enabled;
+    caps[COMPUTE_ARITY]        = availability::nil;
+    caps[COMPUTE_OP]           = availability::nil;
+    caps[COMPUTE_SIZE]         = availability::nil;
+
+    caps[CONTROL_FLOW] = availability::nil;
+
+    caps[SYNC]      = availability::enabled;
+    caps[SYNC_TYPE] = availability::enabled;
+    caps[SYNC_ARGS] = availability::enabled;
+
+    caps[CONTEXT_INSTRUCTION] = availability::enabled;
+    caps[CONTEXT_BASIC_BLOCK] = availability::disabled;
+    caps[CONTEXT_FUNCTION]    = availability::disabled;
+    caps[CONTEXT_THREAD]      = availability::enabled;
+
+    return caps;
+};
 
 #define DIR_TEMPLATE "/sgl2-XXXXXX"
 
@@ -114,10 +146,12 @@ auto configureWrapperEnv(const std::string &sigil2_path) -> void
 }
 
 
-auto tokenizeOpts(const std::vector<std::string>& userExec,
-                  const std::vector<std::string>& args,
-                  const std::string& ipcDir) -> ExecArgs
+auto tokenizeOpts(const std::vector<std::string> &userExec,
+                  const std::vector<std::string> &args,
+                  const std::string &ipcDir,
+                  const sigil2::capabilities &reqs) -> ExecArgs
 {
+    using namespace sigil2::capability;
     assert(!userExec.empty() && !ipcDir.empty());
 
     /* format valgrind options */
@@ -143,15 +177,29 @@ auto tokenizeOpts(const std::vector<std::string>& userExec,
 
     vg_opts[i++] = strdup(("--ipc-dir=" + ipcDir).c_str());
 
-    /*sigrind defaults*/
-    vg_opts[i++] = strdup("--gen-mem=yes");
-    vg_opts[i++] = strdup("--gen-comp=yes");
+    /* MDL20170720
+     * TODO the Valgrind frontend only has macro granularity support */
+    reqs[MEMORY] == availability::enabled ?
+        vg_opts[i++] = strdup("--gen-mem=yes") :
+        vg_opts[i++] = strdup("--gen-mem=no");
+    reqs[COMPUTE] == availability::enabled ?
+        vg_opts[i++] = strdup("--gen-comp=yes") :
+        vg_opts[i++] = strdup("--gen-comp=no");
+    reqs[SYNC] == availability::enabled ?
+        vg_opts[i++] = strdup("--gen-sync=yes") :
+        vg_opts[i++] = strdup("--gen-sync=no");
+    reqs[CONTEXT_FUNCTION] == availability::enabled ?
+        vg_opts[i++] = strdup("--gen-instr=yes") :
+        vg_opts[i++] = strdup("--gen-instr=no");
+    reqs[CONTEXT_BASIC_BLOCK] == availability::enabled ?
+        vg_opts[i++] = strdup("--gen-bb=yes") :
+        vg_opts[i++] = strdup("--gen-bb=no");
+    reqs[CONTEXT_FUNCTION] == availability::enabled ?
+        vg_opts[i++] = strdup("--gen-fn=yes") :
+        vg_opts[i++] = strdup("--gen-fn=no");
     vg_opts[i++] = strdup("--gen-cf=no");
-    vg_opts[i++] = strdup("--gen-sync=yes");
-    vg_opts[i++] = strdup("--gen-instr=yes");
-    vg_opts[i++] = strdup("--gen-bb=no");
-    vg_opts[i++] = strdup("--gen-fn=no");
 
+    /* command line arguments will override capabilities */
     for (auto &arg : args)
         vg_opts[i++] = strdup(arg.c_str());
 
@@ -164,9 +212,10 @@ auto tokenizeOpts(const std::vector<std::string>& userExec,
 }
 
 
-auto configureValgrind(const std::vector<std::string>& userExec,
-                       const std::vector<std::string>& args,
-                       const std::string& ipcDir) -> Exec
+auto configureValgrind(const std::vector<std::string> &userExec,
+                       const std::vector<std::string> &args,
+                       const std::string &ipcDir,
+                       const sigil2::capabilities &reqs) -> Exec
 {
     int len, dirname_len;
     len = wai_getExecutablePath(NULL, 0, &dirname_len);
@@ -193,7 +242,7 @@ auto configureValgrind(const std::vector<std::string>& userExec,
     std::string vg_exec = std::string(path).append("/vg/bin/valgrind");
 
     /* execvp() expects a const char* const* */
-    auto vg_opts = tokenizeOpts(userExec, args, ipcDir);
+    auto vg_opts = tokenizeOpts(userExec, args, ipcDir, reqs);
 
     return std::make_pair(vg_exec, vg_opts);
 }
@@ -222,15 +271,12 @@ auto configureIpcDir() -> std::string
 ////////////////////////////////////////////////////////////
 // Interface to Sigil2 core
 ////////////////////////////////////////////////////////////
-auto startSigrind(FrontendStarterArgs args) -> FrontendIfaceGenerator
+auto startSigrind(Args execArgs, Args feArgs, unsigned threads, sigil2::capabilities reqs)
+    -> FrontendIfaceGenerator
 {
-    const auto& userExecArgs = std::get<0>(args);
-    const auto& sigrindArgs  = std::get<1>(args);
-    const auto& numThreads   = std::get<2>(args);
-
-    if (numThreads != 1)
+    if (threads != 1)
         fatal("Valgrind frontend attempted with other than 1 thread");
-    gccWarn(userExecArgs);
+    gccWarn(execArgs);
     auto ipcDir = configureIpcDir();
     Cleanup::setCleanupDir(ipcDir);
 
@@ -239,7 +285,7 @@ auto startSigrind(FrontendStarterArgs args) -> FrontendIfaceGenerator
     {
         if (pid == 0)
         {
-            auto valgrindArgs = configureValgrind(userExecArgs, sigrindArgs, ipcDir);
+            auto valgrindArgs = configureValgrind(execArgs, feArgs, ipcDir, reqs);
             int res = execvp(valgrindArgs.first.c_str(), valgrindArgs.second);
             if (res == -1)
                 fatal(std::string("starting valgrind failed -- ") + strerror(errno));

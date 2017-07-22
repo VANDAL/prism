@@ -1,13 +1,49 @@
 #include "Core/SigiLog.hpp"
-#include "AvailableFrontends.hpp"
+#include "DrSigilFrontend.hpp"
 #include "FrontendShmemIPC.hpp"
 #include "whereami.h"
 #include "glob.h"
 
-#ifndef DYNAMORIO_ENABLE
-auto startDrSigil(FrontendStarterArgs args) -> FrontendIfaceGenerator
+auto drSigilCapabilities() -> sigil2::capabilities 
 {
-    (void)args;
+    using namespace sigil2;
+    using namespace sigil2::capability;
+
+    auto caps = initCaps();
+
+    caps[MEMORY]         = availability::enabled;
+    caps[MEMORY_LDST]    = availability::enabled;
+    caps[MEMORY_SIZE]    = availability::enabled;
+    caps[MEMORY_ADDRESS] = availability::enabled;
+
+    caps[COMPUTE]              = availability::enabled;
+    caps[COMPUTE_INT_OR_FLOAT] = availability::enabled;
+    caps[COMPUTE_ARITY]        = availability::nil;
+    caps[COMPUTE_OP]           = availability::nil;
+    caps[COMPUTE_SIZE]         = availability::nil;
+
+    caps[CONTROL_FLOW] = availability::nil;
+
+    caps[SYNC]      = availability::enabled;
+    caps[SYNC_TYPE] = availability::enabled;
+    caps[SYNC_ARGS] = availability::enabled;
+
+    caps[CONTEXT_INSTRUCTION] = availability::enabled;
+    caps[CONTEXT_BASIC_BLOCK] = availability::nil;
+    caps[CONTEXT_FUNCTION]    = availability::nil;
+    caps[CONTEXT_THREAD]      = availability::enabled;
+
+    return caps;
+};
+
+#ifndef DYNAMORIO_ENABLE
+auto startDrSigil(Args execArgs, Args feArgs, unsigned threads, sigil2::capabilities reqs)
+    -> FrontendIfaceGenerator
+{
+    (void)execArgs;
+    (void)feArgs;
+    (void)threads;
+    (void)reqs;
     SigiLog::fatal("DynamoRIO frontend not available");
 }
 #else
@@ -28,7 +64,8 @@ auto tokenizeOpts(const std::vector<std::string> &user_exec,
                   const std::vector<std::string> &args,
                   const std::string &sigil_bin_dir,
                   const std::string &ipc_dir,
-                  const uint16_t num_threads) -> ExecArgs
+                  const uint16_t num_threads,
+                  const sigil2::capabilities& reqs) -> ExecArgs
 {
     assert(!user_exec.empty() && !ipc_dir.empty());
 
@@ -80,7 +117,8 @@ auto tokenizeOpts(const std::vector<std::string> &user_exec,
 auto configureDynamoRIO(const std::vector<std::string> &user_exec,
                         const std::vector<std::string> &args,
                         const std::string &ipc_dir,
-                        const uint16_t num_threads) -> Exec
+                        const uint16_t num_threads,
+                        const sigil2::capabilities &reqs) -> Exec
 {
     int dirname_len;
     int len = wai_getExecutablePath(NULL, 0, &dirname_len);
@@ -104,7 +142,7 @@ auto configureDynamoRIO(const std::vector<std::string> &user_exec,
     globfree(&glob_result);
 
     /* execvp() expects a const char* const* */
-    auto dr_opts = tokenizeOpts(user_exec, args, path, ipc_dir, num_threads);
+    auto dr_opts = tokenizeOpts(user_exec, args, path, ipc_dir, num_threads, reqs);
 
     return std::make_pair(dr_exec, dr_opts);
 }
@@ -133,7 +171,8 @@ auto configureIpcDir() -> std::string
 ////////////////////////////////////////////////////////////
 // Interface to Sigil2 core
 ////////////////////////////////////////////////////////////
-auto startDrSigil(FrontendStarterArgs args) -> FrontendIfaceGenerator
+auto startDrSigil(Args execArgs, Args feArgs, unsigned threads, sigil2::capabilities reqs)
+    -> FrontendIfaceGenerator
 {
     auto ipcDir = configureIpcDir();
     Cleanup::setCleanupDir(ipcDir);
@@ -143,10 +182,7 @@ auto startDrSigil(FrontendStarterArgs args) -> FrontendIfaceGenerator
     {
         if (pid == 0)
         {
-            const auto& userExecArgs = std::get<0>(args);
-            const auto& drSigilArgs  = std::get<1>(args);
-            const auto& numThreads   = std::get<2>(args);
-            auto drArgs = configureDynamoRIO(userExecArgs, drSigilArgs, ipcDir, numThreads);
+            auto drArgs = configureDynamoRIO(execArgs, feArgs, ipcDir, threads, reqs);
             int res = execvp(drArgs.first.c_str(), drArgs.second);
             if (res == -1)
                 fatal(std::string("starting dynamorio failed -- ").append(strerror(errno)));
@@ -158,4 +194,4 @@ auto startDrSigil(FrontendStarterArgs args) -> FrontendIfaceGenerator
     return [=]{ return std::make_unique<ShmemFrontend<Sigil2DBISharedData>>(ipcDir); };
 }
 
-#endif // DYNAMORIO_ENABLE
+#endif

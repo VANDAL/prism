@@ -7,8 +7,9 @@
 namespace STGen
 {
 
-void onParse(Args args);
-void onExit();
+auto onParse(Args args) -> void;
+auto onExit() -> void;
+auto requirements() -> sigil2::capabilities;
 /* Sigil2 hooks */
 
 class EventHandlers : public BackendIface

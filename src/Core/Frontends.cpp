@@ -4,8 +4,11 @@
 
 decltype(FrontendIface::uidCount) FrontendIface::uidCount{0};
 
-auto FrontendFactory::create(ToolName name, FrontendStarterArgs args) const -> FrontendStarterWrapper
+auto FrontendFactory::create(ToolName name, Args exec, Args fe, unsigned threads,
+                             const sigil2::capabilities &beReqs) const -> FrontendStarterWrapper
 {
+    using namespace std::placeholders;
+
     /* default */
     if (name.empty() == true)
         name = "valgrind";
@@ -14,8 +17,13 @@ auto FrontendFactory::create(ToolName name, FrontendStarterArgs args) const -> F
 
     if (exists(name) == true)
     {
-        auto start = registry.find(name)->second;
-        return [=]{ return start(args); };
+        auto start = registry.find(name)->second.starter;
+        auto feCaps = registry.find(name)->second.caps;
+
+        /* Resolve difference between requested capabilities (granularity)
+         * from the backend, and the available capabilities in the frontend */
+        auto caps = sigil2::resolveCaps(feCaps, beReqs);;
+        return [=]{ return start(exec, fe, threads, caps); };
     }
     else
     {
@@ -31,10 +39,11 @@ auto FrontendFactory::create(ToolName name, FrontendStarterArgs args) const -> F
 }
 
 
-auto FrontendFactory::add(ToolName name, FrontendStarter start) -> void
+auto FrontendFactory::add(ToolName name, Frontend fe) -> void
 {
     std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-    registry.emplace(name, start);
+    auto p = registry.emplace(name, Frontend());
+    p.first->second = fe;
 }
 
 

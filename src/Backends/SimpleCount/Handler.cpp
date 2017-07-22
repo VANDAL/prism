@@ -153,4 +153,37 @@ auto cleanup() -> void
     logger->info("Total Instr     Events: {}", std::to_string(global_instr_cnt));
     logger->info("Total Context   Events: {}", std::to_string(global_cxt_cnt));
 }
+
+
+auto requirements() -> sigil2::capabilities
+{
+    using namespace sigil2;
+    using namespace sigil2::capability;
+
+    auto caps = initCaps();
+
+    caps[MEMORY]         = availability::enabled;
+    caps[MEMORY_LDST]    = availability::enabled;
+    caps[MEMORY_SIZE]    = availability::disabled;
+    caps[MEMORY_ADDRESS] = availability::disabled;
+
+    caps[COMPUTE]              = availability::enabled;
+    caps[COMPUTE_INT_OR_FLOAT] = availability::enabled;
+    caps[COMPUTE_ARITY]        = availability::disabled;
+    caps[COMPUTE_OP]           = availability::disabled;
+    caps[COMPUTE_SIZE]         = availability::disabled;
+
+    caps[CONTROL_FLOW] = availability::disabled;
+
+    caps[SYNC]      = availability::enabled;
+    caps[SYNC_TYPE] = availability::enabled;
+    caps[SYNC_ARGS] = availability::disabled;
+
+    caps[CONTEXT_INSTRUCTION] = availability::enabled;
+    caps[CONTEXT_BASIC_BLOCK] = availability::disabled;
+    caps[CONTEXT_FUNCTION]    = availability::disabled;
+    caps[CONTEXT_THREAD]      = availability::enabled;
+
+    return caps;
+}
 }; //end namespace SimpleCount

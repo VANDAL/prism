@@ -12,18 +12,19 @@ namespace sigil2
 class Config
 {
   public:
-    auto registerBackend(ToolName name, Backend be)             -> Config&;
-    auto registerFrontend(ToolName name, FrontendStarter start) -> Config&;
-    auto parseCommandLine(int argc, char* argv[])               -> Config&;
+    auto registerBackend(ToolName name, Backend be) -> Config&;
+    auto registerFrontend(ToolName name, Frontend fe) -> Config&;
+    auto parseCommandLine(int argc, char* argv[]) -> Config&;
     /* configuration */
 
-    auto timed()         const -> bool                   { return _timed; }
-    auto threads()       const -> int                    { return _threads; }
-    auto backend()       const -> Backend                { return _backend; }
+    auto timed() const -> bool { return _timed;   }
+    auto threads() const -> int { return _threads; }
+    auto backend() const -> Backend { return _backend; }
+    auto frontend() const -> Frontend { return _frontend; }
     auto startFrontend() const -> FrontendStarterWrapper { return _startFrontend; }
-    auto threadsPrintable()    const -> std::string { assert(parsed); return std::to_string(_threads); }
-    auto backendPrintable()    const -> std::string { assert(parsed); return backendName; }
-    auto frontendPrintable()   const -> std::string { assert(parsed); return frontendName; }
+    auto threadsPrintable() const -> std::string { assert(parsed); return std::to_string(_threads); }
+    auto backendPrintable() const -> std::string { assert(parsed); return backendName; }
+    auto frontendPrintable() const -> std::string { assert(parsed); return frontendName; }
     auto executablePrintable() const -> std::string { assert(parsed); return executableName; }
     /* accessors */
 
@@ -34,6 +35,7 @@ class Config
     bool _timed;
     int _threads;
     Backend _backend;
+    Frontend _frontend;
     FrontendStarterWrapper _startFrontend;
 
     std::string backendName;

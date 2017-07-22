@@ -25,28 +25,13 @@ auto BackendFactory::create(ToolName name, Args args) const -> Backend
 }
 
 
-auto BackendFactory::add(ToolName name, BackendIfaceGenerator generator) -> void
+auto BackendFactory::add(ToolName name, Backend be) -> void
 {
     std::transform(name.begin(), name.end(), name.begin(), ::tolower);
     auto p = registry.emplace(name, Backend());
-    p.first->second.generator = generator;
+    p.first->second = be;
 }
 
-
-auto BackendFactory::add(ToolName name, BackendParser parser) -> void
-{
-    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-    auto p = registry.emplace(name, Backend());
-    p.first->second.parser = parser;
-}
-
-
-auto BackendFactory::add(ToolName name, BackendFinish finish) -> void
-{
-    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-    auto p = registry.emplace(name, Backend());
-    p.first->second.finish = finish;
-}
 
 auto BackendFactory::exists(ToolName name) const -> bool
 {

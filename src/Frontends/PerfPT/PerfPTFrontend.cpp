@@ -1,13 +1,49 @@
 #include "Core/SigiLog.hpp"
-#include "AvailableFrontends.hpp"
+#include "PerfPTFrontend.hpp"
 #include "FrontendShmemIPC.hpp"
 #include "whereami.h"
 #include <fstream>
 
-#ifndef PERF_ENABLE
-auto startPerfPT(FrontendStarterArgs args) -> FrontendIfaceGenerator
+auto perfPTCapabilities() -> sigil2::capabilities 
 {
-    (void)args;
+    using namespace sigil2;
+    using namespace sigil2::capability;
+
+    auto caps = initCaps();
+
+    caps[MEMORY]         = availability::enabled;
+    caps[MEMORY_LDST]    = availability::enabled;
+    caps[MEMORY_SIZE]    = availability::enabled;
+    caps[MEMORY_ADDRESS] = availability::nil;
+
+    caps[COMPUTE]              = availability::enabled;
+    caps[COMPUTE_INT_OR_FLOAT] = availability::enabled;
+    caps[COMPUTE_ARITY]        = availability::nil;
+    caps[COMPUTE_OP]           = availability::nil;
+    caps[COMPUTE_SIZE]         = availability::nil;
+
+    caps[CONTROL_FLOW] = availability::nil;
+
+    caps[SYNC]      = availability::enabled;
+    caps[SYNC_TYPE] = availability::enabled;
+    caps[SYNC_ARGS] = availability::nil;
+
+    caps[CONTEXT_INSTRUCTION] = availability::enabled;
+    caps[CONTEXT_BASIC_BLOCK] = availability::nil;
+    caps[CONTEXT_FUNCTION]    = availability::nil;
+    caps[CONTEXT_THREAD]      = availability::enabled;
+
+    return caps;
+};
+
+#ifndef PERF_ENABLE
+auto startPerfPT(Args execArgs, Args feArgs, unsigned threads, sigil2::capabilities reqs)
+    -> FrontendIfaceGenerator
+{
+    (void)execArgs;
+    (void)feArgs;
+    (void)threads;
+    (void)reqs;
     SigiLog::fatal("Perf frontend not available");
 }
 #else
@@ -127,13 +163,11 @@ auto configureIpcDir() -> std::string
 //-----------------------------------------------------------------------------
 /** Interface to Sigil2 core **/
 
-auto startPerfPT(FrontendStarterArgs args) -> FrontendIfaceGenerator
+auto startPerfPT(Args execArgs, Args feArgs, unsigned threads, sigil2::capabilities reqs)
+    -> FrontendIfaceGenerator
 {
-    const auto& userExecArgs = std::get<0>(args);
-    const auto& perfArgs = std::get<1>(args);
-    const auto& numThreads = std::get<2>(args);
-
-    if (numThreads != 1)
+    //TODO add command line switches for perf to handle capabilities
+    if (threads != 1)
         fatal("Perf frontend attempted with other than 1 thread");
     auto ipcDir = configureIpcDir();
     Cleanup::setCleanupDir(ipcDir);
@@ -143,7 +177,7 @@ auto startPerfPT(FrontendStarterArgs args) -> FrontendIfaceGenerator
     {
         if (pid == 0)
         {
-            auto args = configurePerf(userExecArgs, perfArgs, ipcDir);
+            auto args = configurePerf(execArgs, feArgs, ipcDir);
             int res = execvp(args.first.c_str(), args.second);
             if (res == -1)
                 fatal(std::string("starting perf failed -- ") + strerror(errno));

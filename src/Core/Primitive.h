@@ -37,6 +37,9 @@
 
 #ifdef __cplusplus
 #include <functional>
+#include <algorithm>
+#include <vector>
+#include <cassert>
 extern "C" {
 #else
 typedef struct SglMemEv SglMemEv;
@@ -99,6 +102,7 @@ struct SglSyncEv
 {
     SyncType type;
     SyncID   data[2]; // optional data like mutex values
+
 } __attribute__ ((__packed__));
 
 #ifdef __cplusplus
@@ -151,6 +155,102 @@ struct SyncEvent
     auto dataExtra() const -> SyncID { return ev.data[1]; }
     const SglSyncEv &ev;
 };
+
+
+namespace capability
+{
+/* Each frontend has a set of 'event types' it can generate
+ * and pass to backend analysis. To preserve flexibility in
+ * the frontend, not all event types are necessarily required
+ * to be supported.
+ *
+ * Because backends inherently require a subset of event types,
+ * it is useful for a backend to be able to query whether an
+ * event type is available for a given frontend.
+ *
+ * It is also useful for a frontend to know which event types
+ * will be used, as the frontend can then *not* generate unused
+ * events, improving efficiency.
+ */
+
+enum
+{
+    MEMORY = 0,
+    MEMORY_LDST,
+    MEMORY_ADDRESS,
+    MEMORY_SIZE,
+
+    COMPUTE,
+    COMPUTE_INT_OR_FLOAT,
+    COMPUTE_ARITY,
+    COMPUTE_OP,
+    COMPUTE_SIZE,
+
+    CONTROL_FLOW,
+    /* MDL20170720 unsupported currently */
+
+    SYNC,
+    SYNC_TYPE,
+    SYNC_ARGS,
+    /* MDL20170720 currently only two args can be captured */
+
+    CONTEXT_INSTRUCTION,
+    CONTEXT_BASIC_BLOCK,
+    CONTEXT_FUNCTION,
+    CONTEXT_THREAD,
+
+    NUM_CAPABILITIES
+};
+
+enum availability
+{
+    nil = 0,
+    disabled,
+    enabled,
+};
+
+};
+
+using capabilities = std::vector<capability::availability>;
+
+inline auto initCaps() -> capabilities
+{
+    using namespace capability;
+    return capabilities(NUM_CAPABILITIES, availability::nil);
+}
+
+namespace
+{
+using capability::availability;
+inline auto resolveCaps_(availability fe, availability be) -> availability
+{
+    if (be == availability::enabled)
+    {
+        if (fe == availability::nil)
+            throw std::invalid_argument("insufficient event capture capability");
+        else
+            return availability::enabled;
+    }
+    else
+        return availability::disabled;
+}
+};
+
+inline auto resolveCaps(const capabilities &feCaps, const capabilities &beReqs) -> capabilities
+{
+    using namespace capability;
+
+    auto caps = initCaps();
+    assert(feCaps.size() == NUM_CAPABILITIES &&
+           beReqs.size() == NUM_CAPABILITIES &&
+           caps.size() == NUM_CAPABILITIES);
+
+    auto c = caps.begin();
+    for (auto fc = feCaps.cbegin(), bc = beReqs.cbegin(), end = feCaps.cend(); fc != end; ++fc, ++bc)
+        *c++ = resolveCaps_(*fc, *bc);
+    return caps;
+}
+
 }; //end namespace sigil2
 #endif
 

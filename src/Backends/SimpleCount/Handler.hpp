@@ -6,9 +6,14 @@
 namespace SimpleCount
 {
 
-/* interface to Sigil2 */
+auto cleanup() -> void;
+auto requirements() -> sigil2::capabilities;
+/* Sigil2 hooks */
+
 class Handler : public BackendIface
 {
+    /* interface to Sigil2 */
+
     virtual auto onSyncEv(const sigil2::SyncEvent &ev) -> void override;
     virtual auto onCompEv(const sigil2::CompEvent &ev) -> void override;
     virtual auto onMemEv(const sigil2::MemEvent &ev) -> void override;
@@ -42,8 +47,6 @@ class Handler : public BackendIface
   public:
     virtual ~Handler() override;
 };
-
-auto cleanup() -> void;
 
 }; //end namespace SimpleCount
 

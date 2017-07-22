@@ -35,6 +35,7 @@ struct Backend
     BackendIfaceGenerator generator;
     BackendParser parser;
     BackendFinish finish;
+    sigil2::capabilities caps;
     Args args;
 };
 
@@ -46,9 +47,7 @@ class BackendFactory
     ~BackendFactory() = default;
 
     auto create(ToolName name, Args args) const -> Backend;
-    auto add(ToolName name, BackendIfaceGenerator generator) -> void;
-    auto add(ToolName name, BackendParser parser) -> void;
-    auto add(ToolName name, BackendFinish finish) -> void;
+    auto add(ToolName name, Backend be) -> void;
     auto exists(ToolName name) const -> bool;
     auto available() const -> std::vector<std::string>;
 

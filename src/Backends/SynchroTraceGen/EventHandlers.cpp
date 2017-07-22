@@ -356,4 +356,37 @@ auto onParse(Args args) -> void
         fatal("SynchroTraceGen: Invalid compression level detected");
 }
 
+
+auto requirements() -> sigil2::capabilities
+{
+    using namespace sigil2;
+    using namespace sigil2::capability;
+
+    auto caps = initCaps();
+
+    caps[MEMORY]         = availability::enabled;
+    caps[MEMORY_LDST]    = availability::enabled;
+    caps[MEMORY_SIZE]    = availability::enabled;
+    caps[MEMORY_ADDRESS] = availability::enabled;
+
+    caps[COMPUTE]              = availability::enabled;
+    caps[COMPUTE_INT_OR_FLOAT] = availability::enabled;
+    caps[COMPUTE_ARITY]        = availability::disabled;
+    caps[COMPUTE_OP]           = availability::disabled;
+    caps[COMPUTE_SIZE]         = availability::disabled;
+
+    caps[CONTROL_FLOW] = availability::disabled;
+
+    caps[SYNC]      = availability::enabled;
+    caps[SYNC_TYPE] = availability::enabled;
+    caps[SYNC_ARGS] = availability::enabled;
+
+    caps[CONTEXT_INSTRUCTION] = availability::enabled;
+    caps[CONTEXT_BASIC_BLOCK] = availability::disabled;
+    caps[CONTEXT_FUNCTION]    = availability::disabled;
+    caps[CONTEXT_THREAD]      = availability::enabled;
+
+    return caps;
+}
+
 }; //end namespace STGen

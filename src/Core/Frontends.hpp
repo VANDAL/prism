@@ -43,21 +43,30 @@ class FrontendIface
 };
 
 
-using FrontendStarterArgs = std::tuple<Args, Args, unsigned>;
-/* Frontend gets:
- * - the executable and its args
- * - args specifically for the frontend
- * - number of threads in the system */
-
 using FrontendPtr = std::unique_ptr<FrontendIface>;
 using FrontendIfaceGenerator = std::function<FrontendPtr(void)>;
-using FrontendStarter = std::function<FrontendIfaceGenerator(FrontendStarterArgs)>;
-using FrontendStarterWrapper = std::function<FrontendIfaceGenerator(void)>;
+using FrontendStarter = std::function<FrontendIfaceGenerator(Args, Args, unsigned,
+                                                             const sigil2::capabilities&)>;
+using FrontendStarterWrapper = std::function<FrontendIfaceGenerator()>;
 /* The actual frontend must provide a 'starter' function that returns
  * a function to generate interfaces to the frontend as defined above.
- * In a multi-threaded frontend, each thread gets a separate interface
- * instance which shall provide access to a buffer; the buffer will
- * only be accessed by that instance/thread. */
+ * In a multi-threaded frontend, each thread gets a separate interface instance
+ * which shall provide access to a buffer; the buffer will only be accessed
+ * by that instance/thread.
+ *
+ * Frontend start function gets:
+ * - the executable and its args
+ * - args specifically for the frontend
+ * - number of threads in the system
+ * - requested capabilities from backend */
+
+
+struct Frontend
+{
+    FrontendStarter starter;
+    sigil2::capabilities caps;
+};
+
 
 class FrontendFactory
 {
@@ -65,13 +74,14 @@ class FrontendFactory
     FrontendFactory()  = default;
     ~FrontendFactory() = default;
 
-    auto create(ToolName name, FrontendStarterArgs args) const -> FrontendStarterWrapper;
-    auto add(ToolName name, FrontendStarter start) -> void;
+    auto create(ToolName name, Args exec, Args fe, unsigned threads,
+                const sigil2::capabilities &beReqs) const -> FrontendStarterWrapper;
+    auto add(ToolName name, Frontend fe) -> void;
     auto exists(ToolName name) const -> bool;
     auto available() const -> std::vector<std::string>;
 
   private:
-    std::map<ToolName, FrontendStarter> registry;
+    std::map<ToolName, Frontend> registry;
 };
 
 #endif

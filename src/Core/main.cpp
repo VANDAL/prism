@@ -36,30 +36,37 @@ int main(int argc, char* argv[])
 
     auto config = Config()
         .registerFrontend("valgrind",
-                          startSigrind)
+                          {startSigrind,
+                          sigrindCapabilities()})
         .registerFrontend("dynamorio",
-                          startDrSigil)
+                          {startDrSigil,
+                          drSigilCapabilities()})
         .registerFrontend("perf",
-                          startPerfPT)
+                          {startPerfPT,
+                          perfPTCapabilities()})
         .registerBackend("stgen",
                          {[]{return std::make_unique<::STGen::EventHandlers>();},
                           ::STGen::onParse,
                           ::STGen::onExit,
+                          ::STGen::requirements(),
                           {},})
         .registerBackend("simplecount",
                          {[]{return std::make_unique<::SimpleCount::Handler>();},
                           {},
                           ::SimpleCount::cleanup,
+                          ::SimpleCount::requirements(),
                           {},})
         .registerBackend("sigilclassic",
                          {[]{return std::make_unique<::SigilClassic::Handler>();},
                           {},
                           {},
+                          initCaps(), //TODO
                           {},})
         .registerBackend("null",
                          {[]{return std::make_unique<::BackendIface>();},
                           {},
                           {},
+                          initCaps(),
                           {},})
         .parseCommandLine(argc, argv);
 
