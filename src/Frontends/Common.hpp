@@ -1,5 +1,5 @@
-#ifndef SGL_FRONTEND_COMMON_H
-#define SGL_FRONTEND_COMMON_H
+#ifndef SIGIL2_FRONTEND_COMMON_H
+#define SIGIL2_FRONTEND_COMMON_H
 
 #include <mutex>
 #include <condition_variable>

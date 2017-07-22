@@ -1,5 +1,5 @@
-#ifndef SGL_LOG_H
-#define SGL_LOG_H
+#ifndef SIGIL2_LOG_H
+#define SIGIL2_LOG_H
 
 #include "spdlog/spdlog.h"
 #include <atomic>

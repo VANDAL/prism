@@ -1,5 +1,5 @@
-#ifndef SGL_PRIM_ENUM_H
-#define SGL_PRIM_ENUM_H
+#ifndef SIGIL2_PRIM_ENUM_H
+#define SIGIL2_PRIM_ENUM_H
 
 #ifndef __cplusplus
 typedef enum CompArityEnum CompArityEnum;

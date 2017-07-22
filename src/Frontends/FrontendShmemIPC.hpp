@@ -1,5 +1,5 @@
-#ifndef SGL_FRONTEND_SHMEM_IPC_H
-#define SGL_FRONTEND_SHMEM_IPC_H
+#ifndef SIGIL2_FRONTEND_SHMEM_IPC_H
+#define SIGIL2_FRONTEND_SHMEM_IPC_H
 
 #include "Core/SigiLog.hpp"
 #include "Core/Frontends.hpp"

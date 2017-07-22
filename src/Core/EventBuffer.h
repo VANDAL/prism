@@ -1,5 +1,5 @@
-#ifndef SGL_EVENTBUFFER_H
-#define SGL_EVENTBUFFER_H
+#ifndef SIGIL2_EVENTBUFFER_H
+#define SIGIL2_EVENTBUFFER_H
 
 #include "Primitive.h"
 #include <stdlib.h>

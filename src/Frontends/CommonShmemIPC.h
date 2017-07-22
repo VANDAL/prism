@@ -1,5 +1,5 @@
-#ifndef SGL_COMMON_SHMEM_IPC_H
-#define SGL_COMMON_SHMEM_IPC_H
+#ifndef SIGIL2_COMMON_SHMEM_IPC_H
+#define SIGIL2_COMMON_SHMEM_IPC_H
 
 #include "Core/EventBuffer.h"
 

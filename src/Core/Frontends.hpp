@@ -1,5 +1,5 @@
-#ifndef SIGIL_FRONTEND_H
-#define SIGIL_FRONTEND_H
+#ifndef SIGIL2_FRONTEND_H
+#define SIGIL2_FRONTEND_H
 
 #include "SigiLog.hpp"
 #include "EventBuffer.h"

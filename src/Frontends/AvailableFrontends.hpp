@@ -1,5 +1,5 @@
-#ifndef SGL_AVAILABLE_FRONTENDS_H
-#define SGL_AVAILABLE_FRONTENDS_H
+#ifndef SIGIL2_AVAILABLE_FRONTENDS_H
+#define SIGIL2_AVAILABLE_FRONTENDS_H
 
 #include "Sigrind/SigrindFrontend.hpp"
 #include "DrSigil/DrSigilFrontend.hpp"

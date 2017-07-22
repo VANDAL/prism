@@ -1,5 +1,5 @@
-#ifndef SGL_PRIM_H
-#define SGL_PRIM_H
+#ifndef SIGIL2_PRIM_H
+#define SIGIL2_PRIM_H
 
 /*
  * All Sigil primitives

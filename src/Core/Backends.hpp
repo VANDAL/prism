@@ -1,5 +1,5 @@
-#ifndef SIGIL_BACKEND_H
-#define SIGIL_BACKEND_H
+#ifndef SIGIL2_BACKEND_H
+#define SIGIL2_BACKEND_H
 
 #include "Primitive.h"
 #include <string>
