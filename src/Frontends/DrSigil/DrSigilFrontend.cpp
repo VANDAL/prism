@@ -4,7 +4,7 @@
 #include "whereami.h"
 #include "glob.h"
 
-auto drSigilCapabilities() -> sigil2::capabilities 
+auto drSigilCapabilities() -> sigil2::capabilities
 {
     using namespace sigil2;
     using namespace sigil2::capability;
@@ -60,57 +60,87 @@ namespace
 using ExecArgs = char *const *;
 using Exec = std::pair<std::string, ExecArgs>;
 
-auto tokenizeOpts(const std::vector<std::string> &user_exec,
-                  const std::vector<std::string> &args,
-                  const std::string &sigil_bin_dir,
-                  const std::string &ipc_dir,
-                  const uint16_t num_threads,
-                  const sigil2::capabilities& reqs) -> ExecArgs
+
+auto getDynamoRIOArgs(const std::string &sigilBinDir,
+                      const std::string &ipcDir,
+                      uint16_t threads,
+                      const sigil2::capabilities &reqs) -> Args
 {
-    assert(!user_exec.empty() && !ipc_dir.empty());
+    using namespace sigil2;
+    using namespace sigil2::capability;
 
-    /* format dynamorio options */
-    //                 program name + dynamorio options + user program options + null
-    int dr_opts_size = 1            + 10 + args.size()     + user_exec.size()        + 1;
-    char **dr_opts = static_cast<char **>(malloc(dr_opts_size * sizeof(char *)));
+    Args drArgs;
 
-    int i = 0;
-    dr_opts[i++] = strdup("drrun");
-    //dr_opts[i++] = strdup("-debug");
-    dr_opts[i++] = strdup("-root");
-    dr_opts[i++] = strdup((sigil_bin_dir + "/dr").c_str());
-    dr_opts[i++] = strdup("-max_bb_instrs");
-    dr_opts[i++] = strdup("128");
-    dr_opts[i++] = strdup("-c");
+    drArgs.push_back("drrun");
+    //drArgs.push_back("debug");
+    drArgs.push_back("-root");
+    drArgs.push_back(sigilBinDir + "/dr");
+    drArgs.push_back("-max_bb_instrs");
+    drArgs.push_back("128");
+    drArgs.push_back("-c");
 
     /* detect 32/64 bit and release/debug build */
     glob_t glob_result;
-    glob(std::string(sigil_bin_dir).append("/dr/tools/lib*/*").c_str(),
+    glob((sigilBinDir + "/dr/tools/lib*/*").c_str(),
          GLOB_MARK|GLOB_TILDE|GLOB_ONLYDIR,
          NULL, &glob_result);
-
     if (glob_result.gl_pathc != 1)
         fatal("Error detecting \'libdrsigil.so\' path");
-
-    std::string dr_lib = std::string(glob_result.gl_pathv[0]);
-
+    std::string drLib = std::string(glob_result.gl_pathv[0]);
     globfree(&glob_result);
 
-    dr_opts[i++] = strdup((dr_lib + "libdrsigil.so").c_str());
-    dr_opts[i++] = strdup(("--num-frontend-threads=" + std::to_string(num_threads)).c_str());
-    dr_opts[i++] = strdup(("--ipc-dir=" + ipc_dir).c_str());
+    drArgs.push_back(drLib + "libdrsigil.so");
+    drArgs.push_back("--num-frontend-threads=" + std::to_string(threads));
+    drArgs.push_back("--ipc-dir=" + ipcDir);
 
+    if (reqs[MEMORY] == availability::enabled)
+        drArgs.push_back("--enable-mem");
+    if (reqs[MEMORY_LDST] == availability::enabled)
+        drArgs.push_back("--enable-mem-type");
+    if (reqs[MEMORY_SIZE] == availability::enabled)
+        drArgs.push_back("--enable-mem-size");
+    if (reqs[MEMORY_ADDRESS] == availability::enabled)
+        drArgs.push_back("--enable-mem-addr");
+
+    return drArgs;
+}
+
+
+auto tokenizeOpts(const std::vector<std::string> &userExec,
+                  const std::vector<std::string> &args,
+                  const std::string &sigilBinDir,
+                  const std::string &ipcDir,
+                  const uint16_t threads,
+                  const sigil2::capabilities &reqs) -> ExecArgs
+{
+    assert(!userExec.empty() && !ipcDir.empty());
+
+    auto drArgs = getDynamoRIOArgs(sigilBinDir, ipcDir, threads, reqs);
+
+    /* format dynamorio options */
+    int drOptsSize = drArgs.size()   + // dynamorio options
+                     args.size()     + // extra frontend options
+                     1               + // '--' to separate user program to DR
+                     userExec.size() + // user program options
+                     1;                // null
+    char **drOpts = static_cast<char **>(malloc(drOptsSize * sizeof(char *)));
+
+    int i = 0;
+    for (auto &arg : drArgs)
+        drOpts[i++] = strdup(arg.c_str());
+
+    /* assume extra frontend options are directly passed to DR */
     for (auto &arg : args)
-        dr_opts[i++] = strdup(arg.c_str());
+        drOpts[i++] = strdup(arg.c_str());
 
-    dr_opts[i++] = strdup("--");
+    drOpts[i++] = strdup("--");
 
-    for (auto &arg : user_exec)
-        dr_opts[i++] = strdup(arg.c_str());
+    for (auto &arg : userExec)
+        drOpts[i++] = strdup(arg.c_str());
 
-    dr_opts[i] = nullptr;
+    drOpts[i] = nullptr;
 
-    return dr_opts;
+    return drOpts;
 }
 
 

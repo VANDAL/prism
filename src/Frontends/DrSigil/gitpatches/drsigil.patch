@@ -1,18 +1,18 @@
-From 99a9af7f870b2485bd3582e1a836baf4382079b5 Mon Sep 17 00:00:00 2001
+From 80c9297189bb87d8cfc25fa2931e84bfb3c5f3cc Mon Sep 17 00:00:00 2001
 From: Mike Lui <mike.d.lui@gmail.com>
-Date: Thu, 20 Jul 2017 15:24:21 -0400
+Date: Mon, 31 Jul 2017 10:57:55 -0400
 Subject: [PATCH] patch
 
 ---
  clients/drsigil/CMakeLists.txt         |  27 ++
- clients/drsigil/drsigil.c              | 259 ++++++++++++++
- clients/drsigil/drsigil.h              | 301 +++++++++++++++++
- clients/drsigil/instrument.c           | 602 +++++++++++++++++++++++++++++++++
- clients/drsigil/ipc.c                  | 376 ++++++++++++++++++++
- clients/drsigil/parser.c               |  55 +++
- clients/drsigil/pthread_defines.h      | 283 ++++++++++++++++
+ clients/drsigil/drsigil.c              | 277 ++++++++++++++
+ clients/drsigil/drsigil.h              | 319 ++++++++++++++++
+ clients/drsigil/instrument.c           | 680 +++++++++++++++++++++++++++++++++
+ clients/drsigil/ipc.c                  | 376 ++++++++++++++++++
+ clients/drsigil/parser.c               |  87 +++++
+ clients/drsigil/pthread_defines.h      | 283 ++++++++++++++
  clients/drsigil/start_stop_functions.h |  50 +++
- 8 files changed, 1953 insertions(+)
+ 8 files changed, 2099 insertions(+)
  create mode 100644 clients/drsigil/CMakeLists.txt
  create mode 100644 clients/drsigil/drsigil.c
  create mode 100644 clients/drsigil/drsigil.h
@@ -24,7 +24,7 @@ Subject: [PATCH] patch
 
 diff --git a/clients/drsigil/CMakeLists.txt b/clients/drsigil/CMakeLists.txt
 new file mode 100644
-index 00000000..728be3c2
+index 0000000..728be3c
 --- /dev/null
 +++ b/clients/drsigil/CMakeLists.txt
 @@ -0,0 +1,27 @@
@@ -57,10 +57,10 @@ index 00000000..728be3c2
 +	DESTINATION ${INSTALL_CLIENTS_LIB})
 diff --git a/clients/drsigil/drsigil.c b/clients/drsigil/drsigil.c
 new file mode 100644
-index 00000000..68fa187a
+index 0000000..c6018dc
 --- /dev/null
 +++ b/clients/drsigil/drsigil.c
-@@ -0,0 +1,259 @@
+@@ -0,0 +1,277 @@
 +#include "drsigil.h"
 +#include "pthread_defines.h"
 +#include "start_stop_functions.h"
@@ -106,20 +106,38 @@ index 00000000..68fa187a
 +        instrument_reset(drcontext, ilist, where, tcxt);
 +
 +    /* set up the current iblock */
++    /* TODO rename these */
 +    instr_block_t *iblock = tcxt->iblocks + tcxt->iblock_count;
-+    iblock->instr = where;
-+    iblock->mem_ref_count = 0;
-+    iblock->comp_count = 0;
 +    tcxt->iblock_count += 1;
-+    tcxt->event_block_events += 1; //instr
 +
-+    if (instr_reads_memory(where) || instr_writes_memory(where))
-+        instrument_mem_cache(drcontext, ilist, where, &iblock->mem_ref_count);
-+    tcxt->event_block_events += iblock->mem_ref_count;
++    if (clo.enable_context_instr)
++    {
++        iblock->instr = where;
++        tcxt->event_block_events += 1;
++    }
 +
-+    instrument_comp_cache(where, &iblock->comp_count, tcxt->current_iblock_comp);
-+    tcxt->event_block_events += iblock->comp_count;
-+    tcxt->current_iblock_comp += iblock->comp_count;
++    if (clo.enable_mem)
++    {
++        iblock->mem_ref_count = 0;
++        if (instr_reads_memory(where) || instr_writes_memory(where))
++        {
++            /* if we don't need details of the memory operation,
++             * skip the extra instrumentation */
++            if (clo.memref_needed)
++                instrument_mem_cache(drcontext, ilist, where, &iblock->mem_ref_count);
++            else
++                instrument_mem_cache_no_memref(drcontext, ilist, where, &iblock->mem_ref_count);
++        }
++        tcxt->event_block_events += iblock->mem_ref_count;
++    }
++
++    if (clo.enable_comp)
++    {
++        iblock->comp_count = 0;
++        instrument_comp_cache(where, &iblock->comp_count, tcxt->current_iblock_comp);
++        tcxt->event_block_events += iblock->comp_count;
++        tcxt->current_iblock_comp += iblock->comp_count;
++    }
 +
 +    if (instr_is_cti(where) || where == instrlist_last_app(ilist))
 +        instrument_sigil_events(drcontext, ilist, where, tcxt);
@@ -276,7 +294,7 @@ index 00000000..68fa187a
 +DR_EXPORT void
 +dr_client_main(client_id_t id, int argc, const char *argv[])
 +{
-+    parse(argc, (char**)argv, &clo);
++    parse(argc, (char**)argv);
 +
 +    dr_set_client_name("DrSigil",
 +                       "https://github.com/VANDAL/sigil2/issues");
@@ -322,10 +340,10 @@ index 00000000..68fa187a
 +}
 diff --git a/clients/drsigil/drsigil.h b/clients/drsigil/drsigil.h
 new file mode 100644
-index 00000000..546192d7
+index 0000000..85d2766
 --- /dev/null
 +++ b/clients/drsigil/drsigil.h
-@@ -0,0 +1,301 @@
+@@ -0,0 +1,319 @@
 +#ifndef DRSIGIL_H
 +#define DRSIGIL_H
 +
@@ -598,6 +616,22 @@ index 00000000..546192d7
 +     * to run this tool without Sigil2.
 +     * This flag instructs the tool to ignore IPC with the
 +     * Sigil2 core */
++
++    int enable_mem;
++    int enable_mem_type;
++    int enable_mem_addr;
++    int enable_mem_size;
++    int enable_comp;
++    int enable_comp_type;
++    int enable_sync;
++    int enable_sync_type;
++    int enable_sync_data;
++    int enable_context_instr;
++    /* instrumentation switches */
++
++    bool memref_needed;
++    /* if extra memory instrumentation features required */
++
 +} clo;
 +
 +
@@ -612,6 +646,8 @@ index 00000000..546192d7
 +
 +void instrument_mem_cache(void *drcontext, instrlist_t *ilist, instr_t *where,
 +                          uint *mem_ref_count);
++void instrument_mem_cache_no_memref(void *drcontext, instrlist_t *ilist, instr_t *where,
++                                    uint *mem_ref_count);
 +
 +void instrument_comp_cache(instr_t *instr, uint *comp_count, SglCompEv *cache);
 +
@@ -624,15 +660,15 @@ index 00000000..546192d7
 +void set_shared_memory_buffer(per_thread_t *tcxt);
 +void force_thread_flush(per_thread_t *tcxt);
 +
-+void parse(int argc, char *argv[], command_line_options *clo);
++void parse(int argc, char *argv[]);
 +
 +#endif
 diff --git a/clients/drsigil/instrument.c b/clients/drsigil/instrument.c
 new file mode 100644
-index 00000000..05d9868b
+index 0000000..c4af706
 --- /dev/null
 +++ b/clients/drsigil/instrument.c
-@@ -0,0 +1,602 @@
+@@ -0,0 +1,680 @@
 +#include "drsigil.h"
 +#include "drmgr.h"
 +#include "drutil.h"
@@ -651,14 +687,17 @@ index 00000000..05d9868b
 +    tcxt->event_block_events = 0;
 +    tcxt->current_iblock_comp = tcxt->comps;
 +
-+    /* reset mem ref buffer to point to the beginning */
-+    reg_id_t reg;
-+    RESERVE_REGISTER(reg);
-+    dr_insert_read_raw_tls(drcontext, ilist, where,
-+                           raw_tls_seg, MEMREFBASE_OFFS, reg);
-+    dr_insert_write_raw_tls(drcontext, ilist, where,
-+                            raw_tls_seg, MEMREFCURR_OFFS, reg);
-+    UNRESERVE_REGISTER(reg);
++    if (clo.memref_needed)
++    {
++        /* reset mem ref buffer to point to the beginning */
++        reg_id_t reg;
++        RESERVE_REGISTER(reg);
++        dr_insert_read_raw_tls(drcontext, ilist, where,
++                               raw_tls_seg, MEMREFBASE_OFFS, reg);
++        dr_insert_write_raw_tls(drcontext, ilist, where,
++                                raw_tls_seg, MEMREFCURR_OFFS, reg);
++        UNRESERVE_REGISTER(reg);
++    }
 +}
 +
 +
@@ -669,30 +708,40 @@ index 00000000..05d9868b
 +{
 +    /* set the attributes */
 +
-+    /* READ/WRITE */
-+    MINSERT(ilist, where,
-+            XINST_CREATE_store_1byte(drcontext,
-+                                     OPND_CREATE_MEM8(buf_ptr, offsetof(mem_ref_t, type)),
-+                                     OPND_CREATE_INT8(type)));
++    if (clo.enable_mem_type)
++    {
++        /* READ/WRITE */
++        MINSERT(ilist, where,
++                XINST_CREATE_store_1byte(drcontext,
++                                         OPND_CREATE_MEM8(buf_ptr, offsetof(mem_ref_t, type)),
++                                         OPND_CREATE_INT8(type)));
++    }
 +
-+    /* size of the mem ref operand */
-+    MINSERT(ilist, where,
-+            XINST_CREATE_store_2bytes(drcontext,
-+                                      OPND_CREATE_MEM16(buf_ptr, offsetof(mem_ref_t, size)),
-+                                      OPND_CREATE_INT16(size)));
++    if (clo.enable_mem_size)
++    {
++        /* size of the mem ref operand */
++        MINSERT(ilist, where,
++                XINST_CREATE_store_2bytes(drcontext,
++                                          OPND_CREATE_MEM16(buf_ptr, offsetof(mem_ref_t, size)),
++                                          OPND_CREATE_INT16(size)));
++    }
 +
-+    /* memory address */
-+    drutil_insert_get_mem_addr(drcontext, ilist, where, ref, addr_reg, scratch_reg);
-+    MINSERT(ilist, where,
-+            XINST_CREATE_store(drcontext,
-+                               OPND_CREATE_MEMPTR(buf_ptr, offsetof(mem_ref_t, addr)),
-+                               opnd_create_reg(addr_reg)));
++    if (clo.enable_mem_addr)
++    {
++        /* memory address */
++        drutil_insert_get_mem_addr(drcontext, ilist, where, ref, addr_reg, scratch_reg);
++        MINSERT(ilist, where,
++                XINST_CREATE_store(drcontext,
++                                   OPND_CREATE_MEMPTR(buf_ptr, offsetof(mem_ref_t, addr)),
++                                   opnd_create_reg(addr_reg)));
++    }
 +}
 +void
 +instrument_mem_cache(void *drcontext, instrlist_t *ilist, instr_t *where,
 +                     uint *mem_ref_count)
 +{
 +    reg_id_t buf_ptr, scratch1, scratch2;
++
 +    drreg_reserve_aflags(drcontext, ilist, where);
 +    RESERVE_REGISTER(buf_ptr);
 +    RESERVE_REGISTER(scratch1);
@@ -757,6 +806,39 @@ index 00000000..05d9868b
 +    UNRESERVE_REGISTER(buf_ptr);
 +    drreg_unreserve_aflags(drcontext, ilist, where);
 +}
++void
++instrument_mem_cache_no_memref(void *drcontext, instrlist_t *ilist, instr_t *where,
++                               uint *mem_ref_count)
++{
++    /* if we don't need details of the memory operation,
++     * call this function and skip the extra instrumentation */
++
++    if (instr_reads_memory(where))
++    {
++        for (int i=0; i<instr_num_srcs(where); ++i)
++        {
++            opnd_t ref = instr_get_src(where, i);
++            if (opnd_is_memory_reference(ref))
++            {
++                ++*mem_ref_count;
++            }
++        }
++    }
++
++    if (instr_writes_memory(where))
++    {
++        for (int i=0; i<instr_num_dsts(where); ++i)
++        {
++            opnd_t ref = instr_get_dst(where, i);
++            if (opnd_is_memory_reference(ref))
++            {
++                ++*mem_ref_count;
++            }
++        }
++    }
++}
++
++
 +
 +
 +void
@@ -874,47 +956,56 @@ index 00000000..05d9868b
 +                                                          offsetof(SglEvVariant, tag)),
 +                                         OPND_CREATE_INT8(SGL_MEM_TAG)));
 +
-+        /* Set read/write
-+         * ev->mem.type = memref->type */
-+        MINSERT(ilist, where,
-+                XINST_CREATE_load_1byte_zext4(drcontext,
-+                                              opnd_create_reg(scratch_reg),
-+                                              OPND_CREATE_MEM8(memref_xax,
-+                                                               offsetof(mem_ref_t, type))));
-+        MINSERT(ilist, where,
-+                XINST_CREATE_store_1byte(drcontext,
-+                                         OPND_CREATE_MEM8(evptr_reg,
++        if (clo.enable_mem_type)
++        {
++            /* Set read/write
++             * ev->mem.type = memref->type */
++            MINSERT(ilist, where,
++                    XINST_CREATE_load_1byte_zext4(drcontext,
++                                                  opnd_create_reg(scratch_reg),
++                                                  OPND_CREATE_MEM8(memref_xax,
++                                                                   offsetof(mem_ref_t, type))));
++            MINSERT(ilist, where,
++                    XINST_CREATE_store_1byte(drcontext,
++                                             OPND_CREATE_MEM8(evptr_reg,
++                                                              offsetof(SglEvVariant, mem) +
++                                                              offsetof(SglMemEv, type)),
++                                             opnd_create_reg(l_scratch_reg)));
++        }
++
++        if (clo.enable_mem_size)
++        {
++            /* Set size
++             * ev->mem.size = memref->size */
++            MINSERT(ilist, where,
++                    XINST_CREATE_load_2bytes(drcontext,
++                                             opnd_create_reg(h_scratch_reg),
++                                             OPND_CREATE_MEM16(memref_xax,
++                                                               offsetof(mem_ref_t, size))));
++            MINSERT(ilist, where,
++                    XINST_CREATE_store_2bytes(drcontext,
++                                              OPND_CREATE_MEM16(evptr_reg,
++                                                                offsetof(SglEvVariant, mem) +
++                                                                offsetof(SglMemEv, size)),
++                                              opnd_create_reg(h_scratch_reg)));
++        }
++
++        if (clo.enable_mem_addr)
++        {
++            /* Set address
++             * ev->mem.begin_addr = memref->addr */
++            MINSERT(ilist, where,
++                    XINST_CREATE_load(drcontext,
++                                      opnd_create_reg(scratch_reg),
++                                      OPND_CREATE_MEMPTR(memref_xax,
++                                                         offsetof(mem_ref_t, addr))));
++            MINSERT(ilist, where,
++                    XINST_CREATE_store(drcontext,
++                                       OPND_CREATE_MEMPTR(evptr_reg,
 +                                                          offsetof(SglEvVariant, mem) +
-+                                                          offsetof(SglMemEv, type)),
-+                                         opnd_create_reg(l_scratch_reg)));
-+
-+        /* Set size
-+         * ev->mem.size = memref->size */
-+        MINSERT(ilist, where,
-+                XINST_CREATE_load_2bytes(drcontext,
-+                                         opnd_create_reg(h_scratch_reg),
-+                                         OPND_CREATE_MEM16(memref_xax,
-+                                                           offsetof(mem_ref_t, size))));
-+        MINSERT(ilist, where,
-+                XINST_CREATE_store_2bytes(drcontext,
-+                                          OPND_CREATE_MEM16(evptr_reg,
-+                                                            offsetof(SglEvVariant, mem) +
-+                                                            offsetof(SglMemEv, size)),
-+                                          opnd_create_reg(h_scratch_reg)));
-+
-+        /* Set address
-+         * ev->mem.begin_addr = memref->addr */
-+        MINSERT(ilist, where,
-+                XINST_CREATE_load(drcontext,
-+                                  opnd_create_reg(scratch_reg),
-+                                  OPND_CREATE_MEMPTR(memref_xax,
-+                                                     offsetof(mem_ref_t, addr))));
-+        MINSERT(ilist, where,
-+                XINST_CREATE_store(drcontext,
-+                                   OPND_CREATE_MEMPTR(evptr_reg,
-+                                                      offsetof(SglEvVariant, mem) +
-+                                                      offsetof(SglMemEv, begin_addr)),
-+                                   opnd_create_reg(scratch_reg)));
++                                                          offsetof(SglMemEv, begin_addr)),
++                                       opnd_create_reg(scratch_reg)));
++        }
 +
 +        /* Increment to the next event slot
 +         * ev += 1 */
@@ -1000,15 +1091,18 @@ index 00000000..05d9868b
 +                                         OPND_CREATE_MEM8(evptr_reg, offsetof(SglEvVariant, tag)),
 +                                         OPND_CREATE_INT8(SGL_COMP_TAG)));
 +
-+        /* COMP.COMPCOSTTYPE
-+         * ev->sync.type = compev->type */
-+        DR_ASSERT(sizeof(CompCostType) == 1);
-+        MINSERT(ilist, where,
-+                XINST_CREATE_store_1byte(drcontext,
-+                                         OPND_CREATE_MEM8(evptr_reg,
-+                                                          (offsetof(SglEvVariant, comp) +
-+                                                           offsetof(SglCompEv, type))),
-+                                         OPND_CREATE_INT8((*ev)->type)));
++        if (clo.enable_comp_type)
++        {
++            /* COMP.COMPCOSTTYPE
++             * ev->sync.type = compev->type */
++            DR_ASSERT(sizeof(CompCostType) == 1);
++            MINSERT(ilist, where,
++                    XINST_CREATE_store_1byte(drcontext,
++                                             OPND_CREATE_MEM8(evptr_reg,
++                                                              (offsetof(SglEvVariant, comp) +
++                                                               offsetof(SglCompEv, type))),
++                                             OPND_CREATE_INT8((*ev)->type)));
++        }
 +
 +        /* Increment to the next sigil event slot
 +         * ev += 1 */
@@ -1034,50 +1128,56 @@ index 00000000..05d9868b
 +                                     OPND_CREATE_MEM8(evptr_reg, offsetof(SglEvVariant, tag)),
 +                                     OPND_CREATE_INT8(SGL_SYNC_TAG)));
 +
-+    DR_ASSERT(sizeof(SyncType) == 1);
-+    /* SYNC.SYNCTYPE
-+     * ev->sync.type = TLS syncev->type */
-+    MINSERT(ilist, where,
-+            XINST_CREATE_load_1byte_zext4(drcontext,
-+                                          opnd_create_reg(scratch_reg),
-+                                          OPND_CREATE_MEM8(sglsyncptr_reg,
-+                                                           offsetof(SglSyncEv, type))));
-+    MINSERT(ilist, where,
-+            XINST_CREATE_store_1byte(drcontext,
-+                                     OPND_CREATE_MEM8(evptr_reg,
-+                                                      (offsetof(SglEvVariant, sync) +
-+                                                       offsetof(SglSyncEv, type))),
-+                                     opnd_create_reg(l_scratch_reg)));
++    if (clo.enable_sync_type)
++    {
++        DR_ASSERT(sizeof(SyncType) == 1);
++        /* SYNC.SYNCTYPE
++         * ev->sync.type = TLS syncev->type */
++        MINSERT(ilist, where,
++                XINST_CREATE_load_1byte_zext4(drcontext,
++                                              opnd_create_reg(scratch_reg),
++                                              OPND_CREATE_MEM8(sglsyncptr_reg,
++                                                               offsetof(SglSyncEv, type))));
++        MINSERT(ilist, where,
++                XINST_CREATE_store_1byte(drcontext,
++                                         OPND_CREATE_MEM8(evptr_reg,
++                                                          (offsetof(SglEvVariant, sync) +
++                                                           offsetof(SglSyncEv, type))),
++                                         opnd_create_reg(l_scratch_reg)));
++    }
 +
-+    /* SYNC.SYNCID[0]
-+     * ev->sync.data[0] = TLS syncev->data[0] */
-+    DR_ASSERT(sizeof(SyncID) == 8);
-+    MINSERT(ilist, where,
-+            XINST_CREATE_load(drcontext,
-+                              opnd_create_reg(scratch_reg),
-+                              OPND_CREATE_MEMPTR(sglsyncptr_reg,
-+                                                 offsetof(SglSyncEv, data))));
-+    MINSERT(ilist, where,
-+            XINST_CREATE_store(drcontext,
-+                               OPND_CREATE_MEMPTR(evptr_reg,
-+                                                  (offsetof(SglEvVariant, sync) +
-+                                                   offsetof(SglSyncEv, data))),
-+                               opnd_create_reg(scratch_reg)));
-+    /* SYNC.SYNCID[1]
-+     * ev->sync.data[1] = TLS syncev->data[1] */
-+    MINSERT(ilist, where,
-+            XINST_CREATE_load(drcontext,
-+                              opnd_create_reg(scratch_reg),
-+                              OPND_CREATE_MEMPTR(sglsyncptr_reg,
-+                                                 offsetof(SglSyncEv, data) +
-+                                                 1*sizeof(SyncID))));
-+    MINSERT(ilist, where,
-+            XINST_CREATE_store(drcontext,
-+                               OPND_CREATE_MEMPTR(evptr_reg,
-+                                                  (offsetof(SglEvVariant, sync) +
-+                                                   offsetof(SglSyncEv, data) +
-+                                                   1*sizeof(SyncID))),
-+                               opnd_create_reg(scratch_reg)));
++    if (clo.enable_sync_data)
++    {
++        /* SYNC.SYNCID[0]
++         * ev->sync.data[0] = TLS syncev->data[0] */
++        DR_ASSERT(sizeof(SyncID) == 8);
++        MINSERT(ilist, where,
++                XINST_CREATE_load(drcontext,
++                                  opnd_create_reg(scratch_reg),
++                                  OPND_CREATE_MEMPTR(sglsyncptr_reg,
++                                                     offsetof(SglSyncEv, data))));
++        MINSERT(ilist, where,
++                XINST_CREATE_store(drcontext,
++                                   OPND_CREATE_MEMPTR(evptr_reg,
++                                                      (offsetof(SglEvVariant, sync) +
++                                                       offsetof(SglSyncEv, data))),
++                                   opnd_create_reg(scratch_reg)));
++        /* SYNC.SYNCID[1]
++         * ev->sync.data[1] = TLS syncev->data[1] */
++        MINSERT(ilist, where,
++                XINST_CREATE_load(drcontext,
++                                  opnd_create_reg(scratch_reg),
++                                  OPND_CREATE_MEMPTR(sglsyncptr_reg,
++                                                     offsetof(SglSyncEv, data) +
++                                                     1*sizeof(SyncID))));
++        MINSERT(ilist, where,
++                XINST_CREATE_store(drcontext,
++                                   OPND_CREATE_MEMPTR(evptr_reg,
++                                                      (offsetof(SglEvVariant, sync) +
++                                                       offsetof(SglSyncEv, data) +
++                                                       1*sizeof(SyncID))),
++                                   opnd_create_reg(scratch_reg)));
++    }
 +
 +    /* reset the sync event
 +     * TLS syncev = (SglSyncEv*)0 */
@@ -1101,7 +1201,6 @@ index 00000000..05d9868b
 +instrument_sigil_events(void *drcontext, instrlist_t *ilist, instr_t *where,
 +                        per_thread_t *tcxt)
 +{
-+
 +    /* need to specify so we can access 1/2 byte registers.
 +     * e.g. XAX so we can access AL / AX
 +     * cannot use drreg here (no API for this) */
@@ -1153,55 +1252,67 @@ index 00000000..05d9868b
 +                           raw_tls_seg, SGLEV_OFFS, evptr_reg);
 +    //-----------------------------------------------------------
 +
-+    /* Check if we've just exited a synchronization event
-+     * Skip if no synch event, can't do a (jecxz) near jump */
-+    dr_insert_read_raw_tls(drcontext, ilist, where,
-+                           raw_tls_seg, SGLSYNCEV_OFFS, xax);
-+    /* if (TLS syncevptr == NULL)
-+     * can't do a 64 bit cmp to NULL, need a reg :( */
-+    MINSERT(ilist, where,
-+            XINST_CREATE_load_int(drcontext,
-+                                  opnd_create_reg(xbx),
-+                                  OPND_CREATE_INTPTR(NULL)));
-+    MINSERT(ilist, where,
-+            XINST_CREATE_cmp(drcontext,
-+                             opnd_create_reg(xax),
-+                             opnd_create_reg(xbx)));
-+    /* jmp skip_sync */
-+    instr_t *skip_sync = INSTR_CREATE_label(drcontext);
-+    MINSERT(ilist, where,
-+            INSTR_CREATE_jcc(drcontext,
-+                             OP_je,
-+                             opnd_create_instr(skip_sync)));
-+
-+    /* if (TLS syncevptr != NULL) */
-+    instrument_setup_buffer(drcontext, ilist, where,
-+                            evptr_reg, xbx, xcx,
-+                            tcxt->event_block_events + 1);
-+    instrument_sync(drcontext, ilist, where, evptr_reg, xax, xbx, DR_REG_BL);
-+
-+    /* already setup the sigil event buffer, so skip over this next setup */
++    /* skip if event buffer already setup*/
 +    instr_t *skip_setup = INSTR_CREATE_label(drcontext);
-+    MINSERT(ilist, where,
-+            XINST_CREATE_jump(drcontext,
-+                              opnd_create_instr(skip_setup)));
 +
-+    /* SKIP SYNC LABEL */
-+    MINSERT(ilist, where, skip_sync);
++    if (clo.enable_sync)
++    {
++        /* Check if we've just exited a synchronization event
++         * Skip if no synch event, can't do a (jecxz) near jump */
++        dr_insert_read_raw_tls(drcontext, ilist, where,
++                               raw_tls_seg, SGLSYNCEV_OFFS, xax);
++        /* if (TLS syncevptr == NULL)
++         * can't do a 64 bit cmp to NULL, need a reg :( */
++        MINSERT(ilist, where,
++                XINST_CREATE_load_int(drcontext,
++                                      opnd_create_reg(xbx),
++                                      OPND_CREATE_INTPTR(NULL)));
++        MINSERT(ilist, where,
++                XINST_CREATE_cmp(drcontext,
++                                 opnd_create_reg(xax),
++                                 opnd_create_reg(xbx)));
++        /* jmp skip_sync */
++        instr_t *skip_sync = INSTR_CREATE_label(drcontext);
++        MINSERT(ilist, where,
++                INSTR_CREATE_jcc(drcontext,
++                                 OP_je,
++                                 opnd_create_instr(skip_sync)));
++
++        /* if (TLS syncevptr != NULL) */
++        instrument_setup_buffer(drcontext, ilist, where,
++                                evptr_reg, xbx, xcx,
++                                tcxt->event_block_events + 1);
++        instrument_sync(drcontext, ilist, where, evptr_reg, xax, xbx, DR_REG_BL);
++
++        MINSERT(ilist, where,
++                XINST_CREATE_jump(drcontext,
++                                  opnd_create_instr(skip_setup)));
++
++        /* SKIP SYNC LABEL */
++        MINSERT(ilist, where, skip_sync);
++    }
 +
 +    /* add sigil event instrumentation */
 +    instrument_setup_buffer(drcontext, ilist, where,
 +                            evptr_reg, xbx, xcx,
 +                            tcxt->event_block_events);
 +
-+    /* SKIP SETUP BUFFER LABEL */
-+    MINSERT(ilist, where, skip_setup);
++    if (clo.enable_sync)
++    {
++        /* Only needed if synchronization events enabled */
++        /* SKIP SETUP BUFFER LABEL */
++        MINSERT(ilist, where, skip_setup);
++    }
 +
 +    /* sigil mem/compute events are filled in from buffer[0] to buffer[N] */
 +    SglCompEv *comp_ev = tcxt->comps;
-+    /* xax <= TLS memrefbase */
-+    dr_insert_read_raw_tls(drcontext, ilist, where,
-+                           raw_tls_seg, MEMREFBASE_OFFS, xax);
++
++    if (clo.memref_needed)
++    {
++        /* xax <= TLS memrefbase */
++        dr_insert_read_raw_tls(drcontext, ilist, where,
++                               raw_tls_seg, MEMREFBASE_OFFS, xax);
++    }
 +
 +    for (uint i=0; i<tcxt->iblock_count; ++i)
 +    {
@@ -1212,13 +1323,16 @@ index 00000000..05d9868b
 +         * memory. This means both the cache pointers for both need to be
 +         * persistent */
 +        instr_block_t *iblock = tcxt->iblocks + i;
-+        instrument_instr(drcontext, ilist, where,
-+                         evptr_reg, xcx, iblock->instr);
-+        instrument_mem(drcontext, ilist, where,
-+                       evptr_reg, xax, xcx, DR_REG_CX, DR_REG_CL,
-+                       iblock->mem_ref_count);
-+        instrument_comp(drcontext, ilist, where,
-+                        evptr_reg, iblock->comp_count, &comp_ev);
++        if (clo.enable_context_instr)
++            instrument_instr(drcontext, ilist, where,
++                             evptr_reg, xcx, iblock->instr);
++        if (clo.enable_mem)
++            instrument_mem(drcontext, ilist, where,
++                           evptr_reg, xax, xcx, DR_REG_CX, DR_REG_CL,
++                           iblock->mem_ref_count);
++        if (clo.enable_comp)
++            instrument_comp(drcontext, ilist, where,
++                            evptr_reg, iblock->comp_count, &comp_ev);
 +    }
 +
 +    //-----------------------------------------------------------
@@ -1237,7 +1351,7 @@ index 00000000..05d9868b
 +}
 diff --git a/clients/drsigil/ipc.c b/clients/drsigil/ipc.c
 new file mode 100644
-index 00000000..ca9a8a5f
+index 0000000..ca9a8a5
 --- /dev/null
 +++ b/clients/drsigil/ipc.c
 @@ -0,0 +1,376 @@
@@ -1619,10 +1733,10 @@ index 00000000..ca9a8a5f
 +}
 diff --git a/clients/drsigil/parser.c b/clients/drsigil/parser.c
 new file mode 100644
-index 00000000..0d0ced3a
+index 0000000..4a7c334
 --- /dev/null
 +++ b/clients/drsigil/parser.c
-@@ -0,0 +1,55 @@
+@@ -0,0 +1,87 @@
 +#include <string.h>
 +#include <getopt.h>
 +#include "drsigil.h"
@@ -1634,53 +1748,85 @@ index 00000000..0d0ced3a
 +    {"ipc-dir",              required_argument, 0, 'd'},
 +    {"start-func",           required_argument, 0, 'b'},
 +    {"stop-func",            required_argument, 0, 'e'},
++    {"enable-mem",           no_argument, &clo.enable_mem,           1},
++    {"enable-mem-type",      no_argument, &clo.enable_mem_type,      1},
++    {"enable-mem-addr",      no_argument, &clo.enable_mem_addr,      1},
++    {"enable-mem-size",      no_argument, &clo.enable_mem_size,      1},
++    {"enable-comp",          no_argument, &clo.enable_comp,          1},
++    {"enable-comp-type",     no_argument, &clo.enable_comp_type,     1},
++    {"enable-sync",          no_argument, &clo.enable_sync,          1},
++    {"enable-sync-type",     no_argument, &clo.enable_sync_type,     1},
++    {"enable-sync-data",     no_argument, &clo.enable_sync_data,     1},
++    {"enable-context-instr", no_argument, &clo.enable_context_instr, 1},
 +    {0, 0, 0, 0},
 +};
 +
 +void
-+parse(int argc, char *argv[], command_line_options *clo)
++parse(int argc, char *argv[])
 +{
 +    /* init args */
 +    int c = 0;
 +    int option_index = 0;
-+    *clo = (command_line_options){NULL, NULL, NULL, 0, false};
 +
-+    while( (c = getopt_long(argc, argv, "sn:d:t:", long_options, &option_index)) > 0 )
++    /* defaults */
++    clo.ipc_dir          = NULL;
++    clo.start_func       = NULL;
++    clo.stop_func        = NULL;
++    clo.frontend_threads = 0;
++    clo.standalone       = false;
++
++    clo.enable_mem           = false;
++    clo.enable_mem_type      = false;
++    clo.enable_mem_addr      = false;
++    clo.enable_mem_size      = false;
++    clo.enable_comp          = false;
++    clo.enable_comp_type     = false;
++    clo.enable_sync          = false;
++    clo.enable_sync_type     = false;
++    clo.enable_sync_data     = false;
++    clo.enable_context_instr = false;
++
++    clo.memref_needed = false;
++
++    while( (c = getopt_long(argc, argv, "sn:d:t:", long_options, &option_index)) >= 0 )
 +    {
 +        switch(c)
 +        {
 +        case 'n':
-+            clo->frontend_threads = atoi(optarg);
++            clo.frontend_threads = atoi(optarg);
 +            break;
 +        case 'd':
-+            clo->ipc_dir = optarg;
++            clo.ipc_dir = optarg;
 +            break;
 +        case 'b':
-+            clo->start_func = optarg;
++            clo.start_func = optarg;
 +            break;
 +        case 'e':
-+            clo->stop_func = optarg;
++            clo.stop_func = optarg;
 +            break;
 +        case 's':
-+            clo->standalone = true;
++            clo.standalone = true;
 +            break;
 +        default:
 +            break;
 +        }
 +    }
 +
-+    if(clo->frontend_threads == 0 ||
-+	   (clo->standalone == false && clo->ipc_dir == NULL))
++    if(clo.frontend_threads == 0 ||
++	   (clo.standalone == false && clo.ipc_dir == NULL))
 +        DR_ABORT_MSG("Parsing Error"); //TODO cleanup
 +
-+    if(clo->start_func != NULL)
-+    {
++    if(clo.start_func != NULL)
 +        roi = false;
-+    }
++
++    clo.memref_needed = clo.enable_mem_type || clo.enable_mem_addr || clo.enable_mem_size;
++
++    /* TODO(soon) sanity check on enables
++     * (e.g. mem must be enabled if mem_type is enabled) */
 +}
 diff --git a/clients/drsigil/pthread_defines.h b/clients/drsigil/pthread_defines.h
 new file mode 100644
-index 00000000..dc698230
+index 0000000..dc69823
 --- /dev/null
 +++ b/clients/drsigil/pthread_defines.h
 @@ -0,0 +1,283 @@
@@ -1969,7 +2115,7 @@ index 00000000..dc698230
 +#endif
 diff --git a/clients/drsigil/start_stop_functions.h b/clients/drsigil/start_stop_functions.h
 new file mode 100644
-index 00000000..559cd95d
+index 0000000..559cd95
 --- /dev/null
 +++ b/clients/drsigil/start_stop_functions.h
 @@ -0,0 +1,50 @@
@@ -2024,5 +2170,5 @@ index 00000000..559cd95d
 +
 +#endif
 -- 
-2.13.3
+1.8.3.1
 
