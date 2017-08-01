@@ -102,6 +102,21 @@ auto getDynamoRIOArgs(const std::string &sigilBinDir,
     if (reqs[MEMORY_ADDRESS] == availability::enabled)
         drArgs.push_back("--enable-mem-addr");
 
+    if (reqs[COMPUTE] == availability::enabled)
+        drArgs.push_back("--enable-comp");
+    if (reqs[COMPUTE_INT_OR_FLOAT] == availability::enabled)
+        drArgs.push_back("--enable-comp-type");
+
+    if (reqs[SYNC] == availability::enabled)
+        drArgs.push_back("--enable-sync");
+    if (reqs[SYNC_TYPE] == availability::enabled)
+        drArgs.push_back("--enable-sync-type");
+    if (reqs[SYNC_ARGS] == availability::enabled)
+        drArgs.push_back("--enable-sync-data");
+
+    if (reqs[CONTEXT_INSTRUCTION] == availability::enabled)
+        drArgs.push_back("--enable-context-instr");
+
     return drArgs;
 }
 

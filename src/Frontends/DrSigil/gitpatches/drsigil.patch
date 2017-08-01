@@ -1,18 +1,18 @@
-From 80c9297189bb87d8cfc25fa2931e84bfb3c5f3cc Mon Sep 17 00:00:00 2001
+From 19959f2fb8c4775f387740345eac2883ba71eb09 Mon Sep 17 00:00:00 2001
 From: Mike Lui <mike.d.lui@gmail.com>
-Date: Mon, 31 Jul 2017 10:57:55 -0400
+Date: Tue, 1 Aug 2017 13:29:28 -0400
 Subject: [PATCH] patch
 
 ---
- clients/drsigil/CMakeLists.txt         |  27 ++
- clients/drsigil/drsigil.c              | 277 ++++++++++++++
- clients/drsigil/drsigil.h              | 319 ++++++++++++++++
- clients/drsigil/instrument.c           | 680 +++++++++++++++++++++++++++++++++
+ clients/drsigil/CMakeLists.txt         |  28 ++
+ clients/drsigil/drsigil.c              | 370 ++++++++++++++++++
+ clients/drsigil/drsigil.h              | 328 ++++++++++++++++
+ clients/drsigil/instrument.c           | 687 +++++++++++++++++++++++++++++++++
  clients/drsigil/ipc.c                  | 376 ++++++++++++++++++
- clients/drsigil/parser.c               |  87 +++++
+ clients/drsigil/parser.c               |  90 +++++
  clients/drsigil/pthread_defines.h      | 283 ++++++++++++++
- clients/drsigil/start_stop_functions.h |  50 +++
- 8 files changed, 2099 insertions(+)
+ clients/drsigil/start_stop_functions.h |  62 +++
+ 8 files changed, 2224 insertions(+)
  create mode 100644 clients/drsigil/CMakeLists.txt
  create mode 100644 clients/drsigil/drsigil.c
  create mode 100644 clients/drsigil/drsigil.h
@@ -24,10 +24,10 @@ Subject: [PATCH] patch
 
 diff --git a/clients/drsigil/CMakeLists.txt b/clients/drsigil/CMakeLists.txt
 new file mode 100644
-index 0000000..728be3c
+index 0000000..97ebc8e
 --- /dev/null
 +++ b/clients/drsigil/CMakeLists.txt
-@@ -0,0 +1,27 @@
+@@ -0,0 +1,28 @@
 +# from Deployment example
 +
 +# Removes relocation bug, occuring in glibc 2.25,
@@ -52,24 +52,27 @@ index 0000000..728be3c
 +use_DynamoRIO_extension(drsigil drutil)
 +use_DynamoRIO_extension(drsigil drwrap)
 +use_DynamoRIO_extension(drsigil drreg)
++use_DynamoRIO_extension(drsigil drsyms)
 +
 +install(TARGETS drsigil
 +	DESTINATION ${INSTALL_CLIENTS_LIB})
 diff --git a/clients/drsigil/drsigil.c b/clients/drsigil/drsigil.c
 new file mode 100644
-index 0000000..c6018dc
+index 0000000..1a10986
 --- /dev/null
 +++ b/clients/drsigil/drsigil.c
-@@ -0,0 +1,277 @@
+@@ -0,0 +1,370 @@
 +#include "drsigil.h"
 +#include "pthread_defines.h"
 +#include "start_stop_functions.h"
-+#include "stddef.h" /* for offsetof */
++#include <stddef.h> /* for offsetof */
++#include <string.h>
 +
 +#include "drmgr.h"
 +#include "drwrap.h"
 +#include "drutil.h"
 +#include "drreg.h"
++#include "drsyms.h"
 +
 +/* Custom define strlen to remove dependency on libc */
 +
@@ -94,6 +97,9 @@ index 0000000..c6018dc
 +                    /*UNUSED*/ bool translating,
 +                    /*UNUSED*/ void *user_data)
 +{
++    if (roi == false)
++        return DR_EMIT_DEFAULT;
++
 +    if (!instr_is_app(where) ||
 +        !instr_get_app_pc(where))
 +        return DR_EMIT_DEFAULT;
@@ -175,7 +181,8 @@ index 0000000..c6018dc
 +                            DRREG_CONTAINS_SPANNING_CONTROL_FLOW | DRREG_IGNORE_CONTROL_FLOW);
 +
 +    per_thread_t *init = dr_thread_alloc(drcontext, sizeof(per_thread_t));
-+    init->memrefs      = dr_thread_alloc(drcontext, MEM_BUF_SIZE);
++    init->memrefs      = dr_thread_alloc(drcontext, MEM_REF_BUF_SIZE);
++    init->mems         = dr_thread_alloc(drcontext, MEM_BUF_SIZE);
 +    init->comps        = dr_thread_alloc(drcontext, COMP_BUF_SIZE);
 +    init->iblocks      = dr_thread_alloc(drcontext, IBLOCK_BUF_SIZE);
 +    init->sync_ev      = dr_thread_alloc(drcontext, sizeof(SglSyncEv));
@@ -191,6 +198,7 @@ index 0000000..c6018dc
 +    init->has_channel_lock = false;
 +    init->is_blocked = false;
 +    init->current_iblock_comp = init->comps;
++    init->current_iblock_mem = init->mems;
 +    init->iblock_count = 0;
 +    init->event_block_events = 0;
 +
@@ -205,7 +213,11 @@ index 0000000..c6018dc
 +    SGLSYNCEV_PTR(init->seg_base)  = NULL;
 +    ACTIVE(init->seg_base)         = true;
 +    /* TODO(someday) are we sure we want to activate
-+     * this thread right away? */
++     * this thread right away?
++     * If ROI has not been entered yet, and this gets set to false,
++     * how do we notify all threads to activate?
++     * Would need to lock all threads and set, or some type of flush
++     * of all code caches */
 +    drmgr_set_tls_field(drcontext, tls_idx, init);
 +}
 +
@@ -215,7 +227,8 @@ index 0000000..c6018dc
 +{
 +    per_thread_t *tcxt = drmgr_get_tls_field(drcontext, tls_idx);
 +    force_thread_flush(tcxt);
-+    dr_thread_free(drcontext, tcxt->memrefs, MEM_BUF_SIZE);
++    dr_thread_free(drcontext, tcxt->memrefs, MEM_REF_BUF_SIZE);
++    dr_thread_free(drcontext, tcxt->mems, MEM_BUF_SIZE);
 +    dr_thread_free(drcontext, tcxt->comps, COMP_BUF_SIZE);
 +    dr_thread_free(drcontext, tcxt->iblocks, IBLOCK_BUF_SIZE);
 +    dr_thread_free(drcontext, tcxt->sync_ev, sizeof(SglSyncEv));
@@ -236,68 +249,143 @@ index 0000000..c6018dc
 +        !drmgr_unregister_thread_exit_event(event_thread_exit) ||
 +        !drmgr_unregister_tls_field(tls_idx))
 +        DR_ABORT_MSG("failed to unregister drmgr event callbacks");
-+    
++
 +    drutil_exit();
 +    drmgr_exit();
 +    drwrap_exit();
 +    drreg_exit();
++    drsym_exit();
 +}
 +
 +static void
 +module_load_event(void *drcontext, const module_data_t *mod, bool loaded)
 +{
 +    app_pc towrap;
++    const char *module_name = dr_module_preferred_name(mod);
 +
++    /* TODO if start_func/stop_func are the same
++     * start/stop functions may be in loaded library */
 +    if ((clo.start_func != NULL) &&
 +        (towrap = (app_pc)dr_get_proc_address(mod->handle, clo.start_func)) != NULL)
 +        drwrap_wrap(towrap, wrap_pre_start_func, wrap_post_start_func);
-+
 +    if ((clo.stop_func != NULL) &&
 +        (towrap = (app_pc)dr_get_proc_address(mod->handle, clo.stop_func)) != NULL)
 +        drwrap_wrap(towrap, wrap_pre_stop_func, wrap_post_stop_func);
 +
-+    if ((towrap = (app_pc)dr_get_proc_address(mod->handle, MAIN)) != NULL)
-+        drwrap_wrap(towrap, wrap_pre_start_at_main, wrap_post_start_at_main);
++    /* pthread_mutex_lock/unlock also exist in libc
++     * only wrap once when pthread lib is loaded */ 
++    if (strstr(module_name, "libpthread.so") == module_name)
++    {
++        if ((towrap = (app_pc)dr_get_proc_address(mod->handle, P_CREATE)) != NULL)
++            drwrap_wrap(towrap, wrap_pre_pthread_create, wrap_post_pthread_create);
 +
-+    if ((towrap = (app_pc)dr_get_proc_address(mod->handle, P_CREATE)) != NULL)
-+        drwrap_wrap(towrap, wrap_pre_pthread_create, wrap_post_pthread_create);
++        if ((towrap = (app_pc)dr_get_proc_address(mod->handle, P_JOIN)) != NULL)
++            drwrap_wrap(towrap, wrap_pre_pthread_join, wrap_post_pthread_join);
 +
-+    if ((towrap = (app_pc)dr_get_proc_address(mod->handle, P_JOIN)) != NULL)
-+        drwrap_wrap(towrap, wrap_pre_pthread_join, wrap_post_pthread_join);
++        if ((towrap = (app_pc)dr_get_proc_address(mod->handle, P_MUTEX_LOCK)) != NULL)
++            drwrap_wrap(towrap, wrap_pre_pthread_mutex_lock, wrap_post_pthread_mutex_lock);
 +
-+    if ((towrap = (app_pc)dr_get_proc_address(mod->handle, P_MUTEX_LOCK)) != NULL)
-+        drwrap_wrap(towrap, wrap_pre_pthread_mutex_lock, wrap_post_pthread_mutex_lock);
++        if ((towrap = (app_pc)dr_get_proc_address(mod->handle, P_MUTEX_UNLOCK)) != NULL)
++            drwrap_wrap(towrap, wrap_pre_pthread_mutex_unlock, wrap_post_pthread_mutex_unlock);
 +
-+    if ((towrap = (app_pc)dr_get_proc_address(mod->handle, P_MUTEX_UNLOCK)) != NULL)
-+        drwrap_wrap(towrap, wrap_pre_pthread_mutex_unlock, wrap_post_pthread_mutex_unlock);
++        if ((towrap = (app_pc)dr_get_proc_address(mod->handle, P_BARRIER)) != NULL)
++            drwrap_wrap(towrap, wrap_pre_pthread_barrier, wrap_post_pthread_barrier);
 +
-+    if ((towrap = (app_pc)dr_get_proc_address(mod->handle, P_BARRIER)) != NULL)
-+        drwrap_wrap(towrap, wrap_pre_pthread_barrier, wrap_post_pthread_barrier);
++        if ((towrap = (app_pc)dr_get_proc_address(mod->handle, P_COND_WAIT)) != NULL)
++            drwrap_wrap(towrap, wrap_pre_pthread_cond_wait, wrap_post_pthread_cond_wait);
 +
-+    if ((towrap = (app_pc)dr_get_proc_address(mod->handle, P_COND_WAIT)) != NULL)
-+        drwrap_wrap(towrap, wrap_pre_pthread_cond_wait, wrap_post_pthread_cond_wait);
++        if ((towrap = (app_pc)dr_get_proc_address(mod->handle, P_COND_SIG)) != NULL)
++            drwrap_wrap(towrap, wrap_pre_pthread_cond_sig, wrap_post_pthread_cond_sig);
 +
-+    if ((towrap = (app_pc)dr_get_proc_address(mod->handle, P_COND_SIG)) != NULL)
-+        drwrap_wrap(towrap, wrap_pre_pthread_cond_sig, wrap_post_pthread_cond_sig);
++        if ((towrap = (app_pc)dr_get_proc_address(mod->handle, P_SPIN_LOCK)) != NULL)
++            drwrap_wrap(towrap, wrap_pre_pthread_spin_lock, wrap_post_pthread_spin_lock);
 +
-+    if ((towrap = (app_pc)dr_get_proc_address(mod->handle, P_SPIN_LOCK)) != NULL)
-+        drwrap_wrap(towrap, wrap_pre_pthread_spin_lock, wrap_post_pthread_spin_lock);
-+
-+    if ((towrap = (app_pc)dr_get_proc_address(mod->handle, P_SPIN_UNLOCK)) != NULL)
-+        drwrap_wrap(towrap, wrap_pre_pthread_spin_unlock, wrap_post_pthread_spin_unlock);
++        if ((towrap = (app_pc)dr_get_proc_address(mod->handle, P_SPIN_UNLOCK)) != NULL)
++            drwrap_wrap(towrap, wrap_pre_pthread_spin_unlock, wrap_post_pthread_spin_unlock);
++    }
 +}
 +
 +
 +///////////////////////////////////////////////////////
 +// DynamoRIO client initialization
 +///////////////////////////////////////////////////////
++static void
++check_lookup_symbol_error(drsym_error_t err)
++{
++    if (err == DRSYM_ERROR_LOAD_FAILED)
++        DR_ABORT_MSG("Could not load provided executable path");
++    else if (err != DRSYM_ERROR_SYMBOL_NOT_FOUND) /* unfound symbol not an error */
++        DR_ABORT_MSG("Error looking start/stop function in symbol table");
++}
++
++
++static void
++start_stop_roi_wrap()
++{
++    /* check if the start/stop ROI functions are in the main module
++     * e.g. if we only want to instrument at 'main' */
++
++    DR_ASSERT(clo.start_func != NULL || clo.stop_func != NULL);
++
++    module_data_t *main_mod = dr_get_main_module();
++    size_t modoffs = 0;
++
++    if (strcmp(clo.start_func, clo.stop_func) == 0)
++    {
++        /* if start function == stop function,
++         * then instrumentation is only for that one function */
++        drsym_error_t ret = drsym_lookup_symbol(main_mod->full_path,
++                                                clo.start_func,
++                                                &modoffs, 0);
++        if (ret == DRSYM_SUCCESS)
++        {
++            drwrap_wrap((app_pc)(main_mod->start+modoffs),
++                        wrap_pre_start_stop_same, wrap_post_start_stop_same);
++        }
++        else
++            check_lookup_symbol_error(ret);
++    }
++    else
++    {
++        if (clo.start_func != NULL)
++        {
++            drsym_error_t ret = drsym_lookup_symbol(main_mod->full_path,
++                                                    clo.start_func,
++                                                    &modoffs, 0);
++            if (ret == DRSYM_SUCCESS)
++            {
++                drwrap_wrap((app_pc)(main_mod->start+modoffs),
++                            wrap_pre_start_func, wrap_post_start_func);
++            }
++            else
++                check_lookup_symbol_error(ret);
++        }
++
++        if (clo.stop_func != NULL)
++        {
++            drsym_error_t ret = drsym_lookup_symbol(main_mod->full_path,
++                                                    clo.stop_func,
++                                                    &modoffs, 0);
++            if (ret == DRSYM_SUCCESS)
++            {
++                drwrap_wrap((app_pc)(main_mod->start+modoffs),
++                            wrap_pre_stop_func, wrap_post_stop_func);
++            }
++            else
++                check_lookup_symbol_error(ret);
++        }
++    }
++}
++
++
 +DR_EXPORT void
 +dr_client_main(client_id_t id, int argc, const char *argv[])
 +{
-+    parse(argc, (char**)argv);
-+
 +    dr_set_client_name("DrSigil",
 +                       "https://github.com/VANDAL/sigil2/issues");
++
++    parse(argc, (char**)argv);
++
 +    dr_register_exit_event(event_exit);
 +
 +    drreg_options_t ops = {sizeof(ops), 5, false};
@@ -305,6 +393,7 @@ index 0000000..c6018dc
 +    if (!drmgr_init() ||
 +        !drutil_init() ||
 +        !drwrap_init() ||
++        drsym_init(0) != DRSYM_SUCCESS ||
 +        drreg_init(&ops) != DRREG_SUCCESS)
 +        DR_ABORT_MSG("failed to initialize DynamoRIO extensions");
 +
@@ -334,16 +423,21 @@ index 0000000..c6018dc
 +    /* initialize thread local resources */
 +    tls_idx = drmgr_register_tls_field();
 +
-+    /* use a raw tls for the mem ref buffer since it's accessed often */
++    /* use a raw tls for the mem ref buffer since it's accessed often
++     * OPT can also FORCE user to use -thread_private CLO,
++     * which enables the use of absolute TLS references during instrumentation */
 +    if (!dr_raw_tls_calloc(&raw_tls_seg, &raw_tls_memref_offs, MEMREF_TLS_COUNT, 0))
 +        DR_ABORT_MSG("failed to allocate raw tls");
++
++    if (clo.start_func != NULL || clo.stop_func != NULL)
++        start_stop_roi_wrap();
 +}
 diff --git a/clients/drsigil/drsigil.h b/clients/drsigil/drsigil.h
 new file mode 100644
-index 0000000..85d2766
+index 0000000..b261b92
 --- /dev/null
 +++ b/clients/drsigil/drsigil.h
-@@ -0,0 +1,319 @@
+@@ -0,0 +1,328 @@
 +#ifndef DRSIGIL_H
 +#define DRSIGIL_H
 +
@@ -453,7 +547,9 @@ index 0000000..85d2766
 +} mem_ref_t;
 +
 +#define MAX_NUM_MEM_REFS 2048
-+#define MEM_BUF_SIZE (sizeof(mem_ref_t) * MAX_NUM_MEM_REFS)
++#define MAX_NUM_MEMS MAX_NUM_MEM_REFS/2
++#define MEM_REF_BUF_SIZE (sizeof(mem_ref_t) * MAX_NUM_MEM_REFS)
++#define MEM_BUF_SIZE (sizeof(SglMemEv) * MAX_NUM_MEMS)
 +/* we should not have more than this many memory references per basic block */
 +
 +typedef struct _instr_block_t
@@ -497,11 +593,13 @@ index 0000000..85d2766
 +     * we end up with an application-side deadlock */
 +
 +    mem_ref_t *memrefs;
++    SglMemEv *mems;
++    SglMemEv *current_iblock_mem;
 +    /* Track memory references per event block.
-+     * This is used as an optimization in the instrumentation implementation.
-+     * A local buffer will hold all mem refs, and only at the end of each
-+     * branching instruction, all sigil events will be written to shared memory
-+     * (e.g. the mem refs, instructions, compute, synchronization, ...) */
++     * Memory addresses are recorded at execution time in a buffer,
++     * since they can't be analyzed at instrumentation time.
++     * All other memory info is stored per basic block in a small cache of
++     * direct Sigil2 memory event primitives */
 +
 +    SglCompEv *comps;
 +    SglCompEv *current_iblock_comp;
@@ -534,10 +632,16 @@ index 0000000..85d2766
 + * If no relevant args are supplied, then the ROI is assumed to be the
 + * entirety of the application.
 + *
-+ * Assumes the ROI is correctly implemented, and gets turned on/off in the
-+ * serial portion of the application.
-+ * XXX There is no per-thread ROI.
-+ * TODO Make atomic */
++ * This value should be used to control instrumentation.
++ * I.e. when not in the ROI, there should be no added instrumentation.
++ * After the ROI passes, instrumentation should be flushed.
++ *
++ * XXX Currently this implementation assumes roi will be set
++ * BEFORE threads are spawned, in a serial portion,
++ * and then unset AFTER all threads are joined, in a serial portion
++ * XXX Assumes only one ROI per execution
++ *
++ * TODO Why did I make this volatile? */
 +
 +extern int tls_idx;
 +/* thread-local storage for per_thread_t */
@@ -631,7 +735,6 @@ index 0000000..85d2766
 +
 +    bool memref_needed;
 +    /* if extra memory instrumentation features required */
-+
 +} clo;
 +
 +
@@ -665,10 +768,10 @@ index 0000000..85d2766
 +#endif
 diff --git a/clients/drsigil/instrument.c b/clients/drsigil/instrument.c
 new file mode 100644
-index 0000000..c4af706
+index 0000000..decee76
 --- /dev/null
 +++ b/clients/drsigil/instrument.c
-@@ -0,0 +1,680 @@
+@@ -0,0 +1,687 @@
 +#include "drsigil.h"
 +#include "drmgr.h"
 +#include "drutil.h"
@@ -686,6 +789,7 @@ index 0000000..c4af706
 +    tcxt->iblock_count = 0;
 +    tcxt->event_block_events = 0;
 +    tcxt->current_iblock_comp = tcxt->comps;
++    tcxt->current_iblock_mem = tcxt->mems;
 +
 +    if (clo.memref_needed)
 +    {
@@ -1228,7 +1332,13 @@ index 0000000..c4af706
 +
 +    //-----------------------------------------------------------
 +    /* skip over instrumented event generation, if not enabled,
-+     * e.g. inside a pthread event, or outside a ROI */
++     * e.g. inside a pthread event.
++     * This is always required since a thread about to block
++     * needs to be INACTIVE, so it doesn't try to acqurie any
++     * DR locks */
++
++    /* skip sigil events if inactive */
++    instr_t *skip_sigil = INSTR_CREATE_label(drcontext);
 +
 +    /* load per_thread_t->active from TLS into reg1 */
 +    /* test if active, can't do a (jecxz) near jump */
@@ -1238,9 +1348,6 @@ index 0000000..c4af706
 +            XINST_CREATE_cmp(drcontext,
 +                             opnd_create_reg(xax),
 +                             OPND_CREATE_INT8(false)));
-+
-+    /* skip sigil events if inactive */
-+    instr_t *skip_sigil = INSTR_CREATE_label(drcontext);
 +    MINSERT(ilist, where,
 +            INSTR_CREATE_jcc(drcontext,
 +                             OP_je,
@@ -1293,6 +1400,8 @@ index 0000000..c4af706
 +    }
 +
 +    /* add sigil event instrumentation */
++    /* TODO check if we hang here when there's no instrumentation
++     * enabled */
 +    instrument_setup_buffer(drcontext, ilist, where,
 +                            evptr_reg, xbx, xcx,
 +                            tcxt->event_block_events);
@@ -1306,6 +1415,7 @@ index 0000000..c4af706
 +
 +    /* sigil mem/compute events are filled in from buffer[0] to buffer[N] */
 +    SglCompEv *comp_ev = tcxt->comps;
++    SglMemEv *mem_ev = tcxt->mems;
 +
 +    if (clo.memref_needed)
 +    {
@@ -1733,10 +1843,10 @@ index 0000000..ca9a8a5
 +}
 diff --git a/clients/drsigil/parser.c b/clients/drsigil/parser.c
 new file mode 100644
-index 0000000..4a7c334
+index 0000000..0ccad94
 --- /dev/null
 +++ b/clients/drsigil/parser.c
-@@ -0,0 +1,87 @@
+@@ -0,0 +1,90 @@
 +#include <string.h>
 +#include <getopt.h>
 +#include "drsigil.h"
@@ -1788,7 +1898,7 @@ index 0000000..4a7c334
 +
 +    clo.memref_needed = false;
 +
-+    while( (c = getopt_long(argc, argv, "sn:d:t:", long_options, &option_index)) >= 0 )
++    while( (c = getopt_long(argc, argv, "sn:d:b:e:", long_options, &option_index)) >= 0 )
 +    {
 +        switch(c)
 +        {
@@ -1812,11 +1922,14 @@ index 0000000..4a7c334
 +        }
 +    }
 +
-+    if(clo.frontend_threads == 0 ||
-+	   (clo.standalone == false && clo.ipc_dir == NULL))
-+        DR_ABORT_MSG("Parsing Error"); //TODO cleanup
++    if (clo.frontend_threads <= 0)
++        DR_ABORT_MSG("Invalid number of frontend threads specified");
 +
-+    if(clo.start_func != NULL)
++	if (clo.standalone == false && clo.ipc_dir == NULL)
++        DR_ABORT_MSG("IPC directory must be specified");
++        /* okay if in standalone mode when ipc dir unused */
++
++    if (clo.start_func != NULL)
 +        roi = false;
 +
 +    clo.memref_needed = clo.enable_mem_type || clo.enable_mem_addr || clo.enable_mem_size;
@@ -2115,30 +2228,42 @@ index 0000000..dc69823
 +#endif
 diff --git a/clients/drsigil/start_stop_functions.h b/clients/drsigil/start_stop_functions.h
 new file mode 100644
-index 0000000..559cd95
+index 0000000..32d6b8e
 --- /dev/null
 +++ b/clients/drsigil/start_stop_functions.h
-@@ -0,0 +1,50 @@
+@@ -0,0 +1,62 @@
 +#ifndef START_STOP_H
 +#define START_STOP_H
 +
 +#include "drsigil.h"
 +#include "drmgr.h"
 +
++static void
++flush_and_enable_instrumentation()
++{
++    /* TODO */
++    roi = true;
++    /* instrumentation will not begin for future bb's */
++    dr_printf("DrSigil Beginning ROI\n");
++}
++
 +
 +static void
-+wrap_pre_start_at_main()
++flush_and_disable_instrumentation()
 +{
-+    void *drcontext  = dr_get_current_drcontext();
-+    per_thread_t *tcxt = drmgr_get_tls_field(drcontext, tls_idx);
-+    ACTIVE(tcxt->seg_base) = true;
++    /* TODO */
++    dr_printf("DrSigil Ending ROI\n");
++}
++
++static void
++wrap_pre_start_stop_same()
++{
++    flush_and_enable_instrumentation();
 +}
 +static void
-+wrap_post_start_at_main()
++wrap_post_start_stop_same()
 +{
-+    void *drcontext  = dr_get_current_drcontext();
-+    per_thread_t *tcxt = drmgr_get_tls_field(drcontext, tls_idx);
-+    ACTIVE(tcxt->seg_base) = false;
++    flush_and_disable_instrumentation();
 +}
 +
 +////////////////////////////////////////////
@@ -2147,7 +2272,7 @@ index 0000000..559cd95
 +static void
 +wrap_pre_start_func(void *wrapcxt, OUT void **user_data)
 +{
-+    roi = true;
++    flush_and_enable_instrumentation();
 +}
 +static void
 +wrap_post_start_func(void *wrapcxt, void *user_data)
@@ -2161,11 +2286,11 @@ index 0000000..559cd95
 +static void
 +wrap_pre_stop_func(void *wrapcxt, OUT void **user_data)
 +{
++    flush_and_disable_instrumentation();
 +}
 +static void
 +wrap_post_stop_func(void *wrapcxt, void *user_data)
 +{
-+    roi = false;
 +}
 +
 +#endif
