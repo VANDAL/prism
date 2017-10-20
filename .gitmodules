@@ -7,9 +7,6 @@
 [submodule "include/zlib"]
 	path = third_party/zlib
 	url = https://github.com/madler/zlib
-[submodule "src/Frontends/Sigrind/valgrind-sigil2"]
-	path = src/Frontends/Sigrind/valgrind-sigil2
-	url = https://github.com/VANDAL/valgrind-sigil2
 [submodule "src/Backends/SynchroTraceGen/capnproto"]
 	path = src/Backends/SynchroTraceGen/capnproto
 	url = https://github.com/sandstorm-io/capnproto/
@@ -28,3 +25,6 @@
 [submodule "src/Frontends/DrSigil/dynamorio"]
 	path = src/Frontends/DrSigil/dynamorio
 	url = https://github.com/DynamoRIO/dynamorio
+[submodule "src/Frontends/Sigrind/valgrind"]
+	path = src/Frontends/Sigrind/valgrind
+	url = git://sourceware.org/git/valgrind.git

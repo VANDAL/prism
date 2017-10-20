@@ -1,16 +1,79 @@
 # Build destinations
 get_target_property(SIGIL2_BIN sigil2 RUNTIME_OUTPUT_DIRECTORY)
-set(VGINST_DIR ${SIGIL2_BIN}/vg)
-set(VGSRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/valgrind-sigil2)
+set(VG_PREFIX vg)
+set(VGINST_DIR ${SIGIL2_BIN}/${VG_PREFIX})
+set(VGSRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/valgrind)
+set(PATCH ${CMAKE_CURRENT_SOURCE_DIR}/gitpatches/sigrind.patch)
 
 include_directories(
-	gcc-4.9.2
-	valgrind-sigil2
-	valgrind-sigil2/include
-	valgrind-sigil2/VEX/pub)
+	valgrind
+	valgrind/include
+	valgrind/VEX/pub)
 
+###############################################################################
+execute_process(
+	COMMAND git submodule update --init ${VGSRC_DIR}
+	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+# Apply patch, or check if already applied
+execute_process(
+	COMMAND git apply --check ${PATCH}
+	WORKING_DIRECTORY ${VGSRC_DIR}
+	RESULT_VARIABLE PATCH_RESULT
+	OUTPUT_QUIET
+	ERROR_QUIET)
+if (${PATCH_RESULT} EQUAL 0)
+	execute_process(
+		COMMAND git apply --whitespace=nowarn ${PATCH}
+		WORKING_DIRECTORY ${VGSRC_DIR})
+else()
+	execute_process(
+		COMMAND git apply --check -R ${PATCH}
+		WORKING_DIRECTORY ${VGSRC_DIR}
+		RESULT_VARIABLE PATCH_RESULT)
+	if (NOT ${PATCH_RESULT} EQUAL 0)
+		message(FATAL_ERROR "could not git patch valgrind")
+	endif()
+endif()
+
+###############################################################################
+# frontend interface
+set(SOURCES SigrindFrontend.cpp)
+add_library(Sigrind OBJECT ${SOURCES})
+
+###############################################################################
+# valgrind build
+include(ExternalProject)
+set(VG_PROJECT valgrind)
+ExternalProject_Add(${VG_PROJECT}
+	PREFIX ${VG_PREFIX}
+
+	# CONFIGURE STEP
+	SOURCE_DIR ${VGSRC_DIR}
+	CONFIGURE_COMMAND CC=${CMAKE_C_COMPILER} ${VGSRC_DIR}/configure --prefix=${VGINST_DIR} --silent
+	
+	# BUILD STEP
+	BUILD_COMMAND $(MAKE)
+
+	# INSTALL STEP
+	INSTALL_COMMAND $(MAKE) install > ${PROJECT_BINARY_DIR}/make_install_valgrind.log)
+
+# need this when building the wrapper
+set(VGBUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/${VG_PREFIX}/src/${VG_PROJECT}-build)
+
+# pre-configure setup
+ExternalProject_Add_Step(valgrind autogen
+	COMMAND ./autogen.sh
+	WORKING_DIRECTORY ${VGSRC_DIR}
+	DEPENDERS configure)
+
+add_dependencies(Sigrind valgrind)
+
+###############################################################################
 # Function wrapper for intercepting multithreading libs
 # (pthread and openmp function calls)
+include_directories(
+	gcc-4.9.2
+	${VGBUILD_DIR})
 add_library(sglwrapper-shared SHARED sglwrapper.c)
 add_library(sglwrapper-static STATIC sglwrapper.c)
 set_target_properties(sglwrapper-shared
@@ -32,32 +95,6 @@ endif()
 target_compile_definitions(sglwrapper-shared PUBLIC -DVGO_linux=1 -D${VG_ARCH})
 target_compile_definitions(sglwrapper-static PUBLIC -DVGO_linux=1 -D${VG_ARCH})
 
-set(SOURCES SigrindFrontend.cpp)
-add_library(Sigrind OBJECT ${SOURCES})
+add_dependencies(sglwrapper-static valgrind)
+add_dependencies(sglwrapper-shared valgrind)
 add_dependencies(Sigrind sglwrapper-shared sglwrapper-static)
-
-# valgrind build
-include(ExternalProject)
-execute_process(
-	COMMAND git submodule update --init ${VGSRC_DIR}
-	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-ExternalProject_Add(valgrind
-	PREFIX vg
-
-	# CONFIGURE STEP
-	SOURCE_DIR ${VGSRC_DIR}
-	CONFIGURE_COMMAND CC=${CMAKE_C_COMPILER} ${VGSRC_DIR}/configure --prefix=${VGINST_DIR} --silent
-	
-	# BUILD STEP
-	BUILD_COMMAND $(MAKE)
-
-	# INSTALL STEP
-	INSTALL_COMMAND $(MAKE) install > ${PROJECT_BINARY_DIR}/make_install_valgrind.log)
-
-# pre-configure setup
-ExternalProject_Add_Step(valgrind autogen
-	COMMAND ./autogen.sh
-	WORKING_DIRECTORY ${VGSRC_DIR}
-	DEPENDERS configure)
-
-add_dependencies(Sigrind valgrind)
