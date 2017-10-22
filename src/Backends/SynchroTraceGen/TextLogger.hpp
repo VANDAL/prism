@@ -2,12 +2,10 @@
 #define STGEN_TEXT_LOGGER_H
 
 #include "Core/SigiLog.hpp"
+#include "Utils/FileLogger.hpp"
 #include "STLogger.hpp"
 #include "BarrierMerge.hpp"
 #include "spdlog/spdlog.h"
-#include "spdlog/sinks/ostream_sink.h"
-#include "zfstream.h"
-#include <fstream>
 #include <sstream>
 
 using SigiLog::info;
@@ -73,16 +71,6 @@ auto flushPthread(std::string filePath,
                   BarrierList barrierParticipants) -> void;
 
 auto flushStats(std::string filePath, ThreadStatMap allThreadsStats) -> void;
-
-auto getFileLogger(std::string filePath)
-    -> std::pair<std::shared_ptr<spdlog::logger>, std::shared_ptr<std::ofstream>>;
-/* XXX REMEMBER: the file stream needs to be returned
- * with the logger to extend the life of the stream */
-
-auto getGzLogger(std::string filePath)
-    -> std::pair<std::shared_ptr<spdlog::logger>, std::shared_ptr<gzofstream>>;
-
-auto blockingLoggerFlush(std::shared_ptr<spdlog::logger> &logger) -> void;
 
 }; //end namespace STGen
 

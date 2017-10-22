@@ -83,13 +83,13 @@ TextLoggerCompressed::TextLoggerCompressed(TID tid, std::string outputPath)
     spdlog::set_async_mode(1 << 14);
 
     auto filePath = outputPath + "/sigil.events.out-" + std::to_string(tid) + ".gz";
-    std::tie(logger, gzfile) = getGzLogger(filePath);
+    std::tie(logger, gzfile) = sigil2::getGzLogger(filePath);
 }
 
 
 TextLoggerCompressed::~TextLoggerCompressed()
 {
-    blockingLoggerFlush(logger);
+    sigil2::blockingFlushAndDeleteLogger(logger);
     /* gzofstream destructor closes gzfile  */
 }
 
@@ -184,13 +184,13 @@ TextLoggerUncompressed::TextLoggerUncompressed(TID tid, std::string outputPath)
     spdlog::set_async_mode(1 << 14);
 
     auto filePath = outputPath + "/sigil.events.out-" + std::to_string(tid) + ".gz";
-    std::tie(logger, gzfile) = getGzLogger(filePath);
+    std::tie(logger, gzfile) = sigil2::getGzLogger(filePath);
 }
 
 
 TextLoggerUncompressed::~TextLoggerUncompressed()
 {
-    blockingLoggerFlush(logger);
+    sigil2::blockingFlushAndDeleteLogger(logger);
     /* gzofstream destructor closes gzfile  */
 }
 
@@ -281,7 +281,7 @@ auto flushPthread(std::string filePath,
                   SpawnList threadSpawns,
                   BarrierList barrierParticipants) -> void
 {
-    auto loggerPair = getFileLogger(filePath);
+    auto loggerPair = sigil2::getFileLogger(filePath);
     auto logger = std::move(loggerPair.first);
     info("Flushing thread metadata to: " + logger->name());
 
@@ -318,13 +318,13 @@ auto flushPthread(std::string filePath,
     }
 
     logger->flush();
-    blockingLoggerFlush(logger);
+    sigil2::blockingFlushAndDeleteLogger(logger);
 }
 
 
 auto flushStats(std::string filePath, ThreadStatMap allThreadsStats) -> void
 {
-    auto loggerPair = getFileLogger(filePath);
+    auto loggerPair = sigil2::getFileLogger(filePath);
     auto logger = std::move(loggerPair.first);
     info("Flushing statistics to: " + logger->name());
 
@@ -392,51 +392,7 @@ auto flushStats(std::string filePath, ThreadStatMap allThreadsStats) -> void
 
     logger->info("Total instructions for all threads: " + std::to_string(totalInstrs));
     logger->flush();
-    blockingLoggerFlush(logger);
-}
-
-
-auto getFileLogger(std::string filePath)
-    -> std::pair<std::shared_ptr<spdlog::logger>, std::shared_ptr<std::ofstream>>
-{
-    auto file = std::make_shared<std::ofstream>(filePath, std::ios::trunc | std::ios::out);
-    if (file->fail() == true)
-        fatal("Failed to open: " + filePath);
-    auto sink = std::make_shared<spdlog::sinks::ostream_sink_st>(*file);
-    auto logger = spdlog::create(filePath, {sink});
-    logger->set_pattern("%v");
-    return std::make_pair(logger, file);
-}
-
-
-auto getGzLogger(std::string filePath)
-    -> std::pair<std::shared_ptr<spdlog::logger>, std::shared_ptr<gzofstream>>
-{
-    auto gzfile = std::make_shared<gzofstream>(filePath.c_str(), std::ios::trunc | std::ios::out);
-    if (gzfile->fail() == true)
-        fatal("Failed to open: " + filePath);
-    auto sink = std::make_shared<spdlog::sinks::ostream_sink_st>(*gzfile);
-    auto logger = spdlog::create(filePath, {sink});
-    logger->set_pattern("%v");
-    return std::make_pair(logger, gzfile);
-}
-
-
-auto blockingLoggerFlush(std::shared_ptr<spdlog::logger> &logger) -> void
-{
-    /* Make sure all other shared_ptrs are destroyed, as well.
-     * Might be annoying to throw here, but it'll save debugging headaches.
-     * Expect 2 reference counts:
-     * - the passed in reference
-     * - spdlog global registry  */
-    if (logger.use_count() > 2)
-        throw std::invalid_argument("tried to flush spdlog logger "
-                                    "while still in use somewhere: " + logger->name());
-
-    /* Destructor calls a blocking flush in case of asynchronous logging. */
-    logger->flush();
-    spdlog::drop(logger->name()); // remove from global registry
-    logger.reset(); // be explicit for clarity
+    sigil2::blockingFlushAndDeleteLogger(logger);
 }
 
 }; //end namespace STGen

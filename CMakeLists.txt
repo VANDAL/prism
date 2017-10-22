@@ -56,6 +56,7 @@ include_directories(${THIRD_PARTY}/elfio-3.1)
 include_directories(${THIRD_PARTY}/zlib/contrib/iostream3)
 include_directories(${THIRD_PARTY}/capnproto/include)
 include_directories(src)
+include_directories(src/Utils)
 include_directories(${SRC_FRONTENDS})
 include_directories(${SRC_BACKENDS})
 
