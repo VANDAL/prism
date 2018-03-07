@@ -10974,7 +10974,7 @@ index 000000000..413158a0d
 +#endif
 diff --git a/sigrind/sg_main.c b/sigrind/sg_main.c
 new file mode 100644
-index 000000000..6fd37966c
+index 000000000..bdf6208e4
 --- /dev/null
 +++ b/sigrind/sg_main.c
 @@ -0,0 +1,1872 @@
@@ -11312,7 +11312,7 @@ index 000000000..6fd37966c
 +         case Ist_Put:
 +         case Ist_PutI:
 +         case Ist_MBE:
-+
++             break;
 +         case Ist_IMark: 
 +         {
 +            if (SGL_(clo).gen_instr == True)

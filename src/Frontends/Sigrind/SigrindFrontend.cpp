@@ -188,7 +188,7 @@ auto tokenizeOpts(const std::vector<std::string> &userExec,
     reqs[SYNC] == availability::enabled ?
         vg_opts[i++] = strdup("--gen-sync=yes") :
         vg_opts[i++] = strdup("--gen-sync=no");
-    reqs[CONTEXT_FUNCTION] == availability::enabled ?
+    reqs[CONTEXT_INSTRUCTION] == availability::enabled ?
         vg_opts[i++] = strdup("--gen-instr=yes") :
         vg_opts[i++] = strdup("--gen-instr=no");
     reqs[CONTEXT_BASIC_BLOCK] == availability::enabled ?
