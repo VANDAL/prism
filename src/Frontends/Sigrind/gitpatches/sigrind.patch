@@ -1,33 +1,106 @@
-From d13aa9b61526d8c5ac50bcb2132f0872df688377 Mon Sep 17 00:00:00 2001
+From 506f84949a955107926ce66f9c9153327ae79e8a Mon Sep 17 00:00:00 2001
 From: Mike Lui <mike.d.lui@gmail.com>
-Date: Fri, 20 Oct 2017 14:44:32 -0400
-Subject: [PATCH] patch
+Date: Wed, 7 Mar 2018 13:39:34 -0500
+Subject: [PATCH] Added new gengrind implementation
 
+Gengrind is from scratch, compared to Sigrind, which is
+a modified Callgrind implementation. Gengrind tries to
+as much instrumentation as possible with VEX IR instead of
+inserting function "Dirty Calls", which potentially incur
+more overhead.
+
+Gengrind is still in development as of this release.
+
+Current issues and features still to be included are:
+
+1) Conditional event generation is incomplete. I am still
+working out how to conditionally execute inserted IRStmts.
+If this is not possible, then there will be two implementations,
+one fast one that unconditionally generates events with VEX IR,
+and another slower one that conditionally generates events inside
+Dirty Calls.
+
+2) The multithreaded implementation is still in development,
+but nearly complete. Thread support requires conditional event
+generation, so that events are not generated when inside, e.g.,
+a pthread call. So 2) is dependent on 1).
 ---
- Makefile.am                |    1 +
- configure.ac               |    2 +
- sigrind/.ycm_extra_conf.py |  177 +++++
- sigrind/Makefile.am        |   83 ++
- sigrind/bb.c               |  345 ++++++++
- sigrind/bbcc.c             |  872 +++++++++++++++++++++
- sigrind/callgrind.h        |  363 +++++++++
- sigrind/callstack.c        |  425 ++++++++++
- sigrind/clo.c              |  687 ++++++++++++++++
- sigrind/context.c          |  332 ++++++++
- sigrind/debug.c            |  447 +++++++++++
- sigrind/events.c           |  261 ++++++
- sigrind/events.h           |  133 ++++
- sigrind/fn.c               |  686 ++++++++++++++++
- sigrind/global.h           |  886 +++++++++++++++++++++
- sigrind/jumps.c            |  233 ++++++
- sigrind/log_events.c       |  239 ++++++
- sigrind/log_events.h       |   63 ++
- sigrind/sg_main.c          | 1872 ++++++++++++++++++++++++++++++++++++++++++++
- sigrind/sigil2_ipc.c       |  266 +++++++
- sigrind/sigil2_ipc.h       |   28 +
- sigrind/tests/Makefile.am  |    5 +
- sigrind/threads.c          |  451 +++++++++++
- 23 files changed, 8857 insertions(+)
+ Makefile.am                   |    2 +
+ configure.ac                  |    4 +
+ gengrind/Makefile.am          |   68 ++
+ gengrind/gn.h                 |   74 ++
+ gengrind/gn_bb.c              |  190 +++++
+ gengrind/gn_bb.h              |   91 ++
+ gengrind/gn_callstack.c       |  377 +++++++++
+ gengrind/gn_callstack.h       |   86 ++
+ gengrind/gn_clo.c             |   48 ++
+ gengrind/gn_clo.h             |   38 +
+ gengrind/gn_crq.c             |  150 ++++
+ gengrind/gn_crq.h             |  271 ++++++
+ gengrind/gn_debug.c           |   81 ++
+ gengrind/gn_debug.h           |   39 +
+ gengrind/gn_events.c          |  936 +++++++++++++++++++++
+ gengrind/gn_events.h          |  102 +++
+ gengrind/gn_fn.c              |  495 +++++++++++
+ gengrind/gn_fn.h              |   83 ++
+ gengrind/gn_ipc.c             |  350 ++++++++
+ gengrind/gn_ipc.h             |   43 +
+ gengrind/gn_jumps.c           |  160 ++++
+ gengrind/gn_jumps.h           |   60 ++
+ gengrind/gn_main.c            |  258 ++++++
+ gengrind/gn_sync.h            |   57 ++
+ gengrind/gn_sync_intercepts.c |   57 ++
+ gengrind/gn_threads.c         |  178 ++++
+ gengrind/gn_threads.h         |   40 +
+ gengrind/tests/Makefile.am    |    5 +
+ sigrind/.ycm_extra_conf.py    |  177 ++++
+ sigrind/Makefile.am           |   83 ++
+ sigrind/bb.c                  |  345 ++++++++
+ sigrind/bbcc.c                |  872 +++++++++++++++++++
+ sigrind/callgrind.h           |  363 ++++++++
+ sigrind/callstack.c           |  425 ++++++++++
+ sigrind/clo.c                 |  687 +++++++++++++++
+ sigrind/context.c             |  332 ++++++++
+ sigrind/debug.c               |  447 ++++++++++
+ sigrind/events.c              |  261 ++++++
+ sigrind/events.h              |  133 +++
+ sigrind/fn.c                  |  686 +++++++++++++++
+ sigrind/global.h              |  886 +++++++++++++++++++
+ sigrind/jumps.c               |  233 +++++
+ sigrind/log_events.c          |  239 ++++++
+ sigrind/log_events.h          |   63 ++
+ sigrind/sg_main.c             | 1872 +++++++++++++++++++++++++++++++++++++++++
+ sigrind/sigil2_ipc.c          |  266 ++++++
+ sigrind/sigil2_ipc.h          |   28 +
+ sigrind/tests/Makefile.am     |    5 +
+ sigrind/threads.c             |  451 ++++++++++
+ 49 files changed, 13197 insertions(+)
+ create mode 100644 gengrind/Makefile.am
+ create mode 100644 gengrind/gn.h
+ create mode 100644 gengrind/gn_bb.c
+ create mode 100644 gengrind/gn_bb.h
+ create mode 100644 gengrind/gn_callstack.c
+ create mode 100644 gengrind/gn_callstack.h
+ create mode 100644 gengrind/gn_clo.c
+ create mode 100644 gengrind/gn_clo.h
+ create mode 100644 gengrind/gn_crq.c
+ create mode 100644 gengrind/gn_crq.h
+ create mode 100644 gengrind/gn_debug.c
+ create mode 100644 gengrind/gn_debug.h
+ create mode 100644 gengrind/gn_events.c
+ create mode 100644 gengrind/gn_events.h
+ create mode 100644 gengrind/gn_fn.c
+ create mode 100644 gengrind/gn_fn.h
+ create mode 100644 gengrind/gn_ipc.c
+ create mode 100644 gengrind/gn_ipc.h
+ create mode 100644 gengrind/gn_jumps.c
+ create mode 100644 gengrind/gn_jumps.h
+ create mode 100644 gengrind/gn_main.c
+ create mode 100644 gengrind/gn_sync.h
+ create mode 100644 gengrind/gn_sync_intercepts.c
+ create mode 100644 gengrind/gn_threads.c
+ create mode 100644 gengrind/gn_threads.h
+ create mode 100644 gengrind/tests/Makefile.am
  create mode 100644 sigrind/.ycm_extra_conf.py
  create mode 100644 sigrind/Makefile.am
  create mode 100644 sigrind/bb.c
@@ -51,30 +124,4526 @@ Subject: [PATCH] patch
  create mode 100644 sigrind/threads.c
 
 diff --git a/Makefile.am b/Makefile.am
-index fdce3cf9f..e6648d35a 100644
+index fdce3cf9f..6859f9611 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -10,6 +10,7 @@ TOOLS =		memcheck \
+@@ -10,6 +10,8 @@ TOOLS =		memcheck \
  		lackey \
  		none \
  		helgrind \
 +		sigrind \
++		gengrind \
  		drd
  
  EXP_TOOLS = 	exp-sgcheck \
 diff --git a/configure.ac b/configure.ac
-index 4d4521896..c2be6150e 100644
+index 4d4521896..624c52200 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -4523,6 +4523,8 @@ AC_CONFIG_FILES([
+@@ -4523,6 +4523,10 @@ AC_CONFIG_FILES([
     exp-dhat/tests/Makefile
     shared/Makefile
     solaris/Makefile
 +   sigrind/Makefile
 +   sigrind/tests/Makefile
++   gengrind/Makefile
++   gengrind/tests/Makefile
  ])
  AC_CONFIG_FILES([coregrind/link_tool_exe_linux],
                  [chmod +x coregrind/link_tool_exe_linux])
+diff --git a/gengrind/Makefile.am b/gengrind/Makefile.am
+new file mode 100644
+index 000000000..263117117
+--- /dev/null
++++ b/gengrind/Makefile.am
+@@ -0,0 +1,68 @@
++include $(top_srcdir)/Makefile.tool.am
++
++EXTRA_DIST = docs/gn-manual.xml
++
++#----------------------------------------------------------------------------
++# gengrind-<platform>
++#----------------------------------------------------------------------------
++
++noinst_PROGRAMS  = gengrind-@VGCONF_ARCH_PRI@-@VGCONF_OS@
++if VGCONF_HAVE_PLATFORM_SEC
++noinst_PROGRAMS += gengrind-@VGCONF_ARCH_SEC@-@VGCONF_OS@
++endif
++
++GENGRIND_SOURCES_COMMON = gn_main.c\
++						  gn_events.c\
++						  gn_bb.c\
++						  gn_callstack.c\
++						  gn_jumps.c\
++						  gn_fn.c\
++						  gn_threads.c\
++						  gn_crq.c\
++						  gn_ipc.c\
++						  gn_clo.c\
++						  gn_debug.c
++
++GENGRIND_CFLAGS_COMMON =  -I$(top_srcdir)/../../.. -I$(top_srcdir)/include -I$(top_srcdir)/VEX/pub
++
++gengrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_SOURCES      = \
++	$(GENGRIND_SOURCES_COMMON)
++gengrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_CPPFLAGS     = \
++	$(AM_CPPFLAGS_@VGCONF_PLATFORM_PRI_CAPS@)
++gengrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_CFLAGS       = \
++	$(AM_CFLAGS_@VGCONF_PLATFORM_PRI_CAPS@) $(GENGRIND_CFLAGS_COMMON)
++gengrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_DEPENDENCIES = \
++	$(TOOL_DEPENDENCIES_@VGCONF_PLATFORM_PRI_CAPS@)
++gengrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_LDADD        = \
++	$(TOOL_LDADD_@VGCONF_PLATFORM_PRI_CAPS@)
++gengrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_LDFLAGS      = \
++	$(TOOL_LDFLAGS_@VGCONF_PLATFORM_PRI_CAPS@)
++gengrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_LINK = \
++	$(top_builddir)/coregrind/link_tool_exe_@VGCONF_OS@ \
++	@VALT_LOAD_ADDRESS_PRI@ \
++	$(LINK) \
++	$(gengrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_CFLAGS) \
++	$(gengrind_@VGCONF_ARCH_PRI@_@VGCONF_OS@_LDFLAGS)
++
++if VGCONF_HAVE_PLATFORM_SEC
++gengrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_SOURCES      = \
++	$(GENGRIND_SOURCES_COMMON)
++gengrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_CPPFLAGS     = \
++	$(AM_CPPFLAGS_@VGCONF_PLATFORM_SEC_CAPS@)
++gengrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_CFLAGS       = \
++	$(AM_CFLAGS_@VGCONF_PLATFORM_SEC_CAPS@) $(GENGRIND_CFLAGS_COMMON)
++gengrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_DEPENDENCIES = \
++	$(TOOL_DEPENDENCIES_@VGCONF_PLATFORM_SEC_CAPS@)
++gengrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_LDADD        = \
++	$(TOOL_LDADD_@VGCONF_PLATFORM_SEC_CAPS@)
++gengrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_LDFLAGS      = \
++	$(TOOL_LDFLAGS_@VGCONF_PLATFORM_SEC_CAPS@)
++gengrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_LINK = \
++	$(top_builddir)/coregrind/link_tool_exe_@VGCONF_OS@ \
++	@VALT_LOAD_ADDRESS_SEC@ \
++	$(LINK) \
++	$(gengrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_CFLAGS) \
++	$(gengrind_@VGCONF_ARCH_SEC@_@VGCONF_OS@_LDFLAGS)
++endif
++
++
+diff --git a/gengrind/gn.h b/gengrind/gn.h
+new file mode 100644
+index 000000000..4cfb3d801
+--- /dev/null
++++ b/gengrind/gn.h
+@@ -0,0 +1,74 @@
++#ifndef GN_H
++#define GN_H
++
++#include "pub_tool_basics.h"
++#include "pub_tool_tooliface.h"
++#include "pub_tool_options.h"
++#include "pub_tool_debuginfo.h"
++#include "pub_tool_libcbase.h"
++#include "pub_tool_libcassert.h"
++#include "pub_tool_libcfile.h"
++#include "pub_tool_libcprint.h"
++#include "pub_tool_libcproc.h"
++#include "pub_tool_machine.h"
++#include "pub_tool_mallocfree.h"
++#include "Core/EventBuffer.h"
++
++#define GN_ENABLE_DEBUG 1
++
++#ifdef VGA_amd64
++#include "VEX/pub/libvex_guest_amd64.h"
++#endif
++
++#define GN_(str) VGAPPEND(vgGengrind_,str)
++/* The convention is to prepend global funcs/vars/structs with GN_(str).
++ * file/local scoped funcs/vars/structs do not have a naming convention,
++ * but can be prepended with 'gn'. */
++
++#define MEMBER_SIZE(type, member) sizeof(((type *)0)->member)
++
++//-------------------------------------------------------------------------------------------------
++/** Platform specific defines **/
++#if defined(VG_BIGENDIAN)
++#define ENDNESS Iend_BE
++#elif defined(VG_LITTLEENDIAN)
++#define ENDNESS Iend_LE
++#else
++#error "Unknown endianness"
++#endif
++
++#ifdef VGA_amd64
++#define OFFB_RIP offsetof(VexGuestAMD64State,guest_RIP)
++#define IRCONST_PTR(...) IRConst_U64(__VA_ARGS__)
++#define IRTYPE_PTR Ity_I64
++#define IOP_ADD_PTR Iop_Add64
++#define IOP_SUB_PTR Iop_Sub64
++#define IOP_CMPLT_PTR Iop_CmpLT64U
++#else
++#error "Unsupported platform"
++#endif
++
++//-------------------------------------------------------------------------------------------------
++/** Forward declare typedefs **/
++
++/* BB lookup type declarations */
++typedef struct _BBState BBState;
++typedef struct _BBInfo BBInfo;
++typedef struct _BBTable BBTable;
++
++/* Callstack tracking type declarations */
++typedef struct _CallStack CallStack;
++typedef struct _CallEntry CallEntry;
++
++/* Jumps type declarations */
++typedef struct _JumpNode JumpNode;
++typedef struct _JumpTable JumpTable;
++typedef enum _GnJumpKind GnJumpKind;
++
++/* Function lookup type declarations */
++typedef struct _FnNode FnNode;
++typedef struct _FileNode FileNode;
++typedef struct _ObjNode ObjNode;
++
++
++#endif
+diff --git a/gengrind/gn_bb.c b/gengrind/gn_bb.c
+new file mode 100644
+index 000000000..d7022a682
+--- /dev/null
++++ b/gengrind/gn_bb.c
+@@ -0,0 +1,190 @@
++#include "gn_bb.h"
++#include "gn_fn.h"
++#include "gn_clo.h"
++#include "gn_debug.h"
++
++
++BBTable GN_(allBBs);
++BBInfo *GN_(lastBB);
++ULong GN_(bbExecutions);
++ULong GN_(bbSeen);
++
++
++//-------------------------------------------------------------------------------------------------
++/** Helper function definitions **/
++
++static inline Int bbHashIdx(ObjNode *obj, PtrdiffT offset, UInt size)
++{
++    return (((Addr)obj + offset) % size);
++}
++
++
++static void resizeBBTable(void)
++{
++    /* Double size
++     * Requires rehashing all BBs in the current table */
++
++    UInt conflicts1 = 0, conflicts2 = 0; // for hash table stats
++
++    UInt newcap = 2 * GN_(allBBs).capacity + 3;
++    BBInfo **newtable = VG_(malloc)("gn.bb.resize.1", newcap * sizeof(BBInfo*));
++
++    for (UInt i=0; i<newcap; ++i)
++        newtable[i] = NULL;
++
++    for (UInt i=0; i<GN_(allBBs).capacity; ++i) {
++
++        if (GN_(allBBs).table[i] == NULL)
++            continue;
++
++        BBInfo *curr = GN_(allBBs).table[i];
++        while (curr != NULL) {
++            BBInfo *next = curr->next;
++            UInt newidx = bbHashIdx(curr->obj, curr->offset, newcap);
++
++            curr->next = newtable[newidx];
++            newtable[newidx] = curr;
++
++            /* collect some hash table stats */
++            if (curr->next) {
++                conflicts1++;
++                if (curr->next->next) {
++                    conflicts2++;
++                }
++            }
++
++            curr = next;
++        }
++    }
++
++    VG_(free)(GN_(allBBs).table);
++    GN_(allBBs).capacity = newcap;
++    GN_(allBBs).table = newtable;
++}
++
++
++static BBInfo* newBB(ObjNode *obj, PtrdiffT offset)
++{
++    BBInfo *bb;
++
++    GN_(allBBs).entries++;
++
++    /* Use Callgrind's hash implementation
++     * resize if filled more than 80% */
++    if (10 * GN_(allBBs).entries / GN_(allBBs).capacity > 8)
++        resizeBBTable();
++
++    bb = VG_(malloc)("gn.bb.newbb.1", sizeof(BBInfo));
++
++    bb->offset   = offset;
++    bb->obj      = obj;
++    bb->sectKind = VG_(DebugInfo_sect_kind)(NULL, offset + obj->offset);
++
++    // To be set during instrumentation
++    bb->eventsTotal     = 0;
++    bb->jmpCount        = 0;
++    bb->jmps            = NULL;
++    bb->lruToJmp        = NULL;
++    bb->lruFromJmp      = NULL;
++    bb->lastJmpInverted = False;
++
++    bb->uid = GN_(bbSeen)++;
++
++    /* insert into hash */
++    UInt idx = bbHashIdx(obj, offset, GN_(allBBs).capacity);
++    bb->next = GN_(allBBs).table[idx];
++    GN_(allBBs).table[idx] = bb;
++
++    /* set up function info */
++    bb->fn = NULL;
++    bb->isFnEntry = False;
++    GN_(getFnNode)(bb);
++
++    return bb;
++}
++
++
++//-------------------------------------------------------------------------------------------------
++/** External function definitions **/
++
++BBInfo* GN_(getBBInfo)(Addr addr)
++{
++    BBInfo *bb;
++
++    ObjNode *obj = GN_(getObjNodeByAddr)(addr);
++    PtrdiffT offset = addr - obj->offset;
++
++    Int idx = bbHashIdx(obj, offset, GN_(allBBs).capacity);
++    bb = GN_(allBBs).table[idx];
++
++    while (bb) {
++        if (bb->obj == obj && bb->offset == offset)
++            break;
++        bb = bb->next;
++    }
++
++    if (bb == NULL)
++        bb = newBB(obj, offset);
++
++    return bb;
++}
++
++
++Int GN_(initBBState)(BBState *bbState, IRSB *obb, IRType hWordTy)
++{
++    Int i = 0;
++
++    bbState->obb = obb;
++    bbState->eventsToFlush = 0;
++
++    // Set up NBB for instrumentation
++    bbState->nbb = deepCopyIRSBExceptStmts(obb);
++    bbState->hWordTy = hWordTy;
++
++    // Copy verbatim any IR preamble preceding the first IMark
++    while (i < obb->stmts_used && obb->stmts[i]->tag != Ist_IMark) {
++        addStmtToIRSB( bbState->nbb, obb->stmts[i] );
++        i++;
++    }
++
++    // Get the first statement
++    GN_ASSERT(obb->stmts_used > 0);
++    GN_ASSERT(i < obb->stmts_used);
++    GN_ASSERT(Ist_IMark == obb->stmts[i]->tag);
++
++    // Any extra state needed
++    bbState->jmpsPassed = 0;
++    if (GN_(clo).bbinfo_needed == True) {
++        const IRStmt *st = obb->stmts[i];
++        Addr origAddr = st->Ist.IMark.addr + st->Ist.IMark.delta;
++        bbState->bbInfo = GN_(getBBInfo)(origAddr);
++    }
++    else {
++        bbState->bbInfo = NULL;
++    }
++
++    /* return index of first instruction IR */
++    return i;
++}
++
++
++void GN_(initAllBBsTable)()
++{
++    /* Once again, taken from Callgrind */
++    GN_(allBBs).capacity = 8347;
++    GN_(allBBs).entries = 0;
++    GN_(allBBs).table = VG_(malloc)("gn.bb.inittable.1",
++                                    GN_(allBBs).capacity * sizeof(BBInfo*));
++
++    for (UInt i=0; i<GN_(allBBs).capacity; ++i)
++        GN_(allBBs).table[i] = NULL;
++}
++
++
++void GN_(initBB)()
++{
++    GN_(initAllBBsTable)();
++    GN_(lastBB) = NULL;
++    GN_(bbExecutions) = 0;
++    GN_(bbSeen) = 0;
++}
+diff --git a/gengrind/gn_bb.h b/gengrind/gn_bb.h
+new file mode 100644
+index 000000000..41e098a8c
+--- /dev/null
++++ b/gengrind/gn_bb.h
+@@ -0,0 +1,91 @@
++#ifndef GN_BB_H
++#define GN_BB_H
++
++#include "gn.h"
++
++extern BBTable GN_(allBBs);
++extern BBInfo *GN_(lastBB);
++extern ULong GN_(bbExecutions);
++extern ULong GN_(bbSeen);
++
++//-------------------------------------------------------------------------------------------------
++/** BB-tracking type definitions **/
++
++struct _BBState {
++    /* Tracks the state during instrumentation.
++     * Useful for passing between instrumentation functions */
++
++    IRType hWordTy;
++
++    IRSB *obb;
++    // The original basic block
++
++    IRSB *nbb;
++    // The new basic block with instrumentation
++
++    BBInfo *bbInfo;
++    // metadata for this basic block
++    
++    UInt eventsToFlush;
++    // Number of static events to-be-added for the current basic block
++    // Events are held in a separate global array
++
++    Int jmpsPassed;
++};
++
++
++struct _BBInfo {
++    /* Useful metadata valid outside of instrumentation,
++     * e.g. which function/ELF object contain this BB
++     * Some vars are unused if function-tracking is not enabled */
++
++    BBInfo* next;
++    // chaining for hash collisions
++
++    UInt eventsTotal;
++    // events are periodically flushed before an exit
++
++    PtrdiffT offset;
++    // offset of BB in ELF object
++
++    ObjNode *obj;
++    VgSectKind sectKind;
++    // ELF object
++
++    FnNode *fn;
++    Bool isFnEntry;
++    // Do not access directly, use helper function getFnNode
++    // Containing function; evaluated on-demand and cached
++    // Only valid if function enter/exit events are enabled
++
++    UInt jmpCount;
++    GnJumpKind *jmps;
++    JumpNode *lruToJmp;
++    JumpNode *lruFromJmp;
++    Bool lastJmpInverted;
++    // all side exits
++    // Only valid if certain events are enabled (e.g. functions)
++    
++    UInt uid;
++    UInt instrCount;
++    // for debugging purposes
++};
++
++
++struct _BBTable {
++    /* all basic blocks saved here */
++    UInt entries;
++    UInt capacity;
++    BBInfo **table;
++};
++
++//-------------------------------------------------------------------------------------------------
++/** BB-tracking function declarations **/
++
++void GN_(initBB)(void);
++void GN_(initAllBBsTable)(void);
++
++BBInfo* GN_(getBBInfo)(Addr addr);
++Int GN_(initBBState)(BBState *bbState, IRSB *origBB, IRType hWordTy);
++
++#endif
+diff --git a/gengrind/gn_callstack.c b/gengrind/gn_callstack.c
+new file mode 100644
+index 000000000..a3daaf52b
+--- /dev/null
++++ b/gengrind/gn_callstack.c
+@@ -0,0 +1,377 @@
++#include "gn.h"
++#include "gn_events.h"
++#include "gn_bb.h"
++#include "gn_fn.h"
++#include "gn_callstack.h"
++#include "gn_jumps.h"
++#include "gn_debug.h"
++#include "pub_tool_threadstate.h"
++
++
++static CallStack currentCallStack;
++Bool GN_(afterStartFunc);
++Bool GN_(afterEndFunc);
++
++
++static inline Bool isFirstBB(void) { return GN_(lastBB) == NULL; }
++
++
++#define N_CALL_STACK_INITIAL_ENTRIES 500
++static void initCallStack(CallStack *s)
++{
++    GN_ASSERT(s != NULL);
++    s->capacity = N_CALL_STACK_INITIAL_ENTRIES;
++    s->entry = VG_(malloc)("gn.callstack.initcallstack.1",
++                           s->capacity * sizeof(CallEntry));
++    s->tos = 0;
++}
++
++
++static void resizeCurrentCallStack(void)
++{
++    if ((Long)currentCallStack.tos < currentCallStack.capacity)
++        return;
++
++    UInt newcap = 2 * currentCallStack.capacity;
++    currentCallStack.entry = VG_(realloc)("gn.callstack.resize.1",
++                                          currentCallStack.entry,
++                                          newcap * sizeof(CallEntry));
++    currentCallStack.capacity = newcap;
++}
++
++
++typedef struct _GnCallstackJumpKind {
++    /* package extra data depending on jump kind */
++    GnJumpKind jk;
++    Bool wasConditionalJmp;
++    union {
++        Int popCountOnReturn;
++        /* if jk_Return, what is the minimum number of pops to the callstack? */
++
++        Bool callEmulation;
++        /* if jk_Call, is this actual call or faked */
++    };
++} GnCallstackJumpKind;
++
++
++static Addr adjustSP(GnCallstackJumpKind cjk, Addr sp)
++{
++    Int cstop = currentCallStack.tos;
++    Addr newsp = sp;
++
++    if (cjk.jk == jk_Return) {
++        GN_ASSERT(cjk.popCountOnReturn == 1);
++    }
++    else {
++        if (cjk.jk == jk_Call &&
++            cjk.callEmulation == True &&
++            cstop > 0) {
++
++            /* If there wasn't really a CALL,
++             * then use the SP from last actual CALL
++             * This is useful for stack unwinding */
++            newsp = (currentCallStack.entry[cstop-1]).sp;
++        }
++    }
++
++    return newsp;
++}
++
++
++static GnCallstackJumpKind determineJumpKind(BBInfo *bb, Addr sp)
++{
++    GN_DEBUG(6, "+ determineJumpKind\n");
++
++    GnJumpKind jmpkind;
++    Bool wasConditionalJmp;
++    Bool callEmulation = False;
++
++    GN_DEBUGIF(4) {
++        GN_(printBBno)();
++        GN_(printTabs)(1);
++        VG_(printf)("SP: 0x%lx\n", sp);
++    }
++
++    if (isFirstBB()) {
++        jmpkind = jk_None;
++        wasConditionalJmp = False;
++    }
++    else {
++        GN_DEBUGIF(4) {
++            if (GN_(lastBB)->jmpCount < GN_(lastJmpsPassed)) {
++                GN_(printBBno)();
++                VG_(printf)("%d %d\n", GN_(lastBB)->jmpCount, GN_(lastJmpsPassed));
++            }
++        }
++
++        GN_ASSERT(GN_(lastBB)->jmpCount >= GN_(lastJmpsPassed));
++
++        jmpkind = GN_(lastBB)->jmps[GN_(lastJmpsPassed)];
++        wasConditionalJmp = GN_(lastJmpsPassed) < (GN_(lastBB)->jmpCount-1);
++
++        GN_DEBUGIF(4) {
++            GN_(printBBno)();
++            BBInfo *lastbb = GN_(lastBB);
++            if (lastbb) {
++                HChar *from = lastbb->fn->name;
++                HChar *to = bb->fn->name;
++                UInt fromId = lastbb->uid;
++                UInt toId = bb->uid;
++                GN_(printTabs)(1);
++                VG_(printf)("JmpKind: %s; From BB/Fn: %d/%s to To BB/Fn: %d/%s\n",
++                            GN_(getJumpStr)(jmpkind, wasConditionalJmp),
++                            fromId, from,
++                            toId, to);
++            }
++        }
++    }
++
++    Int popCountOnReturn = 1;
++    Bool retWithoutCall = False;
++
++    Int cstop = currentCallStack.tos;
++    Int up_one = cstop-1;
++    CallEntry *topce = &(currentCallStack.entry[up_one]); // The call entry just returned from
++
++    if ((jmpkind == jk_Return) && (cstop > 0)) {
++        /* Check if there is a return that doesn't match up with the callstack,
++         * in which case it will be treated as a normal jump */
++
++        if (sp < topce->sp) {
++            /* If current sp < last call sp (sp still in frame),
++             * then this is not a 'real' return.
++             * MDL20180103 When does this happen? */
++            popCountOnReturn = 0;
++
++            GN_DEBUGIF(4) {
++                VG_(printf)("\tReturn detected but still in frame:"
++                            " Current SP - 0x%lx, Top SP - 0x%lx\n", sp, topce->sp);
++            }
++        }
++        else if (sp == topce->sp) {
++            /* This is a special case that Callgrind handles for PPC
++             * Gengrind doesn't support this yet
++             * Callgrind modifies popCountOnReturn here */
++            VG_(printf)("Error: unexpected stack pointer\n"
++                        "Is this a supported platform?");
++            GN_ASSERT(False);
++        }
++        else {
++            // Typical case by convention; no special handling
++        }
++
++        if (popCountOnReturn == 0) {
++            jmpkind = jk_Jump;
++            retWithoutCall = True;
++        }
++    }
++
++    if ((jmpkind != jk_Return) && (jmpkind != jk_Call) && !isFirstBB()) {
++        if (retWithoutCall ||
++            bb->isFnEntry ||
++            (GN_(lastBB)->sectKind != bb->sectKind) ||
++            (GN_(lastBB)->obj->number != bb->obj->number)) {
++            /* a JMP/Cont is converted to a CALL if:
++             * - the jump is to another ELF object or section
++             * - the jump is to the beginning of a function (tail recursion) */
++            jmpkind = jk_Call;
++            callEmulation = True;
++        }
++        else if (sp < topce->sp) {
++            /* Sometimes the SP will be pushed within the same function,
++             * and won't be popped to the same SP
++             */
++        }
++    }
++
++    GnCallstackJumpKind cjk;
++    cjk.jk = jmpkind;
++    cjk.wasConditionalJmp = wasConditionalJmp;
++    if (cjk.jk == jk_Call) {
++        cjk.callEmulation = callEmulation;
++    }
++    else {
++        cjk.popCountOnReturn = popCountOnReturn;
++    }
++
++    GN_DEBUG(6, "- determineJumpKind\n");
++
++    return cjk;
++}
++
++
++static void pushCallStack(BBInfo *from, UInt jmp,
++                          BBInfo *to, Addr sp)
++{
++    /* assume first BB is not called */
++    GN_ASSERT(from != NULL);
++
++    FnNode *to_fn = to->fn;
++
++    /* set entry in callstack */
++
++    CallEntry *callee = &currentCallStack.entry[currentCallStack.tos];
++    callee->sp = sp;
++
++    /* signal this function is skipped by NULLing jn */
++    JumpNode *jn;
++    if (to_fn->skip == True)
++        jn = NULL;
++    else
++        jn = GN_(getJumpNode)(from, jmp, to);
++    callee->jn = jn;
++
++    if (GN_(clo).start_collect_func != NULL &&
++            GN_(afterStartFunc) == False &&
++            VG_(strcmp)(to_fn->name, GN_(clo).start_collect_func) == 0) {
++        GN_(afterStartFunc) = True;
++        GN_(updateEventGeneration)();
++    }
++
++    if (to_fn->skip == False) {
++        GN_(flush_FnEnter)(to_fn->name);
++    }
++
++    currentCallStack.tos++;
++
++    if ((Long)currentCallStack.tos >= currentCallStack.capacity)
++        resizeCurrentCallStack();
++
++    GN_DEBUGIF(4) {
++        VG_(printf)("\tPUSH: JN - %p, SP - 0x%lx\n", jn, sp);
++    }
++}
++
++
++static void popCallStack(void)
++{
++    CallEntry *caller = &currentCallStack.entry[currentCallStack.tos-1];
++    JumpNode *jn = caller->jn;
++
++    if (jn != NULL) {
++        FnNode *to_fn = jn->to->fn;
++
++        if (GN_(clo).stop_collect_func != NULL &&
++                GN_(afterEndFunc) == False &&
++                VG_(strcmp)(to_fn->name, GN_(clo).stop_collect_func) == 0) {
++            GN_(afterEndFunc) = True;
++            GN_(updateEventGeneration)();
++        }
++
++        GN_(flush_FnExit)(to_fn->name);
++    }
++
++    currentCallStack.tos--;
++
++    GN_DEBUGIF(4) {
++        VG_(printf)("\tPOP: %p\n", jn);
++    }
++}
++
++
++static Int unwindCurrentCallStack(Addr sp, Int minpops)
++{
++    GN_DEBUG(6, "+ unwindCurrentCallStack (sp = 0x%lx, minpops = %d)\n", sp, minpops);
++    /* Assume general (x86?) calling conventions
++     * After CALL: SP = p
++     * After RETURN: SP = s
++     * Generally, s>p, because the RETURN addr is always additionally popped by
++     * the callee */
++
++    Int unwinds = 0;
++    Int cstop = currentCallStack.tos;
++    while (cstop > 0) {
++        CallEntry *ce = &(currentCallStack.entry[cstop-1]);
++        if (ce->sp < sp ||
++            (ce->sp == sp && minpops>0)) {
++            /* ML: when does ce->sp == sp ? Some cases exist in amd64 */
++
++            GN_DEBUGIF(4) {
++                GN_(printTabs)(1);
++                VG_(printf)("Popping: CurrentSP - 0x%lx; TopSP - 0x%lx\n",
++                            sp, ce->sp);
++            }
++
++            popCallStack();
++            cstop = currentCallStack.tos;
++            unwinds++;
++            minpops--;
++            continue;
++        }
++        break;
++    }
++
++    GN_DEBUG(6, "- unwindCurrentCallStack\n");
++
++    return unwinds;
++}
++
++//-------------------------------------------------------------------------------------------------
++/** External function definitions **/
++
++void GN_(trackFns)(BBInfo *bb)
++{
++    GN_DEBUG(6, "+ trackFns\n");
++
++    /* Check how this BB was entered (call/return/jmp/et al from prevous BB)
++     * and manually track the callstack.
++     * This is a more general and robust method than tracking CALL/RETURN
++     * instrs, at the cost of additional overhead */
++
++    Addr sp = VG_(get_SP)(VG_(get_running_tid)());
++    GnCallstackJumpKind cjk = determineJumpKind(bb, sp);
++    sp = adjustSP(cjk, sp);
++
++    if (cjk.jk == jk_Call) {
++        pushCallStack(GN_(lastBB), GN_(lastJmpsPassed), bb, sp);
++    }
++    else if (cjk.jk == jk_Return) {
++        unwindCurrentCallStack(sp, cjk.popCountOnReturn);
++    }
++    else {
++        /* Callgrind does an unwind, anyway, to check if there was a return.
++         * jk_Return seems to be only used if the last exit of a BB is a return,
++         * and is never seen on conditional jumps earlier in the BB. */
++        Int unwinds = unwindCurrentCallStack(sp, 0);
++        if (unwinds > 0)
++            cjk.jk = jk_Return;
++    }
++
++    GN_DEBUGIF(4) {
++        if (GN_(lastBB)) {
++            Int jmpkind = GN_(lastBB)->jmps[GN_(lastJmpsPassed)];
++            if (jmpkind != cjk.jk) {
++                GN_(printTabs)(1);
++                VG_(printf)("JumpKind adjusted to: %s\n", GN_(getJumpStr)(cjk.jk,
++                                                                          cjk.wasConditionalJmp));
++            }
++            Addr origSP = VG_(get_SP)(VG_(get_running_tid)());
++            if (origSP != sp) {
++                GN_(printTabs)(1);
++                VG_(printf)("SP adjusted to: 0x%lx\n", sp);
++            }
++        }
++    }
++
++    /* Setup state for next BB */
++    /* TODO(someday) Clean up and add this in another dirty call at the end of the BB */
++    GN_(lastBB) = bb;
++    GN_(lastJmpsPassed) = 0;
++
++    GN_(bbExecutions)++;
++}
++
++
++void GN_(initCallStack)()
++{
++    initCallStack(&currentCallStack);
++    GN_(afterStartFunc) = True;
++    GN_(afterEndFunc) = False;
++}
++
++
++void finishCallstack()
++{
++    while (currentCallStack.tos > 0)
++        popCallStack();
++}
+diff --git a/gengrind/gn_callstack.h b/gengrind/gn_callstack.h
+new file mode 100644
+index 000000000..77cda3067
+--- /dev/null
++++ b/gengrind/gn_callstack.h
+@@ -0,0 +1,86 @@
++#ifndef GN_CALLSTACK_H
++#define GN_CALLSTACK_H
++
++/* Manually track callstacks for function entry/exit event generation
++ *
++ * Callgrind's callstack tracking implementation is used as a base for
++ * this implementation
++ *
++ * In general, tracking function contexts is demanding for a number
++ * of reasons including:
++ * - availability of debug info
++ * - varying calling conventions 
++ * - frequency of calls
++ * - shared library mapping
++ * - object loading
++ * - IR manipulations
++ */
++
++#include "gn.h"
++
++extern UInt GN_(lastJmpsPassed);
++extern Bool GN_(afterStartFunc);
++extern Bool GN_(afterEndFunc);
++
++//-------------------------------------------------------------------------------------------------
++/** Callstack-tracking type definitions **/
++
++struct _CallEntry {
++    /* An entry in the callstack */
++
++    JumpNode* jn;
++    /* JumpNode for this call */
++
++    Addr sp;
++    /* stack pointer directly after this call (at the beginning of the call) */
++
++    Addr ret_addr;
++    /* ML: not implemented, see Callgrind if needed
++     *
++     * Address to which to return to
++     * Is 0 on a simulated call
++     *
++     * Return addr only useful for REAL CALL
++     * Used to detect RETURN w/o CALL */
++
++    Int fn_sp;
++    /* unused, function stack index before call */
++};
++
++
++struct _CallStack {
++    /* The full callstack */
++
++    Int tos;
++    // top-of-stack/idx into call entries
++
++    UInt capacity;
++    CallEntry* entry;
++};
++
++
++struct _ThreadInfo {
++    /* Thread State
++     *
++     * This structure stores thread specific info while a thread is *not* running.
++     */
++
++    /* state */
++    CallStack calls;   /* context call arc stack */
++//  ExecStack states;  /* execution states interrupted by signals */
++//
++//  /* thread specific data structure containers */
++//  fn_array fn_active;
++//  jcc_hash jccs;
++//  bbcc_hash bbccs;
++};
++
++
++//-------------------------------------------------------------------------------------------------
++/** Callstack-tracking function declarations **/
++
++void GN_(trackFns)(BBInfo *thisBB);
++void GN_(initCallStack)(void);
++void finishCallstack(void);
++
++#endif
+diff --git a/gengrind/gn_clo.c b/gengrind/gn_clo.c
+new file mode 100644
+index 000000000..e0763f3cc
+--- /dev/null
++++ b/gengrind/gn_clo.c
+@@ -0,0 +1,48 @@
++#include "gn_clo.h"
++
++GN_(CommandLineOptions) GN_(clo);
++
++void GN_(setCloDefaults)(void)
++{
++    GN_(clo).enable_instrumentation = True;
++    GN_(clo).standalone_test        = False;
++    GN_(clo).ipc_dir                = NULL;
++    GN_(clo).collect_func           = NULL;
++    GN_(clo).start_collect_func     = NULL;
++    GN_(clo).stop_collect_func      = NULL;
++    GN_(clo).gen_mem                = False;
++    GN_(clo).gen_comp               = False;
++    GN_(clo).gen_cf                 = False;
++    GN_(clo).gen_sync               = False;
++    GN_(clo).gen_instr              = False;
++    GN_(clo).gen_bb                 = False;
++    GN_(clo).gen_fn                 = False;
++    GN_(clo).gen_thr                = False;
++    GN_(clo).skip_plt               = True;
++    GN_(clo).bbinfo_needed          = False;
++#if GN_ENABLE_DEBUG
++    GN_(clo).verbose                = 0;
++#endif
++}
++
++Bool GN_(processCmdLineOption)(const HChar* arg)
++{
++    if      VG_STR_CLO(arg,  "--ipc-dir",    GN_(clo).ipc_dir) {}
++    else if VG_STR_CLO(arg,  "--at-func",    GN_(clo).collect_func) {}
++    else if VG_STR_CLO(arg,  "--start-func", GN_(clo).start_collect_func) {}
++    else if VG_STR_CLO(arg,  "--stop-func",  GN_(clo).stop_collect_func) {}
++    else if VG_BOOL_CLO(arg, "--gen-mem",    GN_(clo).gen_mem) {}
++    else if VG_BOOL_CLO(arg, "--gen-comp",   GN_(clo).gen_comp) {}
++    else if VG_BOOL_CLO(arg, "--gen-sync",   GN_(clo).gen_sync) {}
++    else if VG_BOOL_CLO(arg, "--gen-instr",  GN_(clo).gen_instr) {}
++    else if VG_BOOL_CLO(arg, "--gen-fn",     GN_(clo).gen_fn) {}
++    else if VG_BOOL_CLO(arg, "--gen-cf",     GN_(clo).gen_cf) {}
++    else if VG_BOOL_CLO(arg, "--gen-bb",     GN_(clo).gen_bb) {}
++    else if VG_BOOL_CLO(arg, "--enable",     GN_(clo).enable_instrumentation) {}
++    else if VG_BOOL_CLO(arg, "--test",       GN_(clo).standalone_test) {}
++#if GN_ENABLE_DEBUG
++    else if VG_INT_CLO(arg, "--verbose",     GN_(clo).verbose) {}
++#endif
++
++    return True;
++}
+diff --git a/gengrind/gn_clo.h b/gengrind/gn_clo.h
+new file mode 100644
+index 000000000..1e565e5c0
+--- /dev/null
++++ b/gengrind/gn_clo.h
+@@ -0,0 +1,38 @@
++#ifndef GN_CLO_H
++#define GN_CLO_H
++
++#include "gn.h"
++
++typedef struct {
++  const HChar* ipc_dir;
++  const HChar* collect_func;
++  const HChar* start_collect_func;
++  const HChar* stop_collect_func;
++  Bool enable_instrumentation;
++  Bool standalone_test;
++  Bool gen_mem;
++  Bool gen_comp;
++  Bool gen_cf;
++  Bool gen_sync;
++  Bool gen_instr;
++  Bool gen_bb;
++  Bool gen_fn;
++  Bool gen_thr;
++
++  Bool skip_plt;
++
++  Bool bbinfo_needed;
++
++#if GN_ENABLE_DEBUG
++  Int verbose;
++#endif
++
++} GN_(CommandLineOptions);
++
++extern GN_(CommandLineOptions) GN_(clo);
++
++//-------------------------------------------------------------------------------------------------
++void GN_(setCloDefaults)(void);
++Bool GN_(processCmdLineOption)(const HChar* arg);
++
++#endif
+diff --git a/gengrind/gn_crq.c b/gengrind/gn_crq.c
+new file mode 100644
+index 000000000..2e44d4a02
+--- /dev/null
++++ b/gengrind/gn_crq.c
+@@ -0,0 +1,150 @@
++#include "gn_crq.h"
++#include "gn_threads.h"
++#include "gn_events.h"
++#include "gn_debug.h"
++
++#define UNUSED_SYNC_DATA 0
++
++Bool GN_(handleClientRequest)(ThreadId tid, UWord *args, UWord *ret)
++{
++    if (!VG_IS_TOOL_USERREQ('G', 'G', args[0]))
++        return False;
++
++    switch(args[0]) 
++    {
++    case VG_USERREQ__TOGGLE_COLLECT:
++    case VG_USERREQ__START_INSTRUMENTATION:
++    case VG_USERREQ__STOP_INSTRUMENTATION:
++        /* unimplemented */
++        GN_ASSERT(False);
++        *ret = 0; // meaningless
++        break;
++
++    /*******************************************
++     * Synchronization API intercepts 
++     *******************************************/
++    case VG_USERREQ__GN_PTHREAD_CREATE_ENTER:
++        GN_(setInSyncCall)(tid);
++        break;
++    case VG_USERREQ__GN_PTHREAD_CREATE_LEAVE:
++        /* enable and log once the thread has been CREATED and waiting */
++        GN_(resetInSyncCall)(tid);
++        /* sync event generated in a separate Valgrind hook that
++         * captures raw thread creation */
++
++    case VG_USERREQ__GN_PTHREAD_JOIN_ENTER:
++        /* log when the thread join is ENTERED and disable */
++        if (GN_(EventGenerationEnabled))
++            GN_(flush_Sync)((UChar)SGLPRIM_SYNC_JOIN, (SyncID*)&args[1], 1);
++        GN_(setInSyncCall)(tid);
++        break;
++    case VG_USERREQ__GN_PTHREAD_JOIN_LEAVE:
++        GN_(resetInSyncCall)(tid);
++        break;
++
++    case VG_USERREQ__GN_GOMP_LOCK_ENTER:
++    case VG_USERREQ__GN_GOMP_SETLOCK_ENTER:
++    case VG_USERREQ__GN_GOMP_CRITSTART_ENTER:
++    case VG_USERREQ__GN_GOMP_CRITNAMESTART_ENTER:
++    case VG_USERREQ__GN_GOMP_ATOMICSTART_ENTER:
++    case VG_USERREQ__GN_PTHREAD_LOCK_ENTER:
++        GN_(setInSyncCall)(tid);
++        break;
++    case VG_USERREQ__GN_GOMP_SETLOCK_LEAVE:
++    case VG_USERREQ__GN_GOMP_LOCK_LEAVE:
++    case VG_USERREQ__GN_GOMP_CRITSTART_LEAVE:
++    case VG_USERREQ__GN_GOMP_CRITNAMESTART_LEAVE:
++    case VG_USERREQ__GN_GOMP_ATOMICSTART_LEAVE:
++    case VG_USERREQ__GN_PTHREAD_LOCK_LEAVE:
++        /* enable and log once the lock has been acquired */
++        GN_(resetInSyncCall)(tid);
++        if (GN_(EventGenerationEnabled))
++            GN_(flush_Sync)((UChar)SGLPRIM_SYNC_LOCK, (SyncID*)&args[1], 1);
++        break;
++
++    case VG_USERREQ__GN_GOMP_UNLOCK_ENTER:
++    case VG_USERREQ__GN_GOMP_UNSETLOCK_ENTER:
++    case VG_USERREQ__GN_GOMP_CRITEND_ENTER:
++    case VG_USERREQ__GN_GOMP_CRITNAMEEND_ENTER:
++    case VG_USERREQ__GN_GOMP_ATOMICEND_ENTER:
++    case VG_USERREQ__GN_PTHREAD_UNLOCK_ENTER:
++        GN_(setInSyncCall)(tid);
++        break;
++    case VG_USERREQ__GN_GOMP_UNLOCK_LEAVE:
++    case VG_USERREQ__GN_GOMP_UNSETLOCK_LEAVE:
++    case VG_USERREQ__GN_GOMP_CRITEND_LEAVE:
++    case VG_USERREQ__GN_GOMP_CRITNAMEEND_LEAVE:
++    case VG_USERREQ__GN_GOMP_ATOMICEND_LEAVE:
++    case VG_USERREQ__GN_PTHREAD_UNLOCK_LEAVE:
++        GN_(resetInSyncCall)(tid);
++        if (GN_(EventGenerationEnabled))
++            GN_(flush_Sync)((UChar)SGLPRIM_SYNC_UNLOCK, (SyncID*)&args[1], 1);
++        break;
++
++    case VG_USERREQ__GN_GOMP_BARRIER_ENTER:
++    case VG_USERREQ__GN_GOMP_TEAMBARRIERWAIT_ENTER:
++    case VG_USERREQ__GN_GOMP_TEAMBARRIERWAITFINAL_ENTER:
++    case VG_USERREQ__GN_PTHREAD_BARRIER_ENTER:
++        /* log once the barrier is ENTERED and waiting and disable */
++        if (GN_(EventGenerationEnabled))
++            GN_(flush_Sync)((UChar)SGLPRIM_SYNC_BARRIER, (SyncID*)&args[1], 1);
++        GN_(setInSyncCall)(tid);
++        break;
++    case VG_USERREQ__GN_GOMP_BARRIER_LEAVE:
++    case VG_USERREQ__GN_GOMP_TEAMBARRIERWAIT_LEAVE:
++    case VG_USERREQ__GN_GOMP_TEAMBARRIERWAITFINAL_LEAVE:
++    case VG_USERREQ__GN_PTHREAD_BARRIER_LEAVE:
++        GN_(resetInSyncCall)(tid);
++        break;
++
++    case VG_USERREQ__GN_PTHREAD_CONDWAIT_ENTER:
++        GN_(setInSyncCall)(tid);
++        break;
++    case VG_USERREQ__GN_PTHREAD_CONDWAIT_LEAVE:
++        GN_(resetInSyncCall)(tid);
++        if (GN_(EventGenerationEnabled))
++            GN_(flush_Sync)((UChar)SGLPRIM_SYNC_CONDWAIT, (SyncID*)&args[1], 2);
++        break;
++
++    case VG_USERREQ__GN_PTHREAD_CONDSIG_ENTER:
++        GN_(setInSyncCall)(tid);
++        break;
++    case VG_USERREQ__GN_PTHREAD_CONDSIG_LEAVE:
++        GN_(resetInSyncCall)(tid);
++        if (GN_(EventGenerationEnabled))
++            GN_(flush_Sync)((UChar)SGLPRIM_SYNC_CONDSIG, (SyncID*)&args[1], 1);
++        break;
++
++    case VG_USERREQ__GN_PTHREAD_CONDBROAD_ENTER:
++        GN_(setInSyncCall)(tid);
++        break;
++    case VG_USERREQ__GN_PTHREAD_CONDBROAD_LEAVE:
++        GN_(resetInSyncCall)(tid);
++        if (GN_(EventGenerationEnabled))
++            GN_(flush_Sync)((UChar)SGLPRIM_SYNC_CONDBROAD, (SyncID*)&args[1], 1);
++        break;
++
++    case VG_USERREQ__GN_PTHREAD_SPINLOCK_ENTER:
++        GN_(setInSyncCall)(tid);
++        break;
++    case VG_USERREQ__GN_PTHREAD_SPINLOCK_LEAVE:
++        GN_(resetInSyncCall)(tid);
++        if (GN_(EventGenerationEnabled))
++            GN_(flush_Sync)((UChar)SGLPRIM_SYNC_SPINLOCK, (SyncID*)&args[1], 1);
++        break;
++
++    case VG_USERREQ__GN_PTHREAD_SPINUNLOCK_ENTER:
++        GN_(setInSyncCall)(tid);
++        break;
++    case VG_USERREQ__GN_PTHREAD_SPINUNLOCK_LEAVE:
++        GN_(resetInSyncCall)(tid);
++        if (GN_(EventGenerationEnabled))
++            GN_(flush_Sync)((UChar)SGLPRIM_SYNC_SPINUNLOCK, (SyncID*)&args[1], 1);
++        break;
++
++    default:
++        return False;
++    }
++
++    return True;
++}
+diff --git a/gengrind/gn_crq.h b/gengrind/gn_crq.h
+new file mode 100644
+index 000000000..2cef337a2
+--- /dev/null
++++ b/gengrind/gn_crq.h
+@@ -0,0 +1,271 @@
++#ifndef GN_CRQ_H
++#define GN_CRQ_H
++
++#include "valgrind.h"
++#include "gn.h"
++
++Bool GN_(handleClientRequest)(ThreadId tid, UWord *args, UWord *ret);
++
++/* !! ABIWARNING !! ABIWARNING !! ABIWARNING !! ABIWARNING !!
++   This enum comprises an ABI exported by Valgrind to programs
++   which use client requests.  DO NOT CHANGE THE ORDER OF THESE
++   ENTRIES, NOR DELETE ANY -- add new ones at the end.
++ */
++
++typedef
++   enum {
++      VG_USERREQ__TOGGLE_COLLECT = VG_USERREQ_TOOL_BASE('G','G'),
++      VG_USERREQ__START_INSTRUMENTATION,
++      VG_USERREQ__STOP_INSTRUMENTATION,
++
++      VG_USERREQ__GN_PTHREAD_CREATE_ENTER,
++      VG_USERREQ__GN_PTHREAD_CREATE_LEAVE,
++      VG_USERREQ__GN_PTHREAD_JOIN_ENTER,
++      VG_USERREQ__GN_PTHREAD_JOIN_LEAVE,
++      VG_USERREQ__GN_PTHREAD_LOCK_ENTER,
++      VG_USERREQ__GN_PTHREAD_LOCK_LEAVE,
++      VG_USERREQ__GN_PTHREAD_UNLOCK_ENTER,
++      VG_USERREQ__GN_PTHREAD_UNLOCK_LEAVE,
++      VG_USERREQ__GN_PTHREAD_BARRIER_ENTER,
++      VG_USERREQ__GN_PTHREAD_BARRIER_LEAVE,
++      VG_USERREQ__GN_PTHREAD_CONDWAIT_ENTER,
++      VG_USERREQ__GN_PTHREAD_CONDWAIT_LEAVE,
++      VG_USERREQ__GN_PTHREAD_CONDSIG_ENTER,
++      VG_USERREQ__GN_PTHREAD_CONDSIG_LEAVE,
++      VG_USERREQ__GN_PTHREAD_CONDBROAD_ENTER,
++      VG_USERREQ__GN_PTHREAD_CONDBROAD_LEAVE,
++      VG_USERREQ__GN_PTHREAD_SPINLOCK_ENTER,
++      VG_USERREQ__GN_PTHREAD_SPINLOCK_LEAVE,
++      VG_USERREQ__GN_PTHREAD_SPINUNLOCK_ENTER,
++      VG_USERREQ__GN_PTHREAD_SPINUNLOCK_LEAVE,
++
++      VG_USERREQ__GN_GOMP_LOCK_ENTER,
++      VG_USERREQ__GN_GOMP_LOCK_LEAVE,
++      VG_USERREQ__GN_GOMP_UNLOCK_ENTER,
++      VG_USERREQ__GN_GOMP_UNLOCK_LEAVE,
++      VG_USERREQ__GN_GOMP_BARRIER_ENTER,
++      VG_USERREQ__GN_GOMP_BARRIER_LEAVE,
++      VG_USERREQ__GN_GOMP_ATOMICSTART_ENTER,
++      VG_USERREQ__GN_GOMP_ATOMICSTART_LEAVE,
++      VG_USERREQ__GN_GOMP_ATOMICEND_ENTER,
++      VG_USERREQ__GN_GOMP_ATOMICEND_LEAVE,
++      VG_USERREQ__GN_GOMP_CRITSTART_ENTER,
++      VG_USERREQ__GN_GOMP_CRITSTART_LEAVE,
++      VG_USERREQ__GN_GOMP_CRITEND_ENTER,
++      VG_USERREQ__GN_GOMP_CRITEND_LEAVE,
++      VG_USERREQ__GN_GOMP_CRITNAMESTART_ENTER,
++      VG_USERREQ__GN_GOMP_CRITNAMESTART_LEAVE,
++      VG_USERREQ__GN_GOMP_CRITNAMEEND_ENTER,
++      VG_USERREQ__GN_GOMP_CRITNAMEEND_LEAVE,
++      VG_USERREQ__GN_GOMP_SETLOCK_ENTER,
++      VG_USERREQ__GN_GOMP_SETLOCK_LEAVE,
++      VG_USERREQ__GN_GOMP_UNSETLOCK_ENTER,
++      VG_USERREQ__GN_GOMP_UNSETLOCK_LEAVE,
++      VG_USERREQ__GN_GOMP_TEAMBARRIERWAIT_ENTER,
++      VG_USERREQ__GN_GOMP_TEAMBARRIERWAIT_LEAVE,
++      VG_USERREQ__GN_GOMP_TEAMBARRIERWAITFINAL_ENTER,
++      VG_USERREQ__GN_GOMP_TEAMBARRIERWAITFINAL_LEAVE
++   } Vg_GengrindClientRequest;
++
++
++/* For future use */
++#define CALLGRIND_TOGGLE_COLLECT                                \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__TOGGLE_COLLECT,   \
++                                  0, 0, 0, 0, 0)
++/* For future use */
++#define CALLGRIND_START_INSTRUMENTATION                              \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__START_INSTRUMENTATION, \
++                                  0, 0, 0, 0, 0)
++
++/* For future use */
++#define CALLGRIND_STOP_INSTRUMENTATION                               \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__STOP_INSTRUMENTATION,  \
++                                  0, 0, 0, 0, 0)
++
++/*---------------------------------*/
++/*---  Synchronization capture  ---*/
++/*---------------------------------*/
++#define GN_PTHREAD_CREATE_ENTER(thr) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTHREAD_CREATE_ENTER,     \
++                                  thr, 0, 0, 0, 0)
++#define GN_PTHREAD_CREATE_LEAVE(thr) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTHREAD_CREATE_LEAVE,     \
++                                  thr, 0, 0, 0, 0)
++
++
++#define GN_PTHREAD_JOIN_ENTER(thr) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTHREAD_JOIN_ENTER,     \
++                                  thr, 0, 0, 0, 0)
++#define GN_PTHREAD_JOIN_LEAVE(thr) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTHREAD_JOIN_LEAVE,     \
++                                  thr, 0, 0, 0, 0)
++
++
++#define GN_PTHREAD_LOCK_ENTER(mut) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTHREAD_LOCK_ENTER,     \
++                                  mut, 0, 0, 0, 0)
++#define GN_PTHREAD_LOCK_LEAVE(mut) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTHREAD_LOCK_LEAVE,     \
++                                  mut, 0, 0, 0, 0)
++
++
++#define GN_PTHREAD_UNLOCK_ENTER(mut) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTHREAD_UNLOCK_ENTER,     \
++                                  mut, 0, 0, 0, 0)
++#define GN_PTHREAD_UNLOCK_LEAVE(mut) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTHREAD_UNLOCK_LEAVE,     \
++                                  mut, 0, 0, 0, 0)
++
++
++#define GN_PTHREAD_BARRIER_ENTER(bar) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTHREAD_BARRIER_ENTER,     \
++                                  bar, 0, 0, 0, 0)
++#define GN_PTHREAD_BARRIER_LEAVE(bar) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTHREAD_BARRIER_LEAVE,     \
++                                  bar, 0, 0, 0, 0)
++
++
++#define GN_PTHREAD_CONDWAIT_ENTER(cond, mtx) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTHREAD_CONDWAIT_ENTER,     \
++                                  cond, mtx, 0, 0, 0)
++#define GN_PTHREAD_CONDWAIT_LEAVE(cond, mtx) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTHREAD_CONDWAIT_LEAVE,     \
++                                  cond, mtx, 0, 0, 0)
++
++
++#define GN_PTHREAD_CONDSIG_ENTER(cond) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTHREAD_CONDSIG_ENTER,     \
++                                  cond, 0, 0, 0, 0)
++#define GN_PTHREAD_CONDSIG_LEAVE(cond) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTHREAD_CONDSIG_LEAVE,     \
++                                  cond, 0, 0, 0, 0)
++
++
++#define GN_PTHREAD_CONDBROAD_ENTER(cond) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTHREAD_CONDBROAD_ENTER,     \
++                                  cond, 0, 0, 0, 0)
++#define GN_PTHREAD_CONDBROAD_LEAVE(cond) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTHREAD_CONDBROAD_LEAVE,     \
++                                  cond, 0, 0, 0, 0)
++
++
++#define GN_PTHREAD_SPINLOCK_ENTER(lock) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTHREAD_SPINLOCK_ENTER,     \
++                                  lock, 0, 0, 0, 0)
++#define GN_PTHREAD_SPINLOCK_LEAVE(lock) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTHREAD_SPINLOCK_LEAVE,     \
++                                  lock, 0, 0, 0, 0)
++
++
++#define GN_PTHREAD_SPINUNLOCK_ENTER(lock) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTHREAD_SPINUNLOCK_ENTER,     \
++                                  lock, 0, 0, 0, 0)
++#define GN_PTHREAD_SPINUNLOCK_LEAVE(lock) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTHREAD_SPINUNLOCK_LEAVE,     \
++                                  lock, 0, 0, 0, 0)
++
++
++#define GN_GOMP_LOCK_ENTER(mutex) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_LOCK_ENTER,     \
++                                  mutex, 0, 0, 0, 0)
++#define GN_GOMP_LOCK_LEAVE(mutex) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_LOCK_LEAVE,     \
++                                  mutex, 0, 0, 0, 0)
++
++
++#define GN_GOMP_UNLOCK_ENTER(mutex) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_UNLOCK_ENTER,     \
++                                  mutex, 0, 0, 0, 0)
++#define GN_GOMP_UNLOCK_LEAVE(mutex) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_UNLOCK_LEAVE,     \
++                                  mutex, 0, 0, 0, 0)
++
++
++#define GN_GOMP_BARRIER_ENTER(bar) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_BARRIER_ENTER,     \
++                                  bar, 0, 0, 0, 0)
++#define GN_GOMP_BARRIER_LEAVE(bar) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_BARRIER_LEAVE,     \
++                                  bar, 0, 0, 0, 0)
++
++
++#define GN_GOMP_ATOMICSTART_ENTER(lock) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_ATOMICSTART_ENTER,     \
++                                  lock, 0, 0, 0, 0)
++#define GN_GOMP_ATOMICSTART_LEAVE(lock) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_ATOMICSTART_LEAVE,     \
++                                  lock, 0, 0, 0, 0)
++
++
++#define GN_GOMP_ATOMICEND_ENTER(lock) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_ATOMICEND_ENTER,     \
++                                  lock, 0, 0, 0, 0)
++#define GN_GOMP_ATOMICEND_LEAVE(lock) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_ATOMICEND_LEAVE,     \
++                                  lock, 0, 0, 0, 0)
++
++
++#define GN_GOMP_CRITSTART_ENTER(lock) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_CRITSTART_ENTER,     \
++                                  lock, 0, 0, 0, 0)
++#define GN_GOMP_CRITSTART_LEAVE(lock) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_CRITSTART_LEAVE,     \
++                                  lock, 0, 0, 0, 0)
++
++
++#define GN_GOMP_CRITEND_ENTER(lock) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_CRITEND_ENTER,     \
++                                  lock, 0, 0, 0, 0)
++#define GN_GOMP_CRITEND_LEAVE(lock) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_CRITEND_LEAVE,     \
++                                  lock, 0, 0, 0, 0)
++
++
++#define GN_GOMP_CRITNAMESTART_ENTER(lock) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_CRITNAMESTART_ENTER,     \
++                                  lock, 0, 0, 0, 0)
++#define GN_GOMP_CRITNAMESTART_LEAVE(lock) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_CRITNAMESTART_LEAVE,     \
++                                  lock, 0, 0, 0, 0)
++
++
++#define GN_GOMP_CRITNAMEEND_ENTER(lock) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_CRITNAMEEND_ENTER,     \
++                                  lock, 0, 0, 0, 0)
++#define GN_GOMP_CRITNAMEEND_LEAVE(lock) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_CRITNAMEEND_LEAVE,     \
++                                  lock, 0, 0, 0, 0)
++
++
++#define GN_GOMP_SETLOCK_ENTER(lock) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_SETLOCK_ENTER,     \
++                                  lock, 0, 0, 0, 0)
++#define GN_GOMP_SETLOCK_LEAVE(lock) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_SETLOCK_LEAVE,     \
++                                  lock, 0, 0, 0, 0)
++
++
++#define GN_GOMP_UNSETLOCK_ENTER(lock) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_UNSETLOCK_ENTER,     \
++                                  lock, 0, 0, 0, 0)
++#define GN_GOMP_UNSETLOCK_LEAVE(lock) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_UNSETLOCK_LEAVE,     \
++                                  lock, 0, 0, 0, 0)
++
++
++#define GN_GOMP_TEAMBARRIERWAIT_ENTER(bar) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_TEAMBARRIERWAIT_ENTER,     \
++                                  bar, 0, 0, 0, 0)
++#define GN_GOMP_TEAMBARRIERWAIT_LEAVE(bar) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_TEAMBARRIERWAIT_LEAVE,     \
++                                  bar, 0, 0, 0, 0)
++
++
++#define GN_GOMP_TEAMBARRIERWAITFINAL_ENTER(bar) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_TEAMBARRIERWAITFINAL_ENTER,     \
++                                  bar, 0, 0, 0, 0)
++#define GN_GOMP_TEAMBARRIERWAITFINAL_LEAVE(bar) \
++  VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_GOMP_TEAMBARRIERWAITFINAL_LEAVE,     \
++                                  bar, 0, 0, 0, 0)
++
++#endif
+diff --git a/gengrind/gn_debug.c b/gengrind/gn_debug.c
+new file mode 100644
+index 000000000..9c5ca3df1
+--- /dev/null
++++ b/gengrind/gn_debug.c
+@@ -0,0 +1,81 @@
++#include "gn_debug.h"
++#include "gn_bb.h"
++
++static ULong bbWritten = 0;
++
++void GN_(printBBno)(void)
++{
++    if (bbWritten != GN_(bbExecutions)) {
++        /* only write BB once, if multiple debug calls are made */
++        bbWritten = GN_(bbExecutions);
++        VG_(printf)("BB# %llu\n", GN_(bbExecutions));
++    }
++}
++
++
++void GN_(printTabs)(UInt tabs)
++{
++    for (UInt i=0; i<tabs; ++i)
++        VG_(printf)("\t");
++}
++
++
++void GN_(printBBInfo)(BBInfo *bb)
++{
++    VG_(printf)("BBInfo %p\n", bb);
++    GN_(printTabs)(1);
++    VG_(printf)("Total Events: %d\n", bb->eventsTotal);
++}
++
++
++void GN_(sprint_SyncType)(HChar *str, SyncType type)
++{
++    switch(type) {
++    case SGLPRIM_SYNC_UNDEF:
++        VG_(sprintf)(str, "Undefined");
++        break;
++    case SGLPRIM_SYNC_CREATE:
++        VG_(sprintf)(str, "Spawn");
++        break;
++    case SGLPRIM_SYNC_EXIT:
++        VG_(sprintf)(str, "Exit");
++        break;
++    case SGLPRIM_SYNC_JOIN:
++        VG_(sprintf)(str, "Join");
++        break;
++    case SGLPRIM_SYNC_BARRIER:
++        VG_(sprintf)(str, "BarrieR");
++        break;
++    case SGLPRIM_SYNC_SYNC:
++        VG_(sprintf)(str, "Sync (generalized)");
++        break;
++    case SGLPRIM_SYNC_SWAP:
++        VG_(sprintf)(str, "Swap");
++        break;
++    case SGLPRIM_SYNC_LOCK:
++        VG_(sprintf)(str, "Lock");
++        break;
++    case SGLPRIM_SYNC_UNLOCK:
++        VG_(sprintf)(str, "Unlock");
++        break;
++    case SGLPRIM_SYNC_CONDWAIT:
++        VG_(sprintf)(str, "Conditional Wait");
++        break;
++    case SGLPRIM_SYNC_CONDSIG:
++        VG_(sprintf)(str, "Conditional Signal");
++        break;
++    case SGLPRIM_SYNC_CONDBROAD:
++        VG_(sprintf)(str, "Conditional Broadcast");
++        break;
++    case SGLPRIM_SYNC_SPINLOCK:
++        VG_(sprintf)(str, "SpinLock");
++        break;
++    case SGLPRIM_SYNC_SPINUNLOCK:
++        VG_(sprintf)(str, "SpinUnlock");
++        break;
++    default:
++        VG_(sprintf)(str, "INVALID");
++        tl_assert(0);
++        break;
++    }
++}
+diff --git a/gengrind/gn_debug.h b/gengrind/gn_debug.h
+new file mode 100644
+index 000000000..820de608e
+--- /dev/null
++++ b/gengrind/gn_debug.h
+@@ -0,0 +1,39 @@
++#ifndef GN_DEBUG_H
++#define GN_DEBUG_H
++
++#include "gn.h"
++#include "gn_clo.h"
++
++void GN_(printTabs)(UInt tabs);
++void GN_(printBBno)(void);
++void GN_(sprint_SyncType)(HChar *str, SyncType type);
++
++//-------------------------------------------------------------------------------------------------
++/** Debug macros from Callgrind **/
++
++#if GN_ENABLE_DEBUG
++
++#define GN_DEBUGIF(x) \
++  if (UNLIKELY( (GN_(clo).verbose > x)))
++
++#define GN_DEBUG(x,format,args...)   \
++    GN_DEBUGIF(x) {                  \
++      GN_(printBBno)();	      \
++      VG_(printf)(format,##args);     \
++    }
++
++#define GN_ASSERT(cond)              \
++    if (UNLIKELY(!(cond))) {          \
++      GN_(printBBno)();	      \
++      tl_assert(cond);                \
++     }
++
++#else
++#define GN_DEBUGIF(x) if (0)
++#define GN_DEBUG(x...) {}
++#define GN_ASSERT(cond) tl_assert(cond);
++#endif
++
++
++
++#endif
+diff --git a/gengrind/gn_events.c b/gengrind/gn_events.c
+new file mode 100644
+index 000000000..422d965e3
+--- /dev/null
++++ b/gengrind/gn_events.c
+@@ -0,0 +1,936 @@
++#include "gn.h"
++#include "gn_events.h"
++#include "gn_ipc.h"
++#include "gn_clo.h"
++#include "gn_callstack.h"
++#include "gn_threads.h"
++#include "gn_bb.h"
++#include "gn_debug.h"
++
++#define UNUSED_SYNC_DATA 0
++#define MAX_SYNC_DATA 2
++
++//-------------------------------------------------------------------------------------------------
++/* Events are added to a temporary buffer at instrumentation-time,
++ * in the order they are seen in the basic block.
++ * When an 'exit' IR stmt is found, all added events up to that point
++ * are flushed(instrumented) into the basic block, before the 'exit'.
++ */
++
++Bool GN_(EventGenerationEnabled);
++
++//-------------------------------------------------------------------------------------------------
++/** Global BB event tracking definitions **/
++GN_(EvVariant) GN_(EvBuffer)[GN_MAX_EVENTS_PER_BB];
++GnJumpKind GN_(EvJumps)[GN_MAX_JUMPS_PER_BB];
++
++
++//-------------------------------------------------------------------------------------------------
++/** Events added at instrumentation-time **/
++
++void GN_(add_TrackSyncs)(BBState *bbState)
++{
++    /* This checks if the current running thread was just swapped.
++     * Other sync events, like thread spawn/join/lock etc, are detected
++     * via thread library API wrapping, via Valgrind's client request mechanism */
++
++    IRExpr **argv = mkIRExprVec_0();
++    IRDirty *di = unsafeIRDirty_0_N(0, "checkSwitchThread",
++                                    VG_(fnptr_to_fnentry)(GN_(checkSwitchThread)), argv);
++    addStmtToIRSB(bbState->nbb, IRStmt_Dirty(di));
++}
++
++
++void GN_(add_TrackFns)(BBState *bbState)
++{
++    /* Track any change in the state of the running program that is checked
++     * at the beginning of a BB, e.g. a thread context change, function entry,
++     * et al
++     *
++     * This is expected to be instrumented at the beginning of the BB */
++
++    IRExpr **argv = mkIRExprVec_1(mkIRExpr_HWord((HWord)bbState->bbInfo));
++    IRDirty *di = unsafeIRDirty_0_N(1, "trackFns",
++                                    VG_(fnptr_to_fnentry)(GN_(trackFns)), argv);
++    addStmtToIRSB(bbState->nbb, IRStmt_Dirty(di));
++}
++
++
++void GN_(addEvent_Instr)(BBState *bbState, const IRStmt *st)
++{
++    GN_DEBUG(6, "+ addEvent_Instr\n");
++
++    GN_ASSERT(st->tag == Ist_IMark);
++    if (GN_(clo).gen_instr == False)
++        return;
++
++    Addr   cia   = st->Ist.IMark.addr + st->Ist.IMark.delta;
++    UInt   isize = st->Ist.IMark.len;
++
++    // If Vex fails to decode an instruction, the size will be zero.
++    // Pretend otherwise.
++    if (isize == 0) isize = VG_MIN_INSTR_SZB;
++
++    // Sanity-check size.
++    tl_assert( (VG_MIN_INSTR_SZB <= isize && isize <= VG_MAX_INSTR_SZB)
++               || VG_CLREQ_SZB == isize );
++
++    GN_ASSERT(bbState->eventsToFlush < GN_MAX_EVENTS_PER_BB);
++    GN_(EvVariant) *ev = GN_(EvBuffer) + bbState->eventsToFlush;
++    ev->tag = GN_INSTR_EV;
++    ev->instr.type = SGLPRIM_CXT_INSTR;
++    ev->instr.id = cia;
++
++    bbState->eventsToFlush++;
++
++    GN_DEBUGIF(4) {
++        GN_(printTabs)(1);
++        VG_(printf)("Added Event: Instr - ");
++        VG_(printf)("Addr: %lu", cia);
++        VG_(printf)("\n");
++    }
++
++    GN_DEBUG(6, "- addEvent_Instr\n");
++}
++
++
++void GN_(addEvent_Compute)(BBState *bbState, const IRStmt *st)
++{
++    GN_DEBUG(6, "+ addEvent_Compute\n");
++
++    GN_ASSERT(st->tag == Ist_WrTmp);
++    if (GN_(clo).gen_comp == False)
++        return;
++
++    GN_ASSERT(bbState->eventsToFlush < GN_MAX_EVENTS_PER_BB);
++    GN_(EvVariant) *ev = GN_(EvBuffer) + bbState->eventsToFlush;
++
++    ev->tag = GN_COMPUTE_EV;
++    ev->comp.type = SGLPRIM_COMP_TYPE_UNDEF;
++    ev->comp.arity = SGLPRIM_COMP_ARITY_UNDEF;
++    ev->comp.op = SGLPRIM_COMP_OP_UNDEF;
++    ev->comp.size = 0;
++
++    IRExpr* data = st->Ist.WrTmp.data;
++    IRType type = typeOfIRExpr(bbState->nbb->tyenv, data);
++    IRExprTag arity = data->tag;
++
++    if (type > Ity_INVALID) {
++        if (type < Ity_F16) {
++            ev->comp.type = SGLPRIM_COMP_IOP;
++        }
++        else if (type < Ity_V128) {
++            ev->comp.type = SGLPRIM_COMP_FLOP;
++        }
++        else {
++            //VG_(umsg)("Unsupported SIMD event encountered\n");
++            //ppIRStmt(bbState->st); VG_(printf)("\n");
++            /* SIMD */
++        }
++    }
++
++    switch (arity) {
++    case Iex_Unop:
++        ev->comp.arity = SGLPRIM_COMP_UNARY;
++        break;
++    case Iex_Binop:
++        ev->comp.arity = SGLPRIM_COMP_BINARY;
++        break;
++    case Iex_Triop:
++        ev->comp.arity = SGLPRIM_COMP_TERNARY;
++        break;
++    case Iex_Qop:
++        ev->comp.arity = SGLPRIM_COMP_QUARTERNARY;
++        break;
++    default:
++        tl_assert(0);
++        break;
++    }
++
++    /* TODO op mappings  */
++    /* TODO size mappings */
++
++    bbState->eventsToFlush++;
++
++    GN_DEBUGIF(4) {
++        GN_(printTabs)(1);
++        VG_(printf)("Added Event: Compute - ");
++        VG_(printf)("type: %d", ev->comp.type);
++        VG_(printf)("\n");
++    }
++
++    GN_DEBUG(6, "- addEvent_Compute\n");
++}
++
++
++static void gnSetEvent_Memory(GN_(EvVariant) *ev, Bool load, IRExpr *guard,
++                              IRExpr *aexpr, UInt size)
++{
++    ev->tag = GN_MEMORY_EV;
++    ev->mem.load = load;
++    ev->mem.guard = guard;
++    ev->mem.guarded = guard == NULL ? False : True;
++    ev->mem.aexpr = aexpr;
++    ev->mem.size = size;
++
++    GN_DEBUGIF(4) {
++        GN_(printTabs)(1);
++        VG_(printf)("Added Event: Memory - ");
++        ev->mem.load ? VG_(printf)("load, ") : VG_(printf)("store, ");
++        VG_(printf)("addr: %p", aexpr);
++        VG_(printf)("\n");
++    }
++}
++
++
++void GN_(addEvent_Memory_Load)(BBState *bbState, const IRStmt *st)
++{
++    GN_DEBUG(6, "+ addEvent_Memory_Load\n");
++
++    GN_ASSERT(st->tag == Ist_WrTmp);
++    if (GN_(clo).gen_mem == False)
++        return;
++
++    GN_ASSERT(bbState->eventsToFlush < GN_MAX_EVENTS_PER_BB);
++    GN_(EvVariant) *ev = GN_(EvBuffer) + bbState->eventsToFlush;
++
++    IRExpr* data = st->Ist.WrTmp.data;
++    gnSetEvent_Memory(ev, True, NULL, data->Iex.Load.addr,
++                      sizeofIRType(data->Iex.Load.ty));
++    bbState->eventsToFlush++;
++
++    GN_DEBUG(6, "- addEvent_Memory_Load\n");
++}
++
++
++void GN_(addEvent_Memory_Store)(BBState *bbState, const IRStmt *st)
++{
++    GN_DEBUG(6, "+ addEvent_Memory_Store\n");
++
++    if (GN_(clo).gen_mem == False)
++        return;
++
++    GN_ASSERT(bbState->eventsToFlush < GN_MAX_EVENTS_PER_BB);
++    GN_(EvVariant) *ev = GN_(EvBuffer) + bbState->eventsToFlush;
++
++    IRExpr* data = st->Ist.Store.data;
++    gnSetEvent_Memory(ev, False, NULL, st->Ist.Store.addr,
++                      sizeofIRType(typeOfIRExpr(bbState->nbb->tyenv, data)));
++    bbState->eventsToFlush++;
++
++    GN_DEBUG(6, "- addEvent_Memory_Store\n");
++}
++
++
++void GN_(addEvent_Memory_Guarded_Load)(BBState *bbState, const IRStmt *st)
++{
++    GN_DEBUG(6, "+ addEvent_Memory_Guarded_Load\n");
++
++    GN_ASSERT(st->tag == Ist_LoadG);
++    if (GN_(clo).gen_mem == False)
++        return;
++
++    IRLoadG *lg = st->Ist.LoadG.details;
++    IRType res, arg;
++    typeOfIRLoadGOp(lg->cvt, &res, &arg);
++
++    GN_ASSERT(bbState->eventsToFlush < GN_MAX_EVENTS_PER_BB);
++    GN_(EvVariant) *ev = GN_(EvBuffer) + bbState->eventsToFlush;
++
++    // We'll only capture the addr if the load happens,
++    // otherwise ignore the memory event
++    gnSetEvent_Memory(ev, True, lg->guard, lg->addr,
++                      sizeofIRType(arg));
++    bbState->eventsToFlush++;
++
++    GN_DEBUG(6, "- addEvent_Memory_Guarded_Load\n");
++}
++
++
++void GN_(addEvent_Memory_Guarded_Store)(BBState *bbState, const IRStmt *st)
++{
++    GN_DEBUG(6, "+ addEvent_Memory_Guarded_Store\n");
++
++    GN_ASSERT(st->tag == Ist_StoreG);
++    if (GN_(clo).gen_mem == False)
++        return;
++
++    IRStoreG *sg = st->Ist.StoreG.details;
++
++    GN_ASSERT(bbState->eventsToFlush < GN_MAX_EVENTS_PER_BB);
++    GN_(EvVariant) *ev = GN_(EvBuffer) + bbState->eventsToFlush;
++
++    gnSetEvent_Memory(ev, False, sg->guard, sg->addr,
++                      sizeofIRType(typeOfIRExpr(bbState->nbb->tyenv, sg->data)));
++    bbState->eventsToFlush++;
++
++    GN_DEBUG(6, "- addEvent_Memory_Guarded_Store\n");
++}
++
++
++void GN_(addEvent_Dirty)(BBState *bbState, const IRStmt *st)
++{
++    /* Only memory events are generated for a Dirty IR,
++     * since that's all the info VEX provides.
++     *
++     * Dirty IR stmts are rare and for special cases,
++     * so any compute events would most likely be insignificant */
++
++    GN_DEBUG(6, "+ addEvent_Dirty\n");
++
++    GN_ASSERT(st->tag == Ist_Dirty);
++    if (GN_(clo).gen_mem == False)
++        return;
++
++    IRDirty *di = st->Ist.Dirty.details;
++
++    if (di->guard != NULL) {
++        GN_ASSERT(isIRAtom(di->guard));
++
++        IRConst *t = IRConst_U1(True);
++        Bool isGuarded = (di->guard->tag != Iex_Const ||
++                          !eqIRConst(di->guard->Iex.Const.con, t));
++
++        if (isGuarded) {
++            /* if it's guarded by anything but 'Const(True)', then return early */
++            VG_(umsg)("Unsupported Guarded Dirty Call encountered\n");
++            ppIRStmt(st); VG_(printf)("\n");
++            ppIRExpr(di->guard); VG_(printf)("\n");
++            isGuarded = True;
++            return;
++        }
++    }
++
++    if (di->mFx != Ifx_None) {
++        tl_assert(di->mAddr != NULL);
++        tl_assert(di->mSize != 0);
++        UInt datasize = di->mSize;
++        if (di->mFx == Ifx_Read || di->mFx == Ifx_Modify) {
++            GN_ASSERT(bbState->eventsToFlush < GN_MAX_EVENTS_PER_BB);
++            GN_(EvVariant) *ev = GN_(EvBuffer) + bbState->eventsToFlush;
++            gnSetEvent_Memory(ev, True, NULL, di->mAddr, datasize);
++            bbState->eventsToFlush++;
++        }
++        if (di->mFx == Ifx_Write || di->mFx == Ifx_Modify)
++            GN_ASSERT(bbState->eventsToFlush < GN_MAX_EVENTS_PER_BB);
++            GN_(EvVariant) *ev = GN_(EvBuffer) + bbState->eventsToFlush;
++            gnSetEvent_Memory(ev, False, NULL, di->mAddr, datasize);
++            bbState->eventsToFlush++;
++    }
++    else {
++        tl_assert(di->mAddr == NULL);
++        tl_assert(di->mSize == 0);
++    }
++
++    GN_DEBUGIF(4) {
++        GN_(printTabs)(1);
++        VG_(printf)("Added Event: Dirty Call\n");
++    }
++
++    GN_DEBUG(6, "- addEvent_Dirty\n");
++}
++
++
++void GN_(addEvent_CAS)(BBState *bbState, const IRStmt *st)
++{
++    /* Follow Callgrind's analysis of this event
++     * as a read, followed by a write */
++
++    // TODO send a special event?
++
++    GN_DEBUG(6, "+ addEvent_CAS\n");
++
++    GN_ASSERT(st->tag == Ist_CAS);
++    if (GN_(clo).gen_mem == False)
++        return;
++
++    IRCAS *cas = st->Ist.CAS.details;
++    UInt datasize = sizeofIRType(typeOfIRExpr(bbState->nbb->tyenv, cas->dataLo));
++    if (cas->dataHi != NULL)
++        datasize *= 2; /* since this is a doubleword-cas */
++
++    GN_ASSERT(bbState->eventsToFlush < GN_MAX_EVENTS_PER_BB);
++    GN_(EvVariant) *ev = GN_(EvBuffer) + bbState->eventsToFlush;
++
++    gnSetEvent_Memory(ev, True, NULL, cas->addr, datasize);
++    bbState->eventsToFlush++;
++
++    ev = GN_(EvBuffer) + bbState->eventsToFlush;
++    gnSetEvent_Memory(ev, False, NULL, cas->addr, datasize);
++
++    bbState->eventsToFlush++;
++
++    GN_DEBUGIF(4) {
++        GN_(printTabs)(1);
++        VG_(printf)("Added Event: CAS\n");
++    }
++
++    GN_DEBUG(6, "- addEvent_CAS\n");
++}
++
++
++void GN_(addEvent_LLSC)(BBState *bbState, const IRStmt *st)
++{
++    // TODO(someday) send a special event?
++    //
++    GN_DEBUG(6, "+ addEvent_LLSC\n");
++
++    GN_ASSERT(st->tag == Ist_LLSC);
++    if (GN_(clo).gen_mem == False)
++        return;
++
++    if (st->Ist.LLSC.storedata == NULL) {
++        /* LL */
++        UInt datasize =  sizeofIRType(typeOfIRTemp(bbState->nbb->tyenv, st->Ist.LLSC.result));
++        GN_(EvVariant) *ev = GN_(EvBuffer) + bbState->eventsToFlush;
++        gnSetEvent_Memory(ev, True, NULL, st->Ist.LLSC.addr, datasize);
++        bbState->eventsToFlush++;
++    }
++    else {
++        /* SC */
++        UInt datasize =  sizeofIRType(typeOfIRExpr(bbState->nbb->tyenv, st->Ist.LLSC.storedata));
++        GN_(EvVariant) *ev = GN_(EvBuffer) + bbState->eventsToFlush;
++        gnSetEvent_Memory(ev, False, NULL, st->Ist.LLSC.addr, datasize);
++        bbState->eventsToFlush++;
++    }
++
++    GN_DEBUGIF(4) {
++        GN_(printTabs)(1);
++        VG_(printf)("Added Event: LL/SC\n");
++    }
++
++    GN_DEBUG(6, "- addEvent_LLSC\n");
++}
++
++
++static void gnAddExit(BBState *bbState, IRJumpKind jk)
++{
++    GnJumpKind jmp;
++    switch (jk) {
++        /* N.B. empirically it looks like Ijk_Call/Ret are rarely,
++         * if ever found, at least in amd64 */
++    case Ijk_Boring:
++        jmp = jk_Jump;
++        break;
++    case Ijk_Call:
++        jmp = jk_Call;
++        break;
++    case Ijk_Ret:
++        jmp = jk_Return;
++        break;
++    default:
++        /* other types may be e.g. client requests, signals, et al
++         * and are not recorded in the BB metadata */
++        jmp = jk_Other;
++        break;
++    }
++
++    /* Hold a running list of jumps for this BB (during instrumentation-time)
++     * in a temporary global buffer before assigning to the BB metadata at the
++     * end of the BB instrumentation */
++    GN_(EvJumps)[bbState->bbInfo->jmpCount++] = jmp;
++
++    GN_DEBUGIF(4) {
++        GN_(printTabs)(1);
++        VG_(printf)("Added Event: Exit - %s:%d\n",
++                    GN_(getJumpStr)(jmp, False), bbState->bbInfo->jmpCount);
++    }
++}
++
++
++void GN_(addEvent_Exit)(BBState *bbState, const IRStmt *st)
++{
++    GN_DEBUG(6, "+ addEvent_Exit\n");
++
++    GN_ASSERT(st->tag == Ist_Exit);
++
++    if (GN_(clo).gen_fn == False)
++        return;
++
++    gnAddExit(bbState, st->Ist.Exit.jk);
++
++    GN_DEBUG(6, "- addEvent_Exit\n");
++}
++
++
++static void addEvent_BBEnd_jmps(BBState *bbState)
++{
++    GN_ASSERT(GN_(clo).gen_fn == True);
++
++    gnAddExit(bbState, bbState->nbb->jumpkind);
++
++    /* all exits */
++    GN_ASSERT(bbState->bbInfo != NULL && bbState->bbInfo->jmps == NULL);
++    bbState->bbInfo->jmps = VG_(malloc)("gn.events.jmps.1",
++                                        bbState->bbInfo->jmpCount * sizeof(GnJumpKind));
++
++    /* update the BBInfo now that we know about all exits */
++    for (UInt i=0; i<bbState->bbInfo->jmpCount; ++i)
++        bbState->bbInfo->jmps[i] = GN_(EvJumps)[i];
++}
++
++
++void GN_(addEvent_BBEnd)(BBState *bbState)
++{
++    /* Update BB metadata with any outstanding state gathered
++     * during instrumentation phase */
++
++    if (GN_(clo).gen_fn == True)
++        addEvent_BBEnd_jmps(bbState);
++}
++
++
++//-------------------------------------------------------------------------------------------------
++/** Instrumentation for events **/
++
++static void gnReserveEventsInBuffer(IRSB *nbb, IRType tyW, UInt eventsToFlush)
++{
++    /* check if there's enough space in the event buffer */
++
++    /* tmp1 <- GN_(currEv) */
++    IRTemp currBufPtrTmp = newIRTemp(nbb->tyenv, tyW);
++    IRExpr *currBufPtr = mkIRExpr_HWord((HWord)&GN_(currEv));
++    addStmtToIRSB(nbb,
++                  IRStmt_WrTmp(currBufPtrTmp,
++                               IRExpr_Load(ENDNESS, tyW,
++                                           currBufPtr)));
++
++    /* tmp2 <- GN_(endEv) */
++    IRTemp endBufPtrTmp = newIRTemp(nbb->tyenv, tyW);
++    IRExpr *endBufPtr = mkIRExpr_HWord((HWord)&GN_(endEv));
++    addStmtToIRSB(nbb,
++                  IRStmt_WrTmp(endBufPtrTmp,
++                               IRExpr_Load(ENDNESS, tyW,
++                                           endBufPtr)));
++
++    /* tmp3 <- size of events */
++    UInt eventsBytes = eventsToFlush * sizeof(SglEvVariant);
++    IRTemp eventsTmp = newIRTemp(nbb->tyenv, tyW);
++    addStmtToIRSB(nbb,
++                  IRStmt_WrTmp(eventsTmp,
++                               IRExpr_Const(IRConst_U64(eventsBytes))));
++
++    /* tmp4 = tmp1 + tmp3 */
++    IRTemp neededTmp = newIRTemp(nbb->tyenv, tyW);
++    IRExpr *calcNeeded = IRExpr_Binop(IOP_ADD_PTR,
++                                      IRExpr_RdTmp(currBufPtrTmp),
++                                      IRExpr_RdTmp(eventsTmp));
++    addStmtToIRSB(nbb, IRStmt_WrTmp(neededTmp, calcNeeded));
++
++    /* tmp5 = tmp2 < tmp4 */
++    IRTemp cmpTmp = newIRTemp(nbb->tyenv, Ity_I1);
++    IRExpr *cmp = IRExpr_Binop(IOP_CMPLT_PTR,
++                               IRExpr_RdTmp(endBufPtrTmp),
++                               IRExpr_RdTmp(neededTmp));
++    addStmtToIRSB(nbb, IRStmt_WrTmp(cmpTmp, cmp));
++
++    /* request new buffer if we ran out of events */
++    IRDirty *di = emptyIRDirty();
++    di->cee = mkIRCallee(0, "ipc.setNextBuffer",
++                         VG_(fnptr_to_fnentry)(GN_(flushCurrAndSetNextBuffer)));
++    di->guard = IRExpr_RdTmp(cmpTmp);
++    di->args = mkIRExprVec_0();
++    di->tmp = IRTemp_INVALID;
++    di->nFxState = 0;
++    di->mFx = Ifx_None;
++    di->mAddr = NULL;
++    di->mSize = 0;
++    addStmtToIRSB(nbb, IRStmt_Dirty(di));
++}
++
++
++static IRExpr* gnIRConst(IRType type, UInt val)
++{
++    switch (type) {
++    case Ity_I8:
++        return IRExpr_Const(IRConst_U8(val));
++        break;
++    case Ity_I16:
++        return IRExpr_Const(IRConst_U16(val));
++        break;
++    case Ity_I32:
++        return IRExpr_Const(IRConst_U32(val));
++        break;
++    case Ity_I64:
++        return IRExpr_Const(IRConst_U64(val));
++        break;
++    default:
++        tl_assert(0);
++    }
++}
++
++
++static IRTemp incrSlot(IRSB *bb, IRTemp oldSlotTmp, IRExpr *slotSize, IRType tyW)
++{
++    /* increment event slot
++     * VEX IR is SSA, so we need to get a new temporary */
++    IRTemp slotTmp = newIRTemp(bb->tyenv, tyW);
++    addStmtToIRSB(bb,
++                  IRStmt_WrTmp(slotTmp,
++                               IRExpr_Binop(IOP_ADD_PTR,
++                                            IRExpr_RdTmp(oldSlotTmp), slotSize)));
++    return slotTmp;
++}
++
++
++#define GN_STORE_CONST_TO_OFFSET(bb, slot, val, type, member) {\
++        IRTemp tmp = newIRTemp(bb->tyenv, IRTYPE_PTR);\
++        IRExpr *offsetExpr = mkIRExpr_HWord((HWord)offsetof(type, member));\
++        addStmtToIRSB(bb,\
++                      IRStmt_WrTmp(tmp,\
++                                   IRExpr_Binop(IOP_ADD_PTR,\
++                                                IRExpr_RdTmp(slot), offsetExpr)));\
++        IRType itype = integerIRTypeOfSize(MEMBER_SIZE(type, member));\
++        addStmtToIRSB(bb,\
++                      IRStmt_Store(ENDNESS,\
++                                   IRExpr_RdTmp(tmp),\
++                                   gnIRConst(itype, val)));\
++    }
++
++#define GN_STORE_EXPR_TO_OFFSET(bb, slot, expr, type, member) {\
++        IRTemp tmp = newIRTemp(bb->tyenv, IRTYPE_PTR);\
++        IRExpr *offsetExpr = mkIRExpr_HWord((HWord)offsetof(type, member));\
++        addStmtToIRSB(bb,\
++                      IRStmt_WrTmp(tmp,\
++                                   IRExpr_Binop(IOP_ADD_PTR,\
++                                                IRExpr_RdTmp(slot), offsetExpr)));\
++        addStmtToIRSB(bb,\
++                      IRStmt_Store(ENDNESS,\
++                                   IRExpr_RdTmp(tmp),\
++                                   expr));\
++    }
++
++static IRTemp gnInstrumentEvent_Instr(IRSB *bb, GN_(InstrEvent) *ev,
++                                      IRTemp slot, IRExpr *slotSize, IRType tyW)
++{
++    /* slot.tag <- instr tag */
++    GN_STORE_CONST_TO_OFFSET(bb, slot, SGL_CXT_TAG, SglEvVariant, tag);
++
++    /* slot.cxt.type <- instr */
++    GN_STORE_CONST_TO_OFFSET(bb, slot, SGLPRIM_CXT_INSTR, SglEvVariant, cxt.type);
++
++    /* slot.cxt.id <- iaddr */
++    GN_STORE_CONST_TO_OFFSET(bb, slot, ev->id, SglEvVariant, cxt.id);
++
++    return incrSlot(bb, slot, slotSize, tyW);
++}
++
++
++static IRTemp gnInstrumentEvent_Compute(IRSB *bb, GN_(ComputeEvent) *ev,
++                                        IRTemp slot, IRExpr *slotSize, IRType tyW)
++{
++    /* slot.tag <- comp tag */
++    GN_STORE_CONST_TO_OFFSET(bb, slot, SGL_COMP_TAG, SglEvVariant, tag);
++
++    /* slot.comp.type <- iop/flop/simd */
++    GN_STORE_CONST_TO_OFFSET(bb, slot, ev->type, SglEvVariant, comp.type);
++
++    /* slot.comp.arity <- comp arity */
++    GN_STORE_CONST_TO_OFFSET(bb, slot, ev->arity, SglEvVariant, comp.arity);
++
++    return incrSlot(bb, slot, slotSize, tyW);
++}
++
++
++static IRTemp gnInstrumentEvent_Memory(IRSB *bb, GN_(MemoryEvent) *ev,
++                                       IRTemp slot, IRExpr *slotSize, IRType tyW)
++{
++    /* slot.tag <- mem tag */
++    GN_STORE_CONST_TO_OFFSET(bb, slot, SGL_MEM_TAG, SglEvVariant, tag);
++
++    /* slot.mem.type <- load/store */
++    GN_STORE_CONST_TO_OFFSET(bb, slot, ev->load ? SGLPRIM_MEM_LOAD : SGLPRIM_MEM_STORE,
++                             SglEvVariant, mem.type);
++
++    /* slot.mem.size <- access size */
++    GN_STORE_CONST_TO_OFFSET(bb, slot, ev->size, SglEvVariant, mem.size);
++
++    /* slot.mem.addr <- aexpr */
++    GN_STORE_EXPR_TO_OFFSET(bb, slot, ev->aexpr, SglEvVariant, mem.begin_addr);
++
++    IRTemp newSlot;
++
++    if (ev->guarded == True) {
++        /* only increment the slot if (guard == True) */
++        newSlot = newIRTemp(bb->tyenv, tyW);
++        IRExpr *ite = IRExpr_ITE(ev->guard,
++                                 IRExpr_Binop(IOP_ADD_PTR, IRExpr_RdTmp(slot), slotSize),
++                                 IRExpr_RdTmp(slot));
++        addStmtToIRSB(bb,
++                      IRStmt_WrTmp(newSlot, ite));
++    }
++    else {
++        newSlot = incrSlot(bb, slot, slotSize, tyW);
++    }
++
++    return newSlot;
++}
++
++
++static void gnInstrument_JmpsPassed(IRSB *bb, Int jmp)
++{
++    /* GN_(lastJmpsPassed) = jmp */
++    GN_ASSERT(sizeof(GN_(lastJmpsPassed)) == 4);
++    IRExpr *jmpExpr = IRExpr_Const(IRConst_U32(jmp));
++    IRExpr *addr = mkIRExpr_HWord((HWord)&GN_(lastJmpsPassed));
++    addStmtToIRSB(bb,
++                  IRStmt_Store(ENDNESS, addr, jmpExpr));
++}
++
++
++static void gnInstrument_skipIfEventGenDisabled(IRSB *bb, IRConst *dst, IRJumpKind ijk)
++{
++    if (!(GN_(clo).gen_sync == True ||
++          GN_(clo).start_collect_func != NULL ||
++          GN_(clo).stop_collect_func != NULL))
++        return;
++
++    GN_DEBUGIF(6) {
++        HChar jstr[16];
++        switch(ijk) {
++        case Ijk_Ret:
++            VG_(sprintf)(jstr, "Return");
++            break;
++        case Ijk_Call:
++            VG_(sprintf)(jstr, "Call");
++            break;
++        case Ijk_Boring:
++            VG_(sprintf)(jstr, "Boring");
++            break;
++        default:
++            VG_(sprintf)(jstr, "Other");
++        }
++        VG_(printf)("SkipEventGen: Inserting Conditional %s to 0x%llX\n", jstr, dst->Ico.U64);
++    }
++
++    /* if event generation is disabled, then jump to the exit instruction */
++
++    /* assumes that a Bool is 8 bits */
++    IRTemp enabledTmp = newIRTemp(bb->tyenv, Ity_I8);
++    IRExpr *enabledLoad = IRExpr_Load(ENDNESS, Ity_I8,
++                                mkIRExpr_HWord((HWord)&GN_(EventGenerationEnabled)));
++    IRTemp disabledTmp = newIRTemp(bb->tyenv, Ity_I1);
++
++    /* tmp1 <- EventGenerationEnabled */
++    addStmtToIRSB(bb,
++                  IRStmt_WrTmp(enabledTmp, enabledLoad));
++
++    /* tmp2 <- (tmp1 == 0) */
++    addStmtToIRSB(bb,
++                  IRStmt_WrTmp(disabledTmp,
++                               IRExpr_Binop(Iop_CmpEQ8,
++                                            IRExpr_RdTmp(enabledTmp),
++                                            IRExpr_Const(IRConst_U8(0)))));
++
++    /* if (tmp2) then jump to next instr */
++    addStmtToIRSB(bb,
++                  IRStmt_Exit(IRExpr_RdTmp(disabledTmp),
++                              ijk, dst, OFFB_RIP));
++}
++
++
++static void gnInstrument_EventCapture(IRSB *nbb, IRType tyW, UInt eventsToFlush)
++{
++    /* make sure there's enough space in the current buffer,
++     * or get a new buffer */
++    gnReserveEventsInBuffer(nbb, tyW, eventsToFlush);
++
++    /* Initialize the event slot temporary
++     * tmp <- current event slot */
++    IRTemp slotTmp = newIRTemp(nbb->tyenv, tyW);
++    IRExpr *slotPtr = mkIRExpr_HWord((HWord)&GN_(currEv));
++    addStmtToIRSB(nbb,
++                  IRStmt_WrTmp(slotTmp,
++                               IRExpr_Load(ENDNESS, tyW,
++                                           slotPtr)));
++
++    /* now we have enough event slots in the buffer,
++     * load in the buffer pointer and flush events to buffer */
++    IRExpr *slotSize = mkIRExpr_HWord((HWord)sizeof(SglEvVariant));
++    for (UInt i=0; i<eventsToFlush; ++i) {
++        /* fill in event specific attributes and get the next slot
++         * ML: We compute the next slot in each event instrumentation
++         * because the slot does not always increment by 1, such as
++         * in a conditional memory event */
++        switch(GN_(EvBuffer)[i].tag) {
++        case GN_INSTR_EV:
++            slotTmp = gnInstrumentEvent_Instr(nbb, &GN_(EvBuffer)[i].instr,
++                                              slotTmp, slotSize, tyW);
++            break;
++        case GN_COMPUTE_EV:
++            slotTmp = gnInstrumentEvent_Compute(nbb, &GN_(EvBuffer)[i].comp,
++                                                slotTmp, slotSize, tyW);
++            break;
++        case GN_MEMORY_EV:
++            slotTmp = gnInstrumentEvent_Memory(nbb, &GN_(EvBuffer)[i].mem,
++                                               slotTmp, slotSize, tyW);
++            break;
++        default:
++            tl_assert(0);
++            break;
++        }
++    }
++
++    /* store the new buffer length */
++    addStmtToIRSB(nbb,
++                  IRStmt_Store(ENDNESS,
++                               slotPtr, IRExpr_RdTmp(slotTmp)));
++
++    /* update the buffer used var */
++    GN_ASSERT(sizeof(*GN_(usedEv)) == sizeofIRType(tyW));
++    IRTemp usedPtrTmp = newIRTemp(nbb->tyenv, tyW);
++    IRExpr *usedPtr = mkIRExpr_HWord((HWord)&GN_(usedEv));
++    addStmtToIRSB(nbb,
++                  IRStmt_WrTmp(usedPtrTmp,
++                               IRExpr_Load(ENDNESS, tyW,
++                                           usedPtr)));
++    IRTemp usedTmp = newIRTemp(nbb->tyenv, tyW);
++    addStmtToIRSB(nbb,
++                  IRStmt_WrTmp(usedTmp,
++                               IRExpr_Load(ENDNESS, tyW,
++                                           IRExpr_RdTmp(usedPtrTmp))));
++    IRTemp newUsedTmp = newIRTemp(nbb->tyenv, tyW);
++    IRExpr *eventsAdded = mkIRExpr_HWord((HWord)eventsToFlush);
++    addStmtToIRSB(nbb,
++                  IRStmt_WrTmp(newUsedTmp,
++                               IRExpr_Binop(IOP_ADD_PTR,
++                                            IRExpr_RdTmp(usedTmp), eventsAdded)));
++    addStmtToIRSB(nbb,
++                  IRStmt_Store(ENDNESS,
++                               IRExpr_RdTmp(usedPtrTmp),
++                               IRExpr_RdTmp(newUsedTmp)));
++}
++
++
++void GN_(flushEvents)(BBState *bbState, Int prev_flush, GN_(Flush) flushType)
++{
++    GN_DEBUGIF(2) {
++        GN_(printTabs)(1);
++        VG_(printf)("Flushing Events\n");
++    }
++
++    IRSB *const nbb = bbState->nbb;
++    IRSB *const obb = bbState->obb;
++
++    Int flush_from = prev_flush + 1;
++    Int flush_to;
++    IRConst *skip_dst;
++    IRJumpKind skip_jk;
++
++    switch(flushType.tag) {
++    case GN_FLUSH_EXIT_ST:
++        flush_to = flushType.exit_imark_idx;
++        skip_dst = IRCONST_PTR(obb->stmts[flushType.exit_imark_idx]->Ist.IMark.addr);
++        skip_jk = Ijk_Boring;
++        break;
++    case GN_FLUSH_BB_END:
++        flush_to = obb->stmts_used;
++        GN_ASSERT(obb->next->tag == Iex_Const);
++        skip_dst = IRCONST_PTR(obb->next->Iex.Const.con->Ico.U64);
++
++        /* ideally we would use the jumpkind from the end of the basic block
++         * (obb->jumpkind), but VEX doesn't allow us to insert exits with
++         * Ijk_Call/Ret, so we unconditionally set it to Ijk_Boring and let our
++         * callstack handler determine whether it was a Call or Return */
++        skip_jk = Ijk_Boring;
++        break;
++    default:
++        tl_assert(0);
++    }
++
++    if (flush_from == flush_to) {
++        /* Should only happen when the last statement in the BB is an exit.
++         * In that case there is no need to flush again because there are no
++         * captured events between the last side-exit and the last unconditional
++         * exit */
++        return;
++    }
++
++    /* Perform the instrumentation for the event capture flush.
++     *
++     * - insert IR from obb[begin] to obb[end] into nbb
++     * - insert conditional jump over event-capture instrumentation to skip_to
++     * - insert event capture instrumentation
++     */
++
++    for (Int i = flush_from; i < flush_to; ++i)
++        addStmtToIRSB(nbb, obb->stmts[i]);
++    gnInstrument_skipIfEventGenDisabled(nbb, skip_dst, skip_jk);
++    gnInstrument_EventCapture(nbb, bbState->hWordTy, bbState->eventsToFlush);
++
++    /* add the exit after instrumentation */
++    if (flushType.tag == GN_FLUSH_EXIT_ST)
++        addStmtToIRSB(nbb, obb->stmts[flush_to]);
++
++    /* any extra client instrumentation
++     * (anything not being sent to the event analysis frontend) */
++    if (GN_(clo).gen_fn == True)
++        gnInstrument_JmpsPassed(nbb, bbState->jmpsPassed); // set which jump this flush is at
++    bbState->jmpsPassed++;
++
++    /* reset events for next flush */
++    if (GN_(clo).bbinfo_needed == True)
++        bbState->bbInfo->eventsTotal += bbState->eventsToFlush;
++    bbState->eventsToFlush = 0;
++}
++
++
++void GN_(flush_Sync)(SyncType type, SyncID *data, UInt args)
++{
++    /* Synchronization events are flushed immediately and not queued in a buffer.
++     * Synchronization events are not generated in BB instrumentation.
++     * Instead, they are  generated at either a context switch,
++     * or a thread API call/return. */
++
++    GN_ASSERT(GN_(currEv) < GN_(endEv));
++
++    /* add event */
++    GN_ASSERT(args <= MAX_SYNC_DATA && args > 0);
++    SglEvVariant *slot = GN_(currEv);
++    slot->tag = SGL_SYNC_TAG;
++    slot->sync.type = type;
++
++    UInt i=0;
++    for (; i<args; ++i)
++        slot->sync.data[i] = data[i];
++    for (; i<MAX_SYNC_DATA; ++i)
++        slot->sync.data[i] = UNUSED_SYNC_DATA;
++
++    /* increment event slot */
++    ++GN_(currEv);
++    ++*GN_(usedEv);
++    if (GN_(currEv) == GN_(endEv))
++        GN_(flushCurrAndSetNextBuffer)();
++
++    GN_DEBUGIF(6) {
++        HChar str[16];
++        GN_(sprint_SyncType)(str, type);
++        VG_(printf)("SyncEvent: %s; SyncData0: 0x%lu; SyncData1: 0x%lu\n",
++                    str, data[0], data[1]);
++    }
++}
++
++
++void GN_(flush_FnEnter)(const HChar *fnname)
++{
++    GN_DEBUG(6, "Fn Enter: %s\n", fnname);
++}
++
++
++void GN_(flush_FnExit)(const HChar *fnname)
++{
++    GN_DEBUG(6, "Fn Exit : %s\n", fnname);
++}
++
++
++void GN_(updateEventGeneration)(void)
++{
++    if (GN_(afterStartFunc) == True &&
++            GN_(afterEndFunc) == False &&
++            GN_(isInSyncCall)() == False) {
++        GN_(EventGenerationEnabled) = True;
++    }
++    else {
++        GN_(EventGenerationEnabled) = False;
++    }
++}
+diff --git a/gengrind/gn_events.h b/gengrind/gn_events.h
+new file mode 100644
+index 000000000..8b5a2d39f
+--- /dev/null
++++ b/gengrind/gn_events.h
+@@ -0,0 +1,102 @@
++#ifndef GN_EVENTS_H
++#define GN_EVENTS_H
++
++#include "gn.h"
++#include "gn_callstack.h"
++#include "gn_jumps.h"
++
++//-------------------------------------------------------------------------------------------------
++/** Events infrastructure **/
++
++typedef struct GN_(_EvVariant) GN_(EvVariant);
++typedef struct GN_(_MemoryEvent) GN_(MemoryEvent);
++typedef SglCxtEv GN_(InstrEvent);
++typedef SglCompEv GN_(ComputeEvent);
++typedef GnJumpKind GN_(JKEvent);
++typedef struct GN_(Flush) GN_(Flush);
++
++
++enum GN_(EvTag) {
++    GN_UNDEF_EV,
++    GN_MEMORY_EV,
++    GN_COMPUTE_EV,
++    GN_INSTR_EV,
++    GN_JK_EV,
++};
++
++
++struct GN_(_MemoryEvent) {
++    IRExpr *aexpr;
++    IRExpr *guard;
++    /* TODO the alt LoadG value is ignored for now */
++    UInt size;
++    Bool guarded;
++    /* guarded == False implies guard == NULL, and vice-versa */
++    Bool load;
++};
++
++
++struct GN_(_EvVariant) {
++    enum GN_(EvTag) tag;
++    union {
++        GN_(MemoryEvent) mem;
++        GN_(ComputeEvent) comp;
++        GN_(InstrEvent) instr;
++        GN_(JKEvent) jk;
++    };
++};
++
++
++#define GN_MAX_EVENTS_PER_BB (1024)
++extern GN_(EvVariant) GN_(EvBuffer)[GN_MAX_EVENTS_PER_BB];
++/* A smaller buffer local to Valgrind
++ * Used to track per-bb events */
++
++#define GN_MAX_JUMPS_PER_BB (64)
++extern UInt GN_(EvJumpsInBB);
++extern GnJumpKind GN_(EvJumps)[GN_MAX_JUMPS_PER_BB];
++
++extern Bool GN_(EventGenerationEnabled);
++
++
++enum GN_(FlushTag) {
++    GN_FLUSH_EXIT_ST,
++    GN_FLUSH_BB_END,
++};
++
++struct GN_(Flush) {
++    enum GN_(FlushTag) tag;
++
++    Int exit_imark_idx;
++    Int exit_stmt_idx;
++    /* only valid if flush is on an Ist_Exit */
++};
++
++
++//-------------------------------------------------------------------------------------------------
++void GN_(add_TrackSyncs)(BBState *bbState);
++void GN_(flush_Sync)(SyncType type, SyncID *data, UInt args);
++
++void GN_(add_TrackFns)(BBState *bbState);
++void GN_(flush_FnExit)(const HChar *fnname);
++void GN_(flush_FnEnter)(const HChar *fnname);
++
++void GN_(addEvent_Instr)(BBState *bbState, const IRStmt *st);
++void GN_(addEvent_Compute)(BBState *bbState, const IRStmt *st);
++void GN_(addEvent_Memory_Load)(BBState *bbState, const IRStmt *st);
++void GN_(addEvent_Memory_Store)(BBState *bbState, const IRStmt *st);
++void GN_(addEvent_CAS)(BBState *bbState, const IRStmt *st);
++void GN_(addEvent_LLSC)(BBState *bbState, const IRStmt *st);
++void GN_(addEvent_Dirty)(BBState *bbState, const IRStmt *st);
++void GN_(addEvent_Exit)(BBState *bbState, const IRStmt *st);
++void GN_(addEvent_BBEnd)(BBState *bbState);
++
++void GN_(flushEvents)(BBState *bbState, Int flush_from, GN_(Flush) flushType);
++
++void GN_(updateEventGeneration)(void);
++
++void GN_(addEvent_Memory_Guarded_Load)(BBState *bbState, const IRStmt *st);
++void GN_(addEvent_Memory_Guarded_Store)(BBState *bbState, const IRStmt *st);
++/* unsupported events */
++
++#endif
+diff --git a/gengrind/gn_fn.c b/gengrind/gn_fn.c
+new file mode 100644
+index 000000000..864a82794
+--- /dev/null
++++ b/gengrind/gn_fn.c
+@@ -0,0 +1,495 @@
++/* Taken from Callgrind */
++
++#include "gn_clo.h"
++#include "gn_fn.h"
++#include "gn_bb.h"
++#include "gn_debug.h"
++
++//-------------------------------------------------------------------------------------------------
++/** Static variable definitions **/
++static ULong uniqueObjs;
++static ULong uniqueFiles;
++static ULong uniqueFns;
++static ObjNode* allObjs[N_OBJ_ENTRIES];
++
++static const HChar *anonname = "???";
++static Addr runtimeResolveAddr = 0;
++static int runtimeResolveLength = 0;
++static const HChar *runtimeResolveName = "_dl_runtime_resolve";
++/* N.B. see searchRuntimeResolve() */
++
++
++struct chunk_t { int start, len; };
++struct pattern
++{
++	// a code pattern is a list of tuples (start offset, length)
++    const HChar* name;
++    int len;
++    struct chunk_t chunk[];
++};
++
++
++
++//-------------------------------------------------------------------------------------------------
++/** Helper function definitions **/
++
++
++static inline Addr bbAddr(BBInfo *bb) { return bb->offset + bb->obj->offset; }
++
++
++#define HASH_CONSTANT (256)
++static UInt strHash(const HChar *str, UInt tableSize)
++{
++    int hash = 0;
++    for (; *str; str++)
++        hash = (HASH_CONSTANT * hash + *str) % tableSize;
++    return hash;
++}
++
++
++__attribute__((unused))    // Possibly;  depends on the platform.
++static Bool checkCode(ObjNode* obj, UChar code[], struct pattern* pat)
++{
++	/* Scan for a pattern in the code of an ELF object.
++	 * If found, return true and set runtime_resolve_{addr,length} */
++	Bool found;
++	Addr addr, end;
++	int chunk, start, len;
++
++	/* first chunk of pattern should always start at offset 0 and
++	 * have at least 3 bytes */
++	GN_ASSERT((pat->chunk[0].start == 0) && (pat->chunk[0].len >2));
++
++	end = obj->start + obj->size - pat->len;
++	addr = obj->start;
++	while(addr < end) {
++		found = (VG_(memcmp)( (void*)addr, code, pat->chunk[0].len) == 0);
++
++		if (found) {
++			chunk = 1;
++			while(1) {
++				start = pat->chunk[chunk].start;
++				len   = pat->chunk[chunk].len;
++				if (len == 0) break;
++
++				GN_ASSERT(len >2);
++
++				if (VG_(memcmp)( (void*)(addr+start), code+start, len) != 0) {
++					found = False;
++					break;
++				}
++				chunk++;
++			}
++
++			if (found) {
++				if (VG_(clo_verbosity) > 1)
++					VG_(message)(Vg_DebugMsg, "Found runtime_resolve (%s): "
++								 "%s +%#lx=%#lx, length %d\n",
++								 pat->name, obj->name + obj->last_slash_pos,
++								 addr - obj->start, addr, pat->len);
++
++				runtimeResolveAddr   = addr;
++				runtimeResolveLength = pat->len;
++				return True;
++			}
++		}
++		addr++;
++	}
++	return False;
++}
++
++
++static Bool searchRuntimeResolve(ObjNode* obj)
++{
++	/* _ld_runtime_resolve, located in ld.so, needs special handling:
++	 * The jump at end into the resolved function should not be
++	 * represented as a call (as usually done in callgrind with jumps),
++	 * but as a return + call. Otherwise, the repeated existence of
++	 * _ld_runtime_resolve in call chains will lead to huge cycles,
++	 * making the profile almost worthless.
++	 *
++	 * If ld.so is stripped, the symbol will not appear. But as this
++	 * function is handcrafted assembler, we search for it.
++	 *
++	 * We stop if the ELF object name does not seem to be the runtime linker
++	 */
++#if defined(VGP_x86_linux)
++	static UChar code[] = {
++		/* 0*/ 0x50, 0x51, 0x52, 0x8b, 0x54, 0x24, 0x10, 0x8b,
++		/* 8*/ 0x44, 0x24, 0x0c, 0xe8, 0x70, 0x01, 0x00, 0x00,
++		/*16*/ 0x5a, 0x59, 0x87, 0x04, 0x24, 0xc2, 0x08, 0x00 };
++	/* Check ranges [0-11] and [16-23] ([12-15] is an absolute address) */
++	static struct pattern pat = {
++		"x86-def", 24, {{ 0,12 }, { 16,8 }, { 24,0}} };
++
++	/* Pattern for glibc-2.8 on OpenSuse11.0 */
++	static UChar code_28[] = {
++		/* 0*/ 0x50, 0x51, 0x52, 0x8b, 0x54, 0x24, 0x10, 0x8b,
++		/* 8*/ 0x44, 0x24, 0x0c, 0xe8, 0x70, 0x01, 0x00, 0x00,
++		/*16*/ 0x5a, 0x8b, 0x0c, 0x24, 0x89, 0x04, 0x24, 0x8b,
++		/*24*/ 0x44, 0x24, 0x04, 0xc2, 0x0c, 0x00 };
++	static struct pattern pat_28 = {
++		"x86-glibc2.8", 30, {{ 0,12 }, { 16,14 }, { 30,0}} };
++
++	if (VG_(strncmp)(obj->name, "/lib/ld", 7) != 0) return False;
++	if (checkCode(obj, code, &pat)) return True;
++	if (checkCode(obj, code_28, &pat_28)) return True;
++	return False;
++#endif
++
++#if defined(VGP_ppc32_linux)
++	static UChar code[] = {
++		/* 0*/ 0x94, 0x21, 0xff, 0xc0, 0x90, 0x01, 0x00, 0x0c,
++		/* 8*/ 0x90, 0x61, 0x00, 0x10, 0x90, 0x81, 0x00, 0x14,
++		/*16*/ 0x7d, 0x83, 0x63, 0x78, 0x90, 0xa1, 0x00, 0x18,
++		/*24*/ 0x7d, 0x64, 0x5b, 0x78, 0x90, 0xc1, 0x00, 0x1c,
++		/*32*/ 0x7c, 0x08, 0x02, 0xa6, 0x90, 0xe1, 0x00, 0x20,
++		/*40*/ 0x90, 0x01, 0x00, 0x30, 0x91, 0x01, 0x00, 0x24,
++		/*48*/ 0x7c, 0x00, 0x00, 0x26, 0x91, 0x21, 0x00, 0x28,
++		/*56*/ 0x91, 0x41, 0x00, 0x2c, 0x90, 0x01, 0x00, 0x08,
++		/*64*/ 0x48, 0x00, 0x02, 0x91, 0x7c, 0x69, 0x03, 0xa6, /* at 64: bl aff0 <fixup> */
++		/*72*/ 0x80, 0x01, 0x00, 0x30, 0x81, 0x41, 0x00, 0x2c,
++		/*80*/ 0x81, 0x21, 0x00, 0x28, 0x7c, 0x08, 0x03, 0xa6,
++		/*88*/ 0x81, 0x01, 0x00, 0x24, 0x80, 0x01, 0x00, 0x08,
++		/*96*/ 0x80, 0xe1, 0x00, 0x20, 0x80, 0xc1, 0x00, 0x1c,
++		/*104*/0x7c, 0x0f, 0xf1, 0x20, 0x80, 0xa1, 0x00, 0x18,
++		/*112*/0x80, 0x81, 0x00, 0x14, 0x80, 0x61, 0x00, 0x10,
++		/*120*/0x80, 0x01, 0x00, 0x0c, 0x38, 0x21, 0x00, 0x40,
++		/*128*/0x4e, 0x80, 0x04, 0x20 };
++	static struct pattern pat = {
++		"ppc32-def", 132, {{ 0,65 }, { 68,64 }, { 132,0 }} };
++
++	if (VG_(strncmp)(obj->name, "/lib/ld", 7) != 0) return False;
++	return checkCode(obj, code, &pat);
++#endif
++
++#if defined(VGP_amd64_linux)
++	static UChar code[] = {
++		/* 0*/ 0x48, 0x83, 0xec, 0x38, 0x48, 0x89, 0x04, 0x24,
++		/* 8*/ 0x48, 0x89, 0x4c, 0x24, 0x08, 0x48, 0x89, 0x54, 0x24, 0x10,
++		/*18*/ 0x48, 0x89, 0x74, 0x24, 0x18, 0x48, 0x89, 0x7c, 0x24, 0x20,
++		/*28*/ 0x4c, 0x89, 0x44, 0x24, 0x28, 0x4c, 0x89, 0x4c, 0x24, 0x30,
++		/*38*/ 0x48, 0x8b, 0x74, 0x24, 0x40, 0x49, 0x89, 0xf3,
++		/*46*/ 0x4c, 0x01, 0xde, 0x4c, 0x01, 0xde, 0x48, 0xc1, 0xe6, 0x03,
++		/*56*/ 0x48, 0x8b, 0x7c, 0x24, 0x38, 0xe8, 0xee, 0x01, 0x00, 0x00,
++		/*66*/ 0x49, 0x89, 0xc3, 0x4c, 0x8b, 0x4c, 0x24, 0x30,
++		/*74*/ 0x4c, 0x8b, 0x44, 0x24, 0x28, 0x48, 0x8b, 0x7c, 0x24, 0x20,
++		/*84*/ 0x48, 0x8b, 0x74, 0x24, 0x18, 0x48, 0x8b, 0x54, 0x24, 0x10,
++		/*94*/ 0x48, 0x8b, 0x4c, 0x24, 0x08, 0x48, 0x8b, 0x04, 0x24,
++		/*103*/0x48, 0x83, 0xc4, 0x48, 0x41, 0xff, 0xe3 };
++	static struct pattern pat = {
++		"amd64-def", 110, {{ 0,62 }, { 66,44 }, { 110,0 }} };
++
++	if ((VG_(strncmp)(obj->name, "/lib/ld", 7) != 0) &&
++		(VG_(strncmp)(obj->name, "/lib64/ld", 9) != 0)) return False;
++	return checkCode(obj, code, &pat);
++#endif
++
++	/* For other platforms, no patterns known */
++	return False;
++}
++
++
++static ObjNode* newObjNode(DebugInfo *di, ObjNode *next)
++{
++	ObjNode *obj = VG_(malloc)("gn.file.newobjnode.1", sizeof(ObjNode));
++	obj->name = di ? VG_(strdup)("gn.file.newobjnode.2", VG_(DebugInfo_get_filename)(di))
++		: anonname;
++
++	for (UInt i=0; i<N_FILE_ENTRIES; i++) {
++		obj->files[i] = NULL;
++	}
++
++	obj->number = uniqueObjs++;
++	obj->start  = di ? VG_(DebugInfo_get_text_avma)(di) : 0;
++	obj->size   = di ? VG_(DebugInfo_get_text_size)(di) : 0;
++	obj->offset = di ? VG_(DebugInfo_get_text_bias)(di) : 0;
++	obj->next   = next;
++
++	obj->last_slash_pos = 0;
++	for (UInt i=0; obj->name[i] != '\0'; i++) {
++		if (obj->name[i] == '/')
++			obj->last_slash_pos = i+1;
++	}
++
++	if (runtimeResolveAddr == 0)
++		searchRuntimeResolve(obj);
++
++	return obj;
++}
++
++
++static inline FileNode* newFileNode(const HChar *filename, ObjNode *const obj,
++                                    FileNode *const next)
++{
++    FileNode *file = VG_(malloc)("gn.file.newfilenode.1", sizeof(FileNode));
++    file->name = VG_(strdup)("gn.file.newfilenode.2", filename);
++    for (UInt i=0; i<N_FN_ENTRIES; i++)
++        file->fns[i] = NULL;
++
++    file->number = uniqueFiles++;
++    file->obj    = obj;
++    file->next   = next;
++
++    return file;
++}
++
++
++static inline FnNode* newFnNode(const HChar *fnname, FileNode *const file,
++                                FnNode *const next)
++{
++    FnNode *fn = VG_(malloc)("gn.file.newfnnode.1", sizeof(FnNode));
++    fn->name = VG_(strdup)("gn.file.newfnnode.2", fnname);
++
++    fn->number   = uniqueFns++;
++    fn->file     = file;
++    fn->next     = next;
++
++    // TODO(soon) are these needed?
++    fn->dump_before    = False;
++    fn->dump_after     = False;
++    fn->zero_before    = False;
++    fn->toggle_collect = False;
++    fn->skip           = False;
++    fn->pop_on_jump    = False;
++    fn->is_malloc      = False;
++    fn->is_free        = False;
++    fn->is_realloc     = False;
++
++    fn->group               = 0;
++
++    return fn;
++}
++
++
++static Bool GN_(getDebugInfo)(/*IN*/  Addr instr,
++                              /*OUT*/ const HChar **dirname,
++                              /*OUT*/ const HChar **filename,
++                              /*OUT*/ const HChar **fnname,
++                              /*Optional OUT*/ DebugInfo **di)
++{
++    Bool result = True;
++    UInt lineno;
++
++    if (di)
++        *di = VG_(find_DebugInfo)(instr);
++
++    Bool foundFn = VG_(get_fnname)(instr, fnname);
++    Bool foundFileLine = VG_(get_filename_linenum)(instr, filename, dirname, &lineno);
++
++    if (!foundFn && !foundFileLine) {
++        *filename = anonname;
++        *fnname = anonname;
++        result = False;
++    }
++    else if (!foundFn && foundFileLine) {
++        *fnname = anonname;
++    }
++    else if (foundFn && !foundFileLine) {
++        *filename = anonname;
++    }
++
++    return result;
++}
++
++
++static inline const HChar* getUnknownFnName(const BBInfo *bb)
++{
++    // just use the address if no name found
++    static HChar buf[32];
++    GN_ASSERT(sizeof(Addr) == 8);
++    int p = VG_(sprintf)(buf, "%#016lx", (UWord)(bb->offset));
++    VG_(sprintf)(buf+p, "%s",
++                 (bb->sectKind == Vg_SectData) ? "[Data]" :
++                 (bb->sectKind == Vg_SectBSS)  ? " [BSS]" :
++                 (bb->sectKind == Vg_SectGOT)  ? " [GOT]" :
++                 (bb->sectKind == Vg_SectPLT)  ? " [PLT]" : "");
++    return buf;
++}
++
++
++static inline FnNode* getFnNodeInFile(FileNode *const file, const HChar *fnname)
++{
++    UInt fnnamehash = strHash(fnname, N_FN_ENTRIES);
++    FnNode *fn = file->fns[fnnamehash];
++
++    while (fn) {
++        if (VG_(strcmp)(fnname, fn->name) == 0)
++            break;
++        fn = fn->next;
++    }
++
++    if (fn == NULL) {
++        fn = newFnNode(fnname, file, file->fns[fnnamehash]);
++        file->fns[fnnamehash] = fn;
++    }
++
++    return fn;
++}
++
++
++static inline FnNode* getFnNodeInSeg(DebugInfo *const di,
++                                     const HChar *dirname,
++                                     const HChar *filename,
++                                     const HChar *fnname)
++{
++    ObjNode *obj = GN_(getObjNode)(di);
++    FileNode *file = GN_(getFileNode)(obj, dirname, filename);
++    FnNode *fn = getFnNodeInFile(file, fnname);
++
++    return fn;
++}
++
++
++//-------------------------------------------------------------------------------------------------
++/** File function definitions - External **/
++
++FileNode* GN_(getFileNode)(ObjNode *const obj,
++                           const HChar *dirname,
++                           const HChar *filename)
++{
++    /* absolute path */
++    HChar abspath[VG_(strlen)(dirname) + 1 + VG_(strlen)(filename) + 1];
++    VG_(strcpy)(abspath, dirname);
++    if (filename[0] != '\0')
++        VG_(strcat)(abspath, "/");
++    VG_(strcat)(abspath, filename);
++
++    /* hash */
++    UInt filenamehash = strHash(filename, N_FILE_ENTRIES);
++    FileNode *file = obj->files[filenamehash];
++
++    while (file) {
++        if (VG_(strcmp)(filename, file->name) == 0)
++            break;
++        file = file->next;
++    }
++
++    if (file == NULL) {
++        file = newFileNode(filename, obj, obj->files[filenamehash]);
++        obj->files[filenamehash] = file;
++    }
++
++    return file;
++}
++
++
++ObjNode* GN_(getObjNode)(DebugInfo *di)
++{
++    ObjNode *obj;
++    UInt namehash;
++    const HChar *name;
++
++    name = di ? VG_(DebugInfo_get_filename)(di) : anonname;
++    namehash = strHash(name, N_OBJ_ENTRIES);
++    obj = allObjs[namehash];
++
++    while (obj) {
++        if (VG_(strcmp)(name, obj->name) == 0)
++            break;
++        obj = obj->next;
++    }
++
++    if (obj == NULL) {
++        obj = newObjNode(di, allObjs[namehash]);
++        allObjs[namehash] = obj;
++    }
++
++    return obj;
++}
++
++
++ObjNode* GN_(getObjNodeByAddr)(Addr addr)
++{
++    ObjNode *obj;
++    DebugInfo *di;
++    PtrdiffT offset;
++
++    di = VG_(find_DebugInfo)(addr);
++    obj = GN_(getObjNode)(di);
++
++	// check if object was remapped
++	offset = di ? VG_(DebugInfo_get_text_bias)(di) : 0;
++	if (obj->offset != offset) {
++		Addr start = di ? VG_(DebugInfo_get_text_avma)(di) : 0;
++		GN_ASSERT(obj->size == (di ? VG_(DebugInfo_get_text_size)(di) : 0));
++		GN_ASSERT((PtrdiffT)(obj->start - start) == obj->offset - offset);
++		obj->offset = offset;
++		obj->start = start;
++	}
++
++	return obj;
++}
++
++
++FnNode* GN_(getFnNode)(BBInfo *bb)
++{
++    /* Return if already cached
++     * This should be the common path */
++    if (bb->fn)
++        return bb->fn;
++
++    /* Else, lookup function info in binary */
++
++    const HChar *fnname, *filename, *dirname;
++    DebugInfo *di;
++
++    /* Find debug info for function  */
++    GN_(getDebugInfo)(bbAddr(bb), &dirname, &filename, &fnname, &di);
++
++    if (VG_(strcmp)(fnname, anonname) == 0)
++        fnname = getUnknownFnName(bb); // name correction
++    else if (VG_(get_fnname_if_entry)(bbAddr(bb), &fnname))
++        bb->isFnEntry = True;
++
++    /* HACK for correct _exit:
++     * _exit is redirected to VG_(__libc_freeres_wrapper) by valgrind,
++     * so we rename it back again :-) */
++    static BBInfo *exitBB = NULL;
++    if ((VG_(strcmp)(fnname, "vgPlain___libc_freeres_wrapper") == 0) && (exitBB != NULL))
++        GN_(getDebugInfo)(bbAddr(exitBB), &dirname, &filename, &fnname, &di);
++    if ((VG_(strcmp)(fnname, "_exit") == 0) && (exitBB == NULL))
++        exitBB = bb;
++
++    /* Special handling for dynamic library resolution function */
++    if (runtimeResolveAddr &&
++        (bbAddr(bb) >= runtimeResolveAddr) &&
++        (bbAddr(bb) < runtimeResolveAddr + runtimeResolveLength)) {
++        fnname = runtimeResolveName;
++    }
++
++    /* Look up function metadata node */
++    FnNode *fn = getFnNodeInSeg(di, dirname, filename, fnname);
++
++    /* Last initialization step requiring BBInfo */
++    if (fn->initialized == False) {
++
++        if (bb->sectKind == Vg_SectPLT)
++            fn->skip = GN_(clo).skip_plt;
++
++        if (VG_(strcmp)(fn->name, runtimeResolveName) == 0)
++            fn->pop_on_jump = True;
++
++        fn->is_malloc  = (VG_(strcmp)(fn->name, "malloc") == 0);
++        fn->is_realloc = (VG_(strcmp)(fn->name, "realloc") == 0);
++        fn->is_free    = (VG_(strcmp)(fn->name, "free") == 0);
++
++        /* TODO(soon) update fn config (dump before/after, toggle collect, et al) */
++
++        fn->initialized = True;
++    }
++
++    bb->fn = fn;
++    return fn;
++}
++
++
++void GN_(initFn)()
++{
++    uniqueObjs = 0;
++    uniqueFiles = 0;
++    uniqueFns = 0;
++
++    for (UInt i=0; i<N_OBJ_ENTRIES; ++i)
++        allObjs[i] = NULL;
++}
+diff --git a/gengrind/gn_fn.h b/gengrind/gn_fn.h
+new file mode 100644
+index 000000000..03f2425ff
+--- /dev/null
++++ b/gengrind/gn_fn.h
+@@ -0,0 +1,83 @@
++/* Helpers to get info for functions from the binary,
++ * such as scanning ELF sections and debug info */
++
++#ifndef GN_FILE_H
++#define GN_FILE_H
++
++#include "gn.h"
++
++
++//-------------------------------------------------------------------------------------------------
++/** File type definitions **/
++
++/* Quite arbitrary fixed hash sizes */
++#define   N_OBJ_ENTRIES         47
++#define  N_FILE_ENTRIES         53
++#define    N_FN_ENTRIES         87
++
++struct _FileNode {
++   HChar*     name;
++   FnNode*   fns[N_FN_ENTRIES];
++   UInt       number;
++   ObjNode*  obj;
++   FileNode* next;
++};
++
++
++struct _ObjNode {
++    /* If an object is dlopened multiple times, we hope that <name> is unique;
++     * <start> and <offset> can change with each dlopen, and <start> is
++     * zero when object is unmapped (possible at dump time).  */
++
++   const HChar* name;
++   UInt       last_slash_pos;
++
++   Addr       start;  /* Start address of text segment mapping */
++   SizeT      size;   /* Length of mapping */
++   PtrdiffT   offset; /* Offset between symbol address and file offset */
++
++   FileNode* files[N_FILE_ENTRIES];
++   UInt       number;
++   ObjNode*  next;
++};
++
++
++struct _FnNode {
++    /* the <number> of fn_node, file_node and obj_node are for compressed dumping
++     * and a index into the dump boolean table and fn_info_table */
++
++    HChar*    name;
++    UInt      number;
++    FileNode* file;     /* reverse mapping for 2nd hash */
++    FnNode*   next;
++
++    Bool initialized    : 1;
++    Bool dump_before    : 1;
++    Bool dump_after     : 1;
++    Bool zero_before    : 1;
++    Bool toggle_collect : 1;
++    Bool skip           : 1; // currently unused, see Callgrind
++    Bool pop_on_jump    : 1; // currently unused, see Callgrind
++
++    Bool is_malloc      : 1;
++    Bool is_realloc     : 1;
++    Bool is_free        : 1;
++
++    Int  group;
++    Int  separate_callers;
++    Int  separate_recursions;
++    /* TODO(someday) These are not used right now
++     * see Callgrind */
++};
++
++
++//-------------------------------------------------------------------------------------------------
++/** File function declarations **/
++
++FnNode* GN_(getFnNode)(BBInfo *bb);
++ObjNode* GN_(getObjNode)(DebugInfo *di);
++ObjNode* GN_(getObjNodeByAddr)(Addr addr);
++FileNode* GN_(getFileNode)(ObjNode *const obj, const HChar *dirname, const HChar *filename);
++void GN_(initFn)(void);
++
++#endif
+diff --git a/gengrind/gn_ipc.c b/gengrind/gn_ipc.c
+new file mode 100644
+index 000000000..616ce6eea
+--- /dev/null
++++ b/gengrind/gn_ipc.c
+@@ -0,0 +1,350 @@
++#include "gn_ipc.h"
++#include "gn_clo.h"
++#include "coregrind/pub_core_libcfile.h"
++#include "coregrind/pub_core_aspacemgr.h"
++#include "coregrind/pub_core_syscall.h"
++#include "pub_tool_basics.h"
++#include "pub_tool_vki.h"       // errnum, vki_timespec
++#include "pub_tool_vkiscnums.h" // __NR_nanosleep
++
++static Bool initialized = False;
++static Int gnEmptyFd;
++static Int gnFullFd;
++static Sigil2DBISharedData* gnShmem;
++
++SglEvVariant *GN_(currEv);
++SglEvVariant *GN_(endEv);
++size_t *GN_(usedEv);
++/* IPC channel */
++
++static UInt          gnNextIdx;
++static UInt          gnCurrIdx;
++static EventBuffer   *gnCurrEvBuf;
++//static SglEvVariant  *currEvSlot;
++//static NameBuffer    *currNameBuf;
++//static char*         currNameSlot;
++/* cached IPC state */
++
++
++static Bool isFull[SIGIL2_IPC_BUFFERS];
++/* track available buffers */
++
++
++//static inline void set_next_buffer(void)
++//{
++//    /* try the next buffer, circular */
++//    ++curr_idx;
++//    if (curr_idx == SIGIL2_IPC_BUFFERS)
++//        curr_idx = 0;
++//
++//    /* if the next buffer is full,
++//     * wait until Sigil2 communicates that it's free */
++//    if (is_full[curr_idx])
++//    {
++//        UInt buf_idx;
++//        Int res = VG_(read)(gnEmptyFd, &buf_idx, sizeof(buf_idx));
++//        if (res != sizeof(buf_idx))
++//        {
++//            VG_(umsg)("error VG_(read)\n");
++//            VG_(umsg)("error reading from Sigrind fifo\n");
++//            VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
++//            VG_(exit)(1);
++//        }
++//
++//        tl_assert(buf_idx < SIGIL2_IPC_BUFFERS);
++//        tl_assert(buf_idx == curr_idx);
++//        curr_idx = buf_idx;
++//        is_full[curr_idx] = False;
++//    }
++//
++//    set_and_init_buffer(curr_idx);
++//}
++//
++//
++//static inline Bool is_events_full(void)
++//{
++//    return curr_ev_buf->used == SIGIL2_EVENTS_BUFFER_SIZE;
++//}
++//
++//
++//static inline Bool is_names_full(UInt size)
++//{
++//    return (curr_name_buf->used + size) > SIGIL2_EVENTS_BUFFER_SIZE;
++//}
++//
++//
++//SglEvVariant* GN_(acq_event_slot)()
++//{
++//    tl_assert(initialized == True);
++//
++//    if (is_events_full())
++//    {
++//        flush_to_sigil2();
++//        set_next_buffer();
++//    }
++//
++//    curr_ev_buf->used++;
++//    return curr_ev_slot++;
++//}
++//
++//
++//EventNameSlotTuple GN_(acq_event_name_slot)(UInt size)
++//{
++//    tl_assert(initialized == True);
++//
++//    if (is_events_full() || is_names_full(size))
++//    {
++//        flush_to_sigil2();
++//        set_next_buffer();
++//    }
++//
++//    EventNameSlotTuple tuple = {curr_ev_slot, curr_name_slot, curr_name_buf->used};
++//    curr_ev_buf->used   += 1;
++//    curr_ev_slot        += 1;
++//    curr_name_buf->used += size;
++//    curr_name_slot      += size;
++//
++//    return tuple;
++//}
++
++
++//-------------------------------------------------------------------------------------------------
++/** Initialization/Termination **/
++
++static int openFifo(const HChar *fifo_path, int flags)
++{
++    tl_assert(initialized == False);
++
++    int tries = 0;
++    const int max_tries = 4;
++    int fd = VG_(fd_open)(fifo_path, flags, 0600);
++    while (fd < 0) {
++        if (++tries < max_tries) {
++#if defined(VGO_linux) && defined(VGA_amd64)
++            /* TODO any serious implications in Valgrind of calling syscalls directly?
++             * MDL20170220 The "VG_(syscall)" wrappers don't look like they do much
++             * else besides doing platform specific setup.
++             * In our case, we only accommodate x86_64 or aarch64. */
++            struct vki_timespec req;
++            req.tv_sec = 0;
++            req.tv_nsec = 500000000;
++            /* wait some time before trying to connect,
++             * giving Sigil2 time to bring up IPC */
++            VG_(do_syscall2)(__NR_nanosleep, (UWord)&req, 0);
++#else
++#error "Only linux is supported"
++#endif
++            fd = VG_(fd_open)(fifo_path, flags, 0600);
++        }
++        else {
++            VG_(umsg)("FIFO for Sigrind failed\n");
++            VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
++            VG_(exit) (1);
++        }
++    }
++
++    return fd;
++}
++
++
++static Sigil2DBISharedData* openShmem(const HChar *gnShmem_path, int flags)
++{
++    tl_assert(initialized == False);
++
++    int shared_mem_fd = VG_(fd_open)(gnShmem_path, flags, 0600);
++    if (shared_mem_fd < 0) {
++        VG_(umsg)("Cannot open shared_mem file %s\n", gnShmem_path);
++        VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
++        VG_(exit)(1);
++    }
++
++    SysRes res = VG_(am_shared_mmap_file_float_valgrind)(sizeof(Sigil2DBISharedData),
++                                                         VKI_PROT_READ|VKI_PROT_WRITE,
++                                                         shared_mem_fd, (Off64T)0);
++    if (sr_isError(res)) {
++        VG_(umsg)("error %lu %s\n", sr_Err(res), VG_(strerror)(sr_Err(res)));
++        VG_(umsg)("error VG_(am_shared_mmap_file_float_valgrind) %s\n", gnShmem_path);
++        VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
++        VG_(exit)(1);
++    }
++
++    Addr addr_shared = sr_Res (res);
++    VG_(close)(shared_mem_fd);
++
++    return (Sigil2DBISharedData*) addr_shared;
++}
++
++
++void GN_(initIPC)()
++{
++    tl_assert(initialized == False);
++
++    if (GN_(clo).standalone_test == True) {
++        gnShmem = VG_(malloc)("gn.test.buffer", sizeof(*gnShmem));
++
++        gnNextIdx = 0;
++        gnCurrEvBuf = gnShmem->eventBuffers + gnNextIdx;
++        gnCurrEvBuf->used = 0;
++        GN_(currEv) = gnCurrEvBuf->events + gnCurrEvBuf->used;
++        GN_(usedEv) = &gnCurrEvBuf->used;
++
++        /* ensure events is an array, not a pointer */
++        tl_assert(sizeof(gnCurrEvBuf->events) != sizeof(gnCurrEvBuf->events[0]));
++        GN_(endEv) = gnCurrEvBuf->events + sizeof(gnCurrEvBuf->events)/sizeof(gnCurrEvBuf->events[0]);
++        for (UInt i=0; i<SIGIL2_IPC_BUFFERS; ++i)
++            isFull[i] = False;
++
++        ++gnNextIdx;
++
++        initialized = True;
++        return;
++    }
++
++    if (GN_(clo).ipc_dir == NULL) {
++        VG_(fmsg)("No --ipc-dir argument found, shutting down...\n");
++        VG_(exit)(1);
++    }
++
++    Int ipcDirLen = VG_(strlen)(GN_(clo).ipc_dir);
++    Int filenameLen;
++
++    //len is strlen + null + other chars (/ and -0)
++    filenameLen = ipcDirLen + VG_(strlen)(SIGIL2_IPC_SHMEM_BASENAME) + 4;
++    HChar gnShmemPath[filenameLen];
++    VG_(snprintf)(gnShmemPath, filenameLen, "%s/%s-0", GN_(clo).ipc_dir, SIGIL2_IPC_SHMEM_BASENAME);
++
++    filenameLen = ipcDirLen + VG_(strlen)(SIGIL2_IPC_EMPTYFIFO_BASENAME) + 4;
++    HChar emptyfifoPath[filenameLen];
++    VG_(snprintf)(emptyfifoPath, filenameLen, "%s/%s-0", GN_(clo).ipc_dir, SIGIL2_IPC_EMPTYFIFO_BASENAME);
++
++    filenameLen = ipcDirLen + VG_(strlen)(SIGIL2_IPC_FULLFIFO_BASENAME) + 4;
++    HChar fullfifoPath[filenameLen];
++    VG_(snprintf)(fullfifoPath, filenameLen, "%s/%s-0", GN_(clo).ipc_dir, SIGIL2_IPC_FULLFIFO_BASENAME);
++
++    gnEmptyFd = openFifo(emptyfifoPath, VKI_O_RDONLY);
++    gnFullFd  = openFifo(fullfifoPath, VKI_O_WRONLY);
++    gnShmem   = openShmem(gnShmemPath, VKI_O_RDWR);
++
++    /* initialize cached IPC state */
++    GN_(currEv) = NULL;
++    GN_(endEv) = NULL;
++    gnCurrIdx = 0;
++    gnNextIdx = 0;
++    GN_(setNextBuffer)();
++    for (UInt i=0; i<SIGIL2_IPC_BUFFERS; ++i)
++        isFull[i] = False;
++
++    initialized = True;
++}
++
++
++void GN_(termIPC)(void)
++{
++    tl_assert(initialized == True);
++
++    if (GN_(clo).standalone_test == True) {
++        VG_(free)(gnShmem);
++        gnShmem = NULL;
++        gnCurrEvBuf = NULL;
++        GN_(currEv) = NULL;
++        GN_(usedEv) = NULL;
++        GN_(endEv) = NULL;
++        return;
++    }
++
++
++    /* Flush the remaining buffer ... */
++    GN_(flushCurrBuffer)();
++
++    /* ... and send finish sequence */
++    UInt finished = SIGIL2_IPC_FINISHED;
++    if (VG_(write)(gnFullFd, &finished, sizeof(finished)) != sizeof(finished)) {
++        VG_(umsg)("error VG_(write)\n");
++        VG_(umsg)("error writing to Sigrind fifo\n");
++        VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
++        VG_(exit)(1);
++    }
++
++    /* wait until Sigrind disconnects */
++    while (VG_(read)(gnEmptyFd, &finished, sizeof(finished)) > 0);
++
++    VG_(close)(gnEmptyFd);
++    VG_(close)(gnFullFd);
++}
++
++
++void GN_(flushCurrBuffer)(void)
++{
++    /* Mark that the buffer is being flushed,
++     * and tell Sigil2 the buffer is ready to consume */
++    isFull[gnCurrIdx] = True;
++    Int res = VG_(write)(gnFullFd, &gnCurrIdx, sizeof(gnCurrIdx));
++    if (res != sizeof(gnCurrIdx)) {
++        VG_(umsg)("error VG_(write)\n");
++        VG_(umsg)("error writing to Sigrind fifo\n");
++        VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
++        VG_(exit)(1);
++    }
++}
++
++
++void GN_(setNextBuffer)(void)
++{
++    /* try the next buffer, circular */
++    if (gnNextIdx == SIGIL2_IPC_BUFFERS)
++        gnNextIdx = 0;
++
++    /* if the next buffer is full,
++     * wait until Sigil2 communicates that it's free */
++    if (isFull[gnNextIdx]) {
++        UInt bufIdx;
++        Int res = VG_(read)(gnEmptyFd, &bufIdx, sizeof(bufIdx));
++        if (res != sizeof(bufIdx)) {
++            VG_(umsg)("error VG_(read)\n");
++            VG_(umsg)("error reading from Sigrind fifo\n");
++            VG_(umsg)("Cannot recover from previous error. Good-bye.\n");
++            VG_(exit)(1);
++        }
++
++        tl_assert(bufIdx < SIGIL2_IPC_BUFFERS);
++        tl_assert(bufIdx == gnNextIdx);
++        isFull[gnNextIdx] = False;
++    }
++
++    gnCurrEvBuf = gnShmem->eventBuffers + gnNextIdx;
++    gnCurrEvBuf->used = 0;
++    GN_(currEv) = gnCurrEvBuf->events + gnCurrEvBuf->used;
++    GN_(usedEv) = &gnCurrEvBuf->used;
++
++    /* ensure events is an array, not a pointer */
++    tl_assert(sizeof(gnCurrEvBuf->events) != sizeof(gnCurrEvBuf->events[0]));
++    GN_(endEv) = gnCurrEvBuf->events + sizeof(gnCurrEvBuf->events)/sizeof(gnCurrEvBuf->events[0]);
++
++    //currNameBuf = gnShmem->nameBuffers + currIdx;
++    //currNameBuf->used = 0;
++    //currNameSlot = curr_name_buf->names + curr_name_buf->used;
++
++    gnCurrIdx = gnNextIdx;
++    ++gnNextIdx;
++}
++
++
++void GN_(flushCurrAndSetNextBuffer)(void)
++{
++    if (GN_(clo).standalone_test == True) {
++        gnCurrEvBuf = gnShmem->eventBuffers + gnNextIdx;
++        gnCurrEvBuf->used = 0;
++        GN_(currEv) = gnCurrEvBuf->events + gnCurrEvBuf->used;
++        GN_(usedEv) = &gnCurrEvBuf->used;
++
++        /* ensure events is an array, not a pointer */
++        tl_assert(sizeof(gnCurrEvBuf->events) != sizeof(gnCurrEvBuf->events[0]));
++        GN_(endEv) = gnCurrEvBuf->events + sizeof(gnCurrEvBuf->events)/sizeof(gnCurrEvBuf->events[0]);
++
++        ++gnNextIdx;
++    }
++    else {
++        GN_(flushCurrBuffer)();
++        GN_(setNextBuffer)();
++    }
++}
+diff --git a/gengrind/gn_ipc.h b/gengrind/gn_ipc.h
+new file mode 100644
+index 000000000..a278774b4
+--- /dev/null
++++ b/gengrind/gn_ipc.h
+@@ -0,0 +1,43 @@
++#ifndef GN_IPC_H
++#define GN_IPC_H
++
++#include "Frontends/CommonShmemIPC.h"
++#include "gn.h"
++
++/* An implementation of interprocess communication with the Sigil2 frontend.
++ * IPC includes initialization, termination, shared memory buffer writes, and
++ * synchronization via named pipes */
++
++typedef struct EventNameSlotTuple
++{
++    SglEvVariant*  event_slot;
++    char*          name_slot;
++    UInt           name_idx;
++} EventNameSlotTuple;
++
++void GN_(initIPC)(void);
++void GN_(termIPC)(void);
++
++void GN_(setNextBuffer)(void);
++void GN_(flushCurrBuffer)(void);
++void GN_(flushCurrAndSetNextBuffer)(void);
++
++// TODO delete
++//SglEvVariant* GN_(acq_event_slot)(void);
++/* Get a buffer slot to add an event */
++//EventNameSlotTuple GN_(acq_event_name_slot)(UInt size);
++/* Get a buffer slot to add an event (probably a context event)
++ * and a name slot to add a name with it (like a function name) */
++
++extern SglEvVariant *GN_(currEv);
++extern SglEvVariant *GN_(endEv);
++extern size_t *GN_(usedEv);
++/* Points to current location in event buffer,
++ * to generate events to,
++ * and the end position in the buffer
++ * 
++ * A null pointer means no buffer has been acquired,
++ * currEv == endEv means the buffer is full
++ */
++
++#endif
+diff --git a/gengrind/gn_jumps.c b/gengrind/gn_jumps.c
+new file mode 100644
+index 000000000..0f62f855a
+--- /dev/null
++++ b/gengrind/gn_jumps.c
+@@ -0,0 +1,160 @@
++#include "gn_jumps.h"
++#include "gn_bb.h"
++#include "gn_debug.h"
++
++
++UInt GN_(lastJmpsPassed);
++static JumpTable allJns;
++
++
++//-------------------------------------------------------------------------------------------------
++/** Helper function definitions **/
++
++static inline UInt jnHashIdx(BBInfo *from, UInt jmp, BBInfo *to, UInt capacity)
++{
++    return (UInt) ( (UWord)from + 7 * (UWord)to + 13 * jmp) % capacity;
++}
++
++
++#define N_JN_INITIAL_ENTRIES (4437)
++static void initJumpTable(JumpTable *jt)
++{
++    GN_ASSERT(jt != NULL);
++
++    jt->capacity = N_JN_INITIAL_ENTRIES;
++    jt->entries = 0;
++    jt->table = VG_(malloc)("gn.jumps.initjt.1", jt->capacity * sizeof(JumpNode*));
++    jt->spontaneous = NULL;
++
++    for (UInt i=0; i<jt->capacity; ++i)
++        jt->table[i] = NULL;
++}
++
++
++static void resizeJumpTable(JumpTable *jt)
++{
++    UInt newcap = 2 * jt->capacity + 3;
++    JumpNode **newtable = VG_(malloc)("gn.jumps.resize.1", newcap * sizeof(JumpNode*));
++
++    for (UInt i=0; i<newcap; ++i)
++        newtable[i] = NULL;
++
++    for (UInt i=0; i<jt->capacity; ++i) {
++
++        JumpNode *jn = jt->table[i];
++        if (jn == NULL)
++            continue;
++        while (jn != NULL) {
++            JumpNode *next = jn->next_hash;
++            UInt newidx = jnHashIdx(jn->from, jn->jmp, jn->to, newcap);
++            jn->next_hash = newtable[newidx];
++            newtable[newidx] = jn;
++            jn = next;
++        }
++    }
++
++    VG_(free)(jt->table);
++    jt->table = newtable;
++    jt->capacity = newcap;
++}
++
++
++static JumpNode* newJumpNode(BBInfo *from, UInt jmp, BBInfo *to)
++{
++    JumpNode *jn;
++
++    allJns.entries++;
++
++    /* Use Callgrind's hash implementation
++     * resize if filled more than 80% */
++    if (10 * allJns.entries / allJns.capacity > 8)
++        resizeJumpTable(&allJns);
++
++    jn = VG_(malloc)("gn.jumps.newjn.1", sizeof(JumpNode));
++
++    jn->from = from;
++    jn->jmp = jmp;
++    jn->to = to;
++    jn->jmpkind = jk_Call; // ML: why is this?
++
++    jn->next_from = allJns.spontaneous;
++    allJns.spontaneous = jn;
++
++    UInt idx = jnHashIdx(from, jmp, to, allJns.capacity);
++    jn->next_hash = allJns.table[idx];
++    allJns.table[idx] = jn;
++
++    return jn;
++}
++
++
++//-------------------------------------------------------------------------------------------------
++/** External function definitions **/
++
++JumpNode* GN_(getJumpNode)(BBInfo *from, UInt jmp, BBInfo *to)
++{
++    JumpNode *jn;
++
++    if ((jn = to->lruToJmp) && (jn->from == from) && (jn->jmp = jmp)) {
++        GN_ASSERT(jn->to == to);
++    }
++    else if ((jn = from->lruFromJmp) && (jn->to == to) && (jn->jmp == jmp)) {
++        GN_ASSERT(jn->from == from);
++    }
++    else {
++        UInt idx = jnHashIdx(from, jmp, to, allJns.capacity);
++        jn = allJns.table[idx];
++
++        while(jn != NULL) {
++            if ((jn->from == from) && (jn->jmp == jmp) && (jn->to == to))
++                break;
++            jn = jn->next_hash;
++        }
++
++        if (jn == NULL)
++            jn = newJumpNode(from, jmp, to);
++
++        from->lruFromJmp = jn;
++        to->lruToJmp = jn;
++    }
++
++    return jn;
++}
++
++
++void GN_(initJumpTable)()
++{
++    initJumpTable(&allJns);
++}
++
++
++static HChar jmpstr[32];
++const HChar* GN_(getJumpStr)(GnJumpKind jk, Bool isConditional)
++{
++    if (isConditional == True)
++        VG_(sprintf)(jmpstr, "Cond-");
++    else
++        jmpstr[0] = '\0';
++
++    switch(jk) {
++    case jk_None:
++        VG_(sprintf)(jmpstr + VG_(strlen)(jmpstr), "Fall-through");
++        break;
++    case jk_Call:
++        VG_(sprintf)(jmpstr + VG_(strlen)(jmpstr), "Call");
++        break;
++    case jk_Return:
++        VG_(sprintf)(jmpstr + VG_(strlen)(jmpstr), "Return");
++        break;
++    case jk_Jump:
++        VG_(sprintf)(jmpstr + VG_(strlen)(jmpstr), "Jump");
++        break;
++    case jk_Other:
++        VG_(sprintf)(jmpstr + VG_(strlen)(jmpstr), "Other");
++        break;
++    default:
++        tl_assert(0);
++    }
++
++    return jmpstr;
++}
+diff --git a/gengrind/gn_jumps.h b/gengrind/gn_jumps.h
+new file mode 100644
+index 000000000..37df270e1
+--- /dev/null
++++ b/gengrind/gn_jumps.h
+@@ -0,0 +1,60 @@
++#ifndef GN_JUMPS_H
++#define GN_JUMPS_H
++
++#include "gn.h"
++
++
++//-------------------------------------------------------------------------------------------------
++/** Jump related type definitions **/
++
++enum _GnJumpKind {
++    /* The types of control flow changes that can happen between
++     * execution of two BBs in a thread.
++     */
++
++    jk_None = 0,   /* no explicit change by a guest instruction */
++    jk_Jump,       /* regular jump */
++    jk_Call,
++    jk_Return,
++    jk_CondJump,   /* conditional jump taken (only used as JumpNode type) */
++    jk_Other,
++};
++
++
++struct _JumpNode {
++    /* JmpCall node
++     * for subroutine call (from->bb->jmp_addr => to->bb->addr)
++     *
++     * Each BB has at most one CALL instruction. The list of JumpNode
++     * from this call is a pointer to the list head (stored in BB_node),
++     * and <next_from> in the JumpNode struct.
++     *
++     * For fast lookup, JumpNodes are reachable with a hash table, keyed by
++     * the (from_bb_node,to) pair. <next_hash> is used for the JumpNode chain
++     * of one hash table entry.
++     */ 
++
++    GnJumpKind jmpkind;  /* jk_Call, jk_Jump, jk_CondJump */
++    JumpNode* next_hash; /* for hash entry chain */
++    JumpNode* next_from; /* next JumpNode from a BB */
++    BBInfo *from, *to;   /* call arc from/to this BB */
++    UInt jmp;            /* jump no. in source */
++};
++
++
++struct _JumpTable {
++    UInt capacity;
++    UInt entries;
++    JumpNode **table;
++    JumpNode *spontaneous;
++};
++
++
++//-------------------------------------------------------------------------------------------------
++/** Jump related function definitions **/
++
++JumpNode* GN_(getJumpNode)(BBInfo *from, UInt jmp, BBInfo *to);
++void GN_(initJumpTable)(void);
++const HChar* GN_(getJumpStr)(GnJumpKind jk, Bool isConditional);
++
++#endif
+diff --git a/gengrind/gn_main.c b/gengrind/gn_main.c
+new file mode 100644
+index 000000000..7c70f7fe1
+--- /dev/null
++++ b/gengrind/gn_main.c
+@@ -0,0 +1,258 @@
++
++/*--------------------------------------------------------------------*/
++/*--- Gengrind: The event generation Valgrind tool.      gn_main.c ---*/
++/*--------------------------------------------------------------------*/
++
++/*
++   This file is part of Gengrind, the event generation Valgrind tool
++
++   Copyright (C) 2017-2018 Michael Lui
++      mike.d.lui@gmail.com
++
++   This program is free software; you can redistribute it and/or
++   modify it under the terms of the GNU General Public License as
++   published by the Free Software Foundation; either version 2 of the
++   License, or (at your option) any later version.
++
++   This program is distributed in the hope that it will be useful, but
++   WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   General Public License for more details.
++
++   You should have received a copy of the GNU General Public License
++   along with this program; if not, write to the Free Software
++   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
++   02111-1307, USA.
++
++   The GNU General Public License is contained in the file COPYING.
++*/
++
++/* N.B. much of the function tracking code throughout is based on
++ * Callgrind's implementation.
++ * Most modifications to the Callgrind base are removing unused
++ * functionality or stylistic changes. */
++
++#include "gn.h"
++#include "gn_ipc.h"
++#include "gn_clo.h"
++#include "gn_bb.h"
++#include "gn_events.h"
++#include "gn_threads.h"
++#include "gn_crq.h"
++#include "gn_callstack.h"
++#include "gn_jumps.h"
++#include "gn_debug.h"
++
++
++static void gn_post_clo_init(void)
++{
++    if (GN_(clo).gen_fn) {
++        GN_(clo).bbinfo_needed = True;
++    }
++
++    GN_(initIPC)();
++    GN_(initializeThreadState)();
++
++    if (GN_(clo).gen_fn == True) {
++        GN_(initBB)();
++        GN_(initCallStack)();
++        GN_(initJumpTable)();
++        GN_(lastJmpsPassed) = 0;
++    }
++
++    /* start generating events right away or not */
++    if (GN_(clo).start_collect_func == NULL)
++        GN_(afterStartFunc) = True;
++    else
++        GN_(afterStartFunc) = False;
++}
++
++
++static
++IRSB* gn_instrument ( VgCallbackClosure* closure,
++                      IRSB* obb,
++                      const VexGuestLayout* layout,
++                      const VexGuestExtents* vge,
++                      const VexArchInfo* archinfo_host,
++                      IRType gWordTy, IRType hWordTy )
++{
++    /* Each uninstrumented basic block (OBB) is passed to this function.
++     * An instrumented basic block (NBB) is generated from OBB and then passed
++     * back to Valgrind to use for execution.
++     *
++     * Each VEX IR statement (see libvex_ir.h) in the OBB is iterated upon,
++     * and metadata is temporarily stored, e.g. memory addresses.
++     * After each iteration, the VEX IR stmt is placed in the NBB.
++     *
++     * Upon reaching a possible Exit or the end of the OBB, all the temporary
++     * metadata captured up to that point is flushed before adding that VEX IR
++     * stmt.
++     * Flushing happens by inserting additional IR to write all the captured
++     * metadata to a buffer, and then resetting the metadata.
++     * Resetting metadata should take place during a flush.
++     *
++     * Some metadata needs to be available before any other VEX IR is inserted
++     * into the NBB. In this case, instrumentation will be inserted before
++     * iteration of the OBB.
++     */
++
++    if (gWordTy != hWordTy) {
++        // We don't currently support this case.
++        // From 'pub_tool_tooliface.h' 20171026:
++        // "They [gWordTy/hWordTy] will by [be] either Ity_I32 or Ity_I64.
++        // So far we have never built a cross-architecture
++        // Valgrind so they should always be the same."
++        VG_(tool_panic)("host/guest word size mismatch");
++    }
++
++    // No instrumentation if it is switched off
++    if (!GN_(clo).enable_instrumentation) {
++        GN_DEBUG(5, "instrument(BB %#lx) [Instrumentation OFF]\n",
++                  (Addr)closure->readdr);
++        return obb;
++    }
++
++    BBState bbState;
++    Int i = GN_(initBBState)(&bbState, obb, hWordTy);
++
++    GN_DEBUG(3, "+ instrument(BB %#lx)(%d)\n", (Addr)closure->readdr, bbState.bbInfo->uid);
++
++    // pre-BB instrumentation
++    {
++        if (GN_(clo).gen_fn == True)
++            GN_(add_TrackFns)(&bbState); // Function call/return tracking
++
++        if (GN_(clo).gen_sync == True)
++            GN_(add_TrackSyncs)(&bbState); // Need to setup thread context instrumentation
++    }
++
++    // BB instrumentation
++    Int curr_instr_idx = -1;
++    Int prev_flushed_idx = -1;
++
++    for (/*use current i*/; i < obb->stmts_used; ++i) {
++        const IRStmt *st = obb->stmts[i];
++        GN_ASSERT(isFlatIRStmt(st));
++
++        switch (st->tag) {
++        case Ist_NoOp:
++        case Ist_AbiHint:
++        case Ist_Put:
++        case Ist_PutI:
++        case Ist_MBE:
++            break;
++        case Ist_IMark:
++            curr_instr_idx = i;
++            GN_(addEvent_Instr)(&bbState, st);
++            break;
++        case Ist_WrTmp:
++            switch (st->Ist.WrTmp.data->tag) {
++            case Iex_Load:
++                GN_(addEvent_Memory_Load)(&bbState, st);
++                break;
++            case Iex_Unop:
++            case Iex_Binop:
++            case Iex_Triop:
++            case Iex_Qop:
++                GN_(addEvent_Compute)(&bbState, st);
++                break;
++            default:
++                break;
++            }
++            break;
++        case Ist_Store:
++            GN_(addEvent_Memory_Store)(&bbState, st);
++            break;
++        case Ist_StoreG:
++            GN_(addEvent_Memory_Guarded_Store)(&bbState, st);
++            break;
++        case Ist_LoadG:
++            GN_(addEvent_Memory_Guarded_Load)(&bbState, st);
++            break;
++        case Ist_Dirty:
++            GN_(addEvent_Dirty)(&bbState, st);
++            break;
++        case Ist_CAS:
++            GN_(addEvent_CAS)(&bbState, st);
++            break;
++        case Ist_LLSC:
++            GN_(addEvent_LLSC)(&bbState, st);
++            break;
++        case Ist_Exit:
++            GN_(addEvent_Exit)(&bbState, st);
++
++            /* gather instrumentation before any basic block exits */
++            GN_(Flush) f = {GN_FLUSH_EXIT_ST, curr_instr_idx, i};
++            GN_(flushEvents)(&bbState, prev_flushed_idx, f);
++            prev_flushed_idx = i;
++            break;
++        default:
++            tl_assert(0);
++            break;
++        } //end switch
++
++        GN_DEBUGIF(5) {
++            VG_(printf)("   pass  ");
++            ppIRStmt(st);
++            VG_(printf)("\n");
++        }
++    } //end foreach statement
++
++    // post-BB instrumentation
++    {
++        GN_(Flush) f = {GN_FLUSH_BB_END, -1, -1};
++        GN_(flushEvents)(&bbState, prev_flushed_idx, f);
++        GN_(addEvent_BBEnd)(&bbState);
++    }
++
++    return bbState.nbb;
++}
++
++static void gn_fini(Int exitcode)
++{
++    GN_(termIPC)();
++
++    finishCallstack();
++}
++
++static void gn_pre_clo_init(void)
++{
++    VG_(details_name)            ("Gengrind");
++    VG_(details_version)         (NULL);
++    VG_(details_description)     ("an event generation Valgrind tool");
++    VG_(details_copyright_author)(
++        "Copyright (C) 2017-2018, and GNU GPL'd, by Michael Lui.");
++    VG_(details_bug_reports_to)  (VG_BUGS_TO);
++
++    VG_(details_avg_translation_sizeB) (500);
++
++    /* Following example set by Callgrind, to make analysis easier */
++    VG_(clo_vex_control).iropt_unroll_thresh = 0;   // cannot be overriden.
++    VG_(clo_vex_control).guest_chase_thresh = 0;    // cannot be overriden.
++
++    VG_(basic_tool_funcs)        (gn_post_clo_init,
++                                  gn_instrument,
++                                  gn_fini);
++
++    VG_(needs_command_line_options)(GN_(processCmdLineOption),
++                                    NULL, NULL);
++
++    /* Track when a new VG-level thread is created or destroyed
++     * This is needed, for example, to generate unique-id's for each thread */
++    VG_(track_pre_thread_ll_create)(GN_(preVGThreadCreate));
++    VG_(track_pre_thread_ll_exit)(GN_(preVGThreadExit));
++
++    VG_(needs_client_requests)(GN_(handleClientRequest));
++    //VG_(track_start_client_code)();
++
++    VG_(track_pre_deliver_signal)(GN_(preDeliverSignal));
++    VG_(track_post_deliver_signal)(GN_(postDeliverSignal));
++
++    GN_(setCloDefaults)();
++}
++
++VG_DETERMINE_INTERFACE_VERSION(gn_pre_clo_init)
++
++/*--------------------------------------------------------------------*/
++/*--- end                                                          ---*/
++/*--------------------------------------------------------------------*/
+diff --git a/gengrind/gn_sync.h b/gengrind/gn_sync.h
+new file mode 100644
+index 000000000..ff1d33d44
+--- /dev/null
++++ b/gengrind/gn_sync.h
+@@ -0,0 +1,57 @@
++#ifndef GN_SYNC_INTERCEPTS_H
++#define GN_SYNC_INTERCEPTS_H
++
++#include "valgrind.h"
++
++typedef enum _Vg_GnTClientRequest Vg_GnTClientRequest;
++enum _Vg_GnTClientRequest {
++    VG_USERREQ__GN_INIT = VG_USERREQ_TOOL_BASE('G', 'N'),
++    VG_USERREQ__GN_DISABLE_EVENTS,
++    VG_USERREQ__GN_ENABLE_EVENTS,
++
++    //---------------------------------------------------------------------------------------------
++    /** pthread client requests **/
++    VG_USERREQ__GN_PTH_CREATE_PRE,
++    VG_USERREQ__GN_PTH_CREATE_POST,
++    VG_USERREQ__GN_PTH_JOIN_PRE,
++    VG_USERREQ__GN_PTH_JOIN_POST,
++
++    VG_USERREQ__GN_PTH_MUTEX_LOCK_PRE,
++    VG_USERREQ__GN_PTH_MUTEX_LOCK_POST,
++
++    VG_USERREQ__GN_PTH_MUTEX_UNLOCK_PRE,
++    VG_USERREQ__GN_PTH_MUTEX_UNLOCK_POST,
++
++    VG_USERREQ__GN_PTH_BARRIER_WAIT_PRE,
++    VG_USERREQ__GN_PTH_BARRIER_WAIT_POST,
++
++    VG_USERREQ__GN_PTH_COND_WAIT_PRE,
++    VG_USERREQ__GN_PTH_COND_WAIT_POST,
++
++    VG_USERREQ__GN_PTH_COND_SIGNAL_PRE,
++    VG_USERREQ__GN_PTH_COND_SIGNAL_POST,
++
++    VG_USERREQ__GN_PTH_COND_BROADCAST_PRE,
++    VG_USERREQ__GN_PTH_COND_BROADCAST_POST,
++
++    VG_USERREQ__GN_PTH_SPIN_LOCK_PRE,
++    VG_USERREQ__GN_PTH_SPIN_LOCK_POST,
++
++    VG_USERREQ__GN_PTH_SPIN_UNLOCK_PRE,
++    VG_USERREQ__GN_PTH_SPIN_UNLOCK_POST,
++};
++
++/* Disable event generation.
++ * This tool is only interested in generating events specific to a workload.
++ * When inside specific functions, such as pthread API calls,
++ * compute and memory events are specific to a synchronization implementation,
++ * and not the respective workload, so disable events until the function
++ * returns.*/
++#define GN_DISABLE_EVENTS()                                        \
++    VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_DISABLE_EVENTS, \
++                                    0, 0, 0, 0, 0)
++#define GN_ENABLE_EVENTS()                                         \
++    VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_ENABLE_EVENTS,  \
++                                    0, 0, 0, 0, 0)
++
++#endif
+diff --git a/gengrind/gn_sync_intercepts.c b/gengrind/gn_sync_intercepts.c
+new file mode 100644
+index 000000000..10b18b283
+--- /dev/null
++++ b/gengrind/gn_sync_intercepts.c
+@@ -0,0 +1,57 @@
++
++//-------------------------------------------------------------------------------------------------
++/** Using Helgrind as an example **/
++
++#include "pub_tool_basics.h"
++#include "pub_tool_redir.h"
++#include "pub_tool_clreq.h"
++#include "gn_sync.h"
++
++#include <pthread.h>
++#include <stdio.h>
++
++#if defined(VGO_linux)
++#define PTH_FUNC(ret_ty, f, args...) \
++   ret_ty I_WRAP_SONAME_FNNAME_ZZ(VG_Z_LIBPTHREAD_SONAME,f)(args); \
++   ret_ty I_WRAP_SONAME_FNNAME_ZZ(VG_Z_LIBPTHREAD_SONAME,f)(args)
++#endif
++
++
++#define TRACE_PTH_FNS 0
++
++//-------------------------------------------------------------------------------------------------
++/** pthread_create **/
++/* ensure this has its own frame, so as to make it more distinguishable
++   in suppressions */
++    __attribute__((noinline))
++static int pthread_create_WRK(pthread_t *thread, const pthread_attr_t *attr,
++                              void *(*start) (void *), void *arg)
++{
++    int    ret;
++    OrigFn fn;
++
++    VALGRIND_GET_ORIG_FN(fn);
++
++    GN_DISABLE_EVENTS();
++    VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTH_CREATE_PRE,
++                                    0, 0, 0, 0, 0);
++    CALL_FN_W_WWWW(ret, fn, thread, attr, start, arg);
++    VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__GN_PTH_CREATE_POST,
++                                    0, 0, 0, 0, 0);
++    GN_ENABLE_EVENTS();
++
++    if (TRACE_PTH_FNS) {
++        fprintf(stderr, " :: pth_create -> %d >>\n", ret);
++    }
++    return ret;
++}
++#if defined(VGO_linux)
++   PTH_FUNC(int, pthreadZucreateZAZa, // pthread_create@*
++                 pthread_t *thread, const pthread_attr_t *attr,
++                 void *(*start) (void *), void *arg) {
++      return pthread_create_WRK(thread, attr, start, arg);
++   }
++#endif
++
++//-------------------------------------------------------------------
++/** pthread_join **/
+diff --git a/gengrind/gn_threads.c b/gengrind/gn_threads.c
+new file mode 100644
+index 000000000..5f60d4fb9
+--- /dev/null
++++ b/gengrind/gn_threads.c
+@@ -0,0 +1,178 @@
++#include "gn_threads.h"
++#include "gn_events.h"
++#include "gn_ipc.h"
++#include "gn_debug.h"
++
++#define GN_MAX_THREADS 500
++// max threads 'running' at a given time
++// same as MAX_THREADS_DEFAULT
++
++static ThreadId threadIdCounter;
++static ThreadId threadIdMap[GN_MAX_THREADS];
++static ThreadState threadStateTable[GN_MAX_THREADS];
++static ThreadId spawnerThread;
++static Bool isInSyncCall;
++
++ThreadId GN_(lastTid); // ThreadID of the last BB
++ThreadId GN_(currentTid);
++
++//-------------------------------------------------------------------------------------------------
++/** Helper function definitions **/
++
++static inline ThreadId getUTID(ThreadId tid)
++{
++    GN_ASSERT(threadIdMap[tid] != VG_INVALID_THREADID);
++    return threadIdMap[tid];
++}
++
++static void switchThread(ThreadId tid)
++{
++    ThreadId utid = getUTID(tid);
++    if (GN_(currentTid) == utid)
++        return;
++
++    /* save current state */
++    threadStateTable[GN_(currentTid)].lastJmpsPassed = GN_(lastJmpsPassed);
++    threadStateTable[GN_(currentTid)].isInSyncCall = isInSyncCall;
++    threadStateTable[GN_(currentTid)].eventGenerationEnabled = GN_(EventGenerationEnabled);
++
++    /* restore previous state */
++    GN_(lastJmpsPassed) = threadStateTable[utid].lastJmpsPassed;
++    GN_(currentTid) = utid;
++    isInSyncCall = threadStateTable[utid].isInSyncCall;
++    GN_(EventGenerationEnabled) = threadStateTable[GN_(currentTid)].eventGenerationEnabled;
++}
++
++
++//-------------------------------------------------------------------------------------------------
++/** External function definitions **/
++
++void GN_(preVGThreadCreate)(ThreadId parent, ThreadId child)
++{
++    if (GN_(clo).gen_sync == False)
++        return;
++
++    /* Create a new mapping from child TID -> reported TID
++     *
++     * This mapping is required because VG reuses exited thread ids,
++     * and each new thread should not have its stats conflated with
++     * previous threads with the same ID
++     * 
++     * VG thread ids are expected to count up, starting from 1 */
++    GN_ASSERT(threadIdCounter <= GN_MAX_UNIQUE_THREADS);
++    threadIdMap[child] = ++threadIdCounter; // expects first thread to be "1"
++
++    /* The last thread to make a thread spawn call (pthread_create)
++     * should be saved.
++     * Now send the thread spawn event with the child unique id */
++    GN_ASSERT(spawnerThread == parent);
++    GN_ASSERT(GN_(lastTid) == parent);
++
++    SyncID spawnData;
++    spawnData = threadIdMap[child];
++
++    GN_(flush_Sync)((UChar)SGLPRIM_SYNC_CREATE, &spawnData, 1);
++}
++
++
++void GN_(preVGThreadExit)(ThreadId quitTid)
++{
++    if (GN_(clo).gen_sync == False)
++        return;
++
++    GN_ASSERT(threadIdCounter > quitTid);
++
++    SyncID exitData;
++    exitData = threadIdMap[quitTid];
++
++    /* TODO(soonish)
++     * MDL20180304 is sending the manner of exit (e.g. join) enough,
++     * or do we walso send a SGLPRIM_SYNC_EXIT? */
++}
++
++
++void GN_(initializeThreadState)(void)
++{
++    /* initialize Thread IDs */
++    threadIdCounter = 0;
++
++    for (UInt i=0; i<GN_MAX_THREADS; ++i)
++        threadIdMap[i] = VG_INVALID_THREADID;
++
++    spawnerThread = VG_INVALID_THREADID;
++    GN_(lastTid) = VG_INVALID_THREADID;
++
++    /* initialize per-thread state variables */
++    for (UInt i=0; i<GN_MAX_THREADS; ++i) {
++        threadStateTable[i].isInSyncCall = False;
++        threadStateTable[i].eventGenerationEnabled = False;
++    }
++    isInSyncCall = False;
++}
++
++
++void GN_(preDeliverSignal)(ThreadId tid, Int sigNum,
++                           __attribute__((unused)) Bool altStack)
++{
++    switchThread(tid);
++    GN_DEBUG(1, "Pre Signal %d", sigNum);
++}
++
++
++void GN_(postDeliverSignal)(ThreadId tid, Int sigNum)
++{
++    switchThread(tid);
++    GN_DEBUG(1, "Post Signal %d", sigNum);
++}
++
++
++void GN_(checkSwitchThread)(void)
++{
++    /* expected to be called at beginning of BB */
++
++    ThreadId tid = VG_(get_running_tid)();
++    if (GN_(lastTid) != tid) {
++
++        GN_ASSERT(GN_(currEv) < GN_(endEv));
++
++        /* add event */
++        SglEvVariant *slot = GN_(currEv);
++        slot->tag = SGL_SYNC_TAG;
++        slot->sync.type = SGLPRIM_SYNC_SWAP;
++        slot->sync.data[0] = threadIdMap[tid];
++
++        /* increment event slot */
++        ++GN_(currEv);
++        ++*GN_(usedEv);
++        if (GN_(currEv) == GN_(endEv))
++            GN_(flushCurrAndSetNextBuffer)();
++
++        /* swap contexts */
++        switchThread(tid);
++
++        GN_(lastTid) = tid;
++    }
++}
++
++void GN_(setInSyncCall)(ThreadId tid)
++{
++    if (GN_(currentTid) != tid)
++        switchThread(tid);
++    isInSyncCall = True;
++    GN_(updateEventGeneration)();
++}
++
++
++void GN_(resetInSyncCall)(ThreadId tid)
++{
++    if (GN_(currentTid) != tid)
++        switchThread(tid);
++    isInSyncCall = False;
++    GN_(updateEventGeneration)();
++}
++
++
++Bool GN_(isInSyncCall)(void)
++{
++    return isInSyncCall;
++}
+diff --git a/gengrind/gn_threads.h b/gengrind/gn_threads.h
+new file mode 100644
+index 000000000..4cd1ea7ef
+--- /dev/null
++++ b/gengrind/gn_threads.h
+@@ -0,0 +1,40 @@
++#ifndef GN_THREADS_H
++#define GN_THREADS_H
++
++#include "gn.h"
++#include "pub_tool_threadstate.h"
++
++#define GN_MAX_UNIQUE_THREADS 4096
++// total threads created over span of target application
++
++extern ThreadId GN_(lastTid);
++extern ThreadId GN_(currentTid);
++
++//-------------------------------------------------------------------------------------------------
++/** Callstack-tracking type definitions **/
++
++typedef struct _ThreadState ThreadState;
++struct _ThreadState {
++    UInt lastJmpsPassed;
++    Bool isInSyncCall;
++    Bool eventGenerationEnabled;
++};
++
++
++//-------------------------------------------------------------------------------------------------
++/** Thread-tracking declarations **/
++
++void GN_(preVGThreadCreate)(ThreadId parent, ThreadId child);
++void GN_(preVGThreadExit)(ThreadId quitTid);
++void GN_(initializeThreadState)(void);
++
++void GN_(preDeliverSignal)(ThreadId tid, Int sigNum, Bool altStack);
++void GN_(postDeliverSignal)(ThreadId tid, Int sigNum);
++
++void GN_(checkSwitchThread)(void);
++
++Bool GN_(isInSyncCall)(void);
++void GN_(setInSyncCall)(ThreadId tid);
++void GN_(resetInSyncCall)(ThreadId tid);
++
++#endif
+diff --git a/gengrind/tests/Makefile.am b/gengrind/tests/Makefile.am
+new file mode 100644
+index 000000000..972acc3ce
+--- /dev/null
++++ b/gengrind/tests/Makefile.am
+@@ -0,0 +1,5 @@
++
++include $(top_srcdir)/Makefile.tool-tests.am
++
++SUBDIRS = .
++DIST_SUBDIRS = .
 diff --git a/sigrind/.ycm_extra_conf.py b/sigrind/.ycm_extra_conf.py
 new file mode 100644
 index 000000000..a9d50f65f
@@ -9056,5 +13625,5 @@ index 000000000..800250d14
 +  return es;
 +}
 -- 
-2.14.2
+2.16.2
 
