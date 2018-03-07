@@ -1,7 +1,7 @@
 About
 =====
 
-|project| comes from Drexel University's `VLSI & Architecture Lab
+|project| comes from Drexel University's `VLSI & Architecture Lab (VANDAL)
 <http://vlsi.ece.drexel.edu>`_, headed by |Baris|_ and in
 collaboration with Tufts University's |Mark|_.
 
@@ -15,21 +15,10 @@ need to support multiple projects that study application traces, aimed at
 data-driven architecture design. This has included early hardware accelerator
 co-design [SIGIL]_, as well as uncore design space exploration with
 multi-threaded workloads [SYNCHROTRACE]_ [UNCORERPD]_.
-|project| is not interested in instrumenting the behavior of an application, but
-instead aims to classify events in the application and present those events for
-further analysis. In this way, |project| does not require that each researcher
+|project| is not interested in changing the functional behavior of an application,
+but instead aims to classify events in the application and present those events
+for further analysis. In this way, |project| does not require that each researcher
 have an in depth understanding of the binary instrumentation tools.
-
-Why call it Sigil2?
--------------------
-The initial incarnation of `Sigil <https://github.com/snilakan/Sigil>`__ was
-developed by **Dr. Siddharth Nilakantan** for his research into
-software-hardware co-design [SIGIL]_. He named it after Sigil, `a city in
-Planescape: Torment <http://torment.wikia.com/wiki/Sigil>`_. He also pronounced
-it "sih-gul". The current maintainer and developer of Sigil2, `Michael
-Lui <https://github.com/mdlui>`_, has kept the name and pronunciation for
-historical purposes. However, all of the underlying code and infrastructure has
-been rewritten and enhanced.
 
 ----
 

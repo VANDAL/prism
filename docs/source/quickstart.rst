@@ -3,8 +3,8 @@ Quickstart
 
 This document will go through building and running |project|.
 
-Building Sigil2
----------------
+Building Prism
+--------------
 
 .. note:: The default compiler for **CentOS 7** and older (gcc <5)
           does not support **C++14**. Install and enable the offical
@@ -15,23 +15,23 @@ Building Sigil2
 
 Clone and build |project| from source::
 
-  $ git clone https://github.com/VANDAL/sigil2
-  $ cd sigil2
+  $ git clone https://github.com/vandal/prism
+  $ cd prism
   $ mkdir build && cd build
   $ cmake{3} .. # CentOS 7 requires cmake3 package
   $ make -j
 
-This creates a ``build/bin`` folder containing the :program:`sigil2` executable.
+This creates a ``build/bin`` folder containing the :program:`prism` executable.
 It can be run in place, or the entire ``bin`` folder can be moved,
 although it's not advised to move it to a system location.
 
-Running Sigil2
---------------
+Running Prism
+-------------
 
 |project| requires at least two arguments: the ``backend`` analysis tool,
 and the ``executable`` application to measure::
 
-  $ bin/sigil2 --backend=stgen --executable=./mybinary
+  $ bin/prism --backend=stgen --executable=./mybinary
 
 The ``backend`` is the analysis tool that will process all the events
 in ``mybinary``. In this example, ``stgen`` is the backend that processes
@@ -45,7 +45,7 @@ More information on backends are in :ref:`backends`.
 A third option ``frontend`` will change the underlying method
 for observing the application. By default, this is Valgrind_: ::
 
-  $ bin/sigil2 --frontend=valgrind --backend=stgen --executable=./mybinary
+  $ bin/prism --frontend=valgrind --backend=stgen --executable=./mybinary
 
 .. _Valgrind: http://valgrind.org/
 

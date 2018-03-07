@@ -91,9 +91,9 @@ qthelp:
 	@echo
 	@echo "Build finished; now you can run "qcollectiongenerator" with the" \
 	      ".qhcp project file in $(BUILDDIR)/qthelp, like this:"
-	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/Sigil2.qhcp"
+	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/prism.qhcp"
 	@echo "To view the help file:"
-	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/Sigil2.qhc"
+	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/prism.qhc"
 
 .PHONY: applehelp
 applehelp:
@@ -110,8 +110,8 @@ devhelp:
 	@echo
 	@echo "Build finished."
 	@echo "To view the help file:"
-	@echo "# mkdir -p $$HOME/.local/share/devhelp/Sigil2"
-	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/Sigil2"
+	@echo "# mkdir -p $$HOME/.local/share/devhelp/prism"
+	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/prism"
 	@echo "# devhelp"
 
 .PHONY: epub

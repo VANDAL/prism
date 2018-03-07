@@ -1,4 +1,4 @@
-.. Sigil2 documentation master file, created by
+.. Prism documentation master file, created by
    sphinx-quickstart on Thu Aug 11 18:44:28 2016.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
@@ -40,18 +40,13 @@ See the :doc:`Quickstart <quickstart>` for information installation instructions
 Contribute
 ----------
 
-Source Code: https://git.io/sigil2
+Source Code: https://git.io/prism
 
-Issue Tracker: https://github.com/VANDAL/sigil2/issues
-
-Support
--------
-
-Please contact our mailing list for any issues or concerns: sigil2@googlegroups.com
+Issue Tracker: https://github.com/vandal/prism/issues
 
 License
 -------
 
 This project is licensed under the `BSD3 license`_.
 
-.. _`BSD3 license`: https://github.com/mikelui/sigil2/blob/master/COPYING
+.. _`BSD3 license`: https://github.com/vandal/prism/blob/master/COPYING

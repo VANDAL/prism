@@ -1,14 +1,8 @@
-<p align="center">
-  <img src="https://cdn.rawgit.com/VANDAL/sigil2/master/docs/sigil2-torus.png" alt="mmmmmm">
-</p>
-<p align="center"> <i>mmmmm...Sigil...</i>  </p>
-
-
 [![BSD licensed](https://img.shields.io/badge/license-BSD-blue.svg)](./COPYING)
-[![Build Status](https://travis-ci.org/VANDAL/sigil2.svg?branch=master)](https://travis-ci.org/VANDAL/sigil2)
-[![Docs Status](https://readthedocs.org/projects/sigil2/badge)](http://sigil2.readthedocs.io/en/latest)
+[![Build Status](https://travis-ci.org/vandal/prism.svg?branch=master)](https://travis-ci.org/vandal/prism)
+[![Docs Status](https://readthedocs.org/projects/prism/badge)](http://prism.readthedocs.io/en/latest)
 
-Provides an extensible interface to  **architecture-agnostic** application events.
+The intuitive, event-driven application profiling and characterization framework.
 
 <br>
 
@@ -17,8 +11,8 @@ Provides an extensible interface to  **architecture-agnostic** application event
 :boom: cmake v3 required :boom:  
 See [CentOS 7 Support](#centos-7-support)
 ```
-git clone https://github.com/VANDAL/sigil2
-cd sigil2
+git clone https://github.com/vandal/prism
+cd prism
 mkdir build && cd build
 cmake ..
 make -j
@@ -28,22 +22,22 @@ The executable will be put in `build/bin`. It can be run in place, or the folder
 ## What is it?
 
 Uses a straight-forward intermediate representation (IR) for system architecture and application behavior studies.  
-Sigil2 provides the *dynamic* behavior of an application with 4 event primitives:
+Prism provides the *dynamic* behavior of an application with 4 event primitives:
 * **Compute** - IOPs & FLOPs
 * **Memory** - data access
 * **Synchronization** - task-level create, join, sync, et al
 * **Context** - markers for basic blocks, subroutines, instructions, etc
 * Control Flow support is pending community demand
 
-Each event has specific attributes that are accessible via the Sigil2 API
+Each event has specific attributes that are accessible via the Prism API
 
 ## Example Usage
 * Valgrind is the *default* frontend for generating events, if no option is specified
 * [SynchroTraceGen](http://vlsi.ece.drexel.edu/index.php?title=SynchroTrace) backend processing events into a special event trace  
 
-`$ bin/sigil2 --backend=stgen --executable=./myprogram -with --args`
+`$ bin/prism --backend=stgen --executable=./myprogram -with --args`
 
-Users supply at least 2 arguments to Sigil2:
+Users supply at least 2 arguments to Prism:
 * the backend analysis tool used to process events
 * the application
 
@@ -68,4 +62,4 @@ scl enable devtoolset-6 bash
 See [Software Collections](https://www.softwarecollections.org/en/scls/rhscl/devtoolset-6/) for details.
 
 ## Documentation
-[Read the docs](http://sigil2.readthedocs.io/en/latest)
+[Read the docs](http://vandal-prism.readthedocs.io/en/latest)
