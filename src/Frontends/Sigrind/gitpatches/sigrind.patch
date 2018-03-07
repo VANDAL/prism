@@ -1,29 +1,8 @@
-From 506f84949a955107926ce66f9c9153327ae79e8a Mon Sep 17 00:00:00 2001
+From 7a94858a688574018e0b00bf8520f0116fb37556 Mon Sep 17 00:00:00 2001
 From: Mike Lui <mike.d.lui@gmail.com>
-Date: Wed, 7 Mar 2018 13:39:34 -0500
-Subject: [PATCH] Added new gengrind implementation
+Date: Wed, 7 Mar 2018 16:49:18 -0500
+Subject: [PATCH] patch
 
-Gengrind is from scratch, compared to Sigrind, which is
-a modified Callgrind implementation. Gengrind tries to
-as much instrumentation as possible with VEX IR instead of
-inserting function "Dirty Calls", which potentially incur
-more overhead.
-
-Gengrind is still in development as of this release.
-
-Current issues and features still to be included are:
-
-1) Conditional event generation is incomplete. I am still
-working out how to conditionally execute inserted IRStmts.
-If this is not possible, then there will be two implementations,
-one fast one that unconditionally generates events with VEX IR,
-and another slower one that conditionally generates events inside
-Dirty Calls.
-
-2) The multithreaded implementation is still in development,
-but nearly complete. Thread support requires conditional event
-generation, so that events are not generated when inside, e.g.,
-a pthread call. So 2) is dependent on 1).
 ---
  Makefile.am                   |    2 +
  configure.ac                  |    4 +
@@ -37,7 +16,7 @@ a pthread call. So 2) is dependent on 1).
  gengrind/gn_clo.h             |   38 +
  gengrind/gn_crq.c             |  150 ++++
  gengrind/gn_crq.h             |  271 ++++++
- gengrind/gn_debug.c           |   81 ++
+ gengrind/gn_debug.c           |   78 ++
  gengrind/gn_debug.h           |   39 +
  gengrind/gn_events.c          |  936 +++++++++++++++++++++
  gengrind/gn_events.h          |  102 +++
@@ -74,7 +53,7 @@ a pthread call. So 2) is dependent on 1).
  sigrind/sigil2_ipc.h          |   28 +
  sigrind/tests/Makefile.am     |    5 +
  sigrind/threads.c             |  451 ++++++++++
- 49 files changed, 13197 insertions(+)
+ 49 files changed, 13194 insertions(+)
  create mode 100644 gengrind/Makefile.am
  create mode 100644 gengrind/gn.h
  create mode 100644 gengrind/gn_bb.c
@@ -1606,10 +1585,10 @@ index 000000000..2cef337a2
 +#endif
 diff --git a/gengrind/gn_debug.c b/gengrind/gn_debug.c
 new file mode 100644
-index 000000000..9c5ca3df1
+index 000000000..7b3132b76
 --- /dev/null
 +++ b/gengrind/gn_debug.c
-@@ -0,0 +1,81 @@
+@@ -0,0 +1,78 @@
 +#include "gn_debug.h"
 +#include "gn_bb.h"
 +
@@ -1648,9 +1627,6 @@ index 000000000..9c5ca3df1
 +        break;
 +    case SGLPRIM_SYNC_CREATE:
 +        VG_(sprintf)(str, "Spawn");
-+        break;
-+    case SGLPRIM_SYNC_EXIT:
-+        VG_(sprintf)(str, "Exit");
 +        break;
 +    case SGLPRIM_SYNC_JOIN:
 +        VG_(sprintf)(str, "Join");
