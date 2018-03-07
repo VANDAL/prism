@@ -14,6 +14,17 @@ include_directories(
 execute_process(
 	COMMAND git submodule update --init ${VGSRC_DIR}
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+# Copy Prism-specific tools to valgrind
+execute_process(
+	COMMAND cp -rf gengrind valgrind
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+	OUTPUT_QUIET)
+execute_process(
+	COMMAND cp -rf sigrind valgrind
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+	OUTPUT_QUIET)
+
 # Apply patch, or check if already applied
 execute_process(
 	COMMAND git apply --check ${PATCH}
