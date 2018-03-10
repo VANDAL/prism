@@ -1,6 +1,6 @@
 [![BSD licensed](https://img.shields.io/badge/license-BSD-blue.svg)](./COPYING)
 [![Build Status](https://travis-ci.org/vandal/prism.svg?branch=master)](https://travis-ci.org/vandal/prism)
-[![Docs Status](https://readthedocs.org/projects/prism/badge)](http://prism.readthedocs.io/en/latest)
+[![Docs Status](https://readthedocs.org/projects/prism/badge)](http://vandal-prism.readthedocs.io/en/latest)
 
 The intuitive, event-driven application profiling and characterization framework.
 
