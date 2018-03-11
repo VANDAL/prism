@@ -18,7 +18,7 @@ Clone and build |project| from source::
   $ git clone https://github.com/vandal/prism
   $ cd prism
   $ mkdir build && cd build
-  $ cmake{3} .. # CentOS 7 requires cmake3 package
+  $ cmake3 .. # CentOS 7 requires cmake3 package
   $ make -j
 
 This creates a ``build/bin`` folder containing the :program:`prism` executable.
@@ -33,7 +33,7 @@ and the ``executable`` application to measure::
 
   $ bin/prism --backend=stgen --executable=./mybinary
 
-The ``backend`` is the analysis tool that will process all the events
+The ``backend`` is the analysis tool that will analyze the requested events
 in ``mybinary``. In this example, ``stgen`` is the backend that processes
 events into a special event trace that is used in SynchroTrace_.
 

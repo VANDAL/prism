@@ -5,7 +5,7 @@
 # pathname.
 
 # used for OpenMP synchronization detection
-- (^|/)src/Frontends/Sigrind/gcc-4.9.2/*
+- src/Frontends/Sigrind/gcc-4.9.2/
 
 # third party libraries
-- (^|/)third_party/*
+- third_party/
