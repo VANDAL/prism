@@ -1,4 +1,6 @@
 #include "Parser.hpp"
+#include <sstream>
+#include <iterator>
 
 using SigiLog::warn;
 using SigiLog::fatal;
@@ -59,7 +61,17 @@ auto Parser::frontend() const -> ToolTuple
 
 auto Parser::executable() const -> Args
 {
-    return parser.getGroup(executableOption);
+    auto args = parser.getGroup(executableOption);
+
+    if (args.size() == 1)
+    {
+        // split on spaces if string was quoted
+        std::istringstream iss(args.front());
+        args = std::vector<std::string>(std::istream_iterator<std::string>{iss},
+                                        std::istream_iterator<std::string>{});
+    }
+
+    return args;
 }
 
 
