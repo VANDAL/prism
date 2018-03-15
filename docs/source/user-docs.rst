@@ -12,6 +12,7 @@ Getting Started with a Tool
 
 This example will demonstrate how to get started analyzing a workload.
 Let's do a simple example that **counts each event type**.
+We'll integrate our new tool with |project| later in :ref:`backendregistration`.
 
 First, let's make a new folder for our backend, called ``EventCounter``,
 and begin making the backend.
@@ -87,8 +88,6 @@ We'll also include the two extra functions:
 1. an event ``requirements`` function, to let |project| know to generate memory events
 2. a ``cleanup`` function, that executes after all event generation and event analysis has been performed.
 
-We'll integrate these with |project| in :ref:`backendregistration`.
-
 .. code-block:: sh
 
    $ touch src/Backends/EventCounter/EventCounter.cpp
@@ -98,7 +97,7 @@ We'll integrate these with |project| in :ref:`backendregistration`.
    // EventCounter.hpp
 
    #ifndef EVENTCOUNTER_H
-   #define  EVENTCOUNTER_H
+   #define EVENTCOUNTER_H
 
    #include "Core/Backends.hpp"
    #include <atomic>
