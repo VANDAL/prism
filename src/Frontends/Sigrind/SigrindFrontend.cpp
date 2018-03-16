@@ -146,76 +146,60 @@ auto configureWrapperEnv(const std::string &sigil2_path) -> void
 }
 
 
-auto tokenizeOpts(const std::vector<std::string> &userExec,
+auto vgOpts(const std::vector<std::string> &userExec,
                   const std::vector<std::string> &args,
                   const std::string &ipcDir,
-                  const sigil2::capabilities &reqs) -> ExecArgs
+                  const sigil2::capabilities &reqs) -> std::string
 {
     using namespace sigil2::capability;
     assert(!userExec.empty() && !ipcDir.empty());
 
-    /* format valgrind options */
-    int vg_opts_size = 1/*program name*/ +
-                       2/*vg opts*/ +
-                       1/*ipc_dir*/ +
-                       8/*sigrind opts default*/ +
-                       args.size()/*sigrind opts defined*/ +
-                       userExec.size()/*user program options*/ +
-                       1/*null*/;
-    char **vg_opts = static_cast<char **>(malloc(vg_opts_size * sizeof(char *)));
+    std::string opts;
+    opts += " --fair-sched=yes"; /* more reliable and reproducible
+                                   thread interleaving; round robins
+                                   each thread instead of letting one
+                                   thread dominate execution */
+    opts += " --tool=sigrind";
 
-    int i = 0;
-    /*program name*/
-    vg_opts[i++] = strdup("valgrind");
-
-    /*vg opts*/
-    vg_opts[i++] = strdup("--fair-sched=yes"); /* more reliable and reproducible
-                                                  thread interleaving; round robins
-                                                  each thread instead of letting one
-                                                  thread dominate execution */
-    vg_opts[i++] = strdup("--tool=sigrind");
-
-    vg_opts[i++] = strdup(("--ipc-dir=" + ipcDir).c_str());
+    opts += " --ipc-dir=" + ipcDir;
 
     /* MDL20170720
      * TODO the Valgrind frontend only has macro granularity support */
     reqs[MEMORY] == availability::enabled ?
-        vg_opts[i++] = strdup("--gen-mem=yes") :
-        vg_opts[i++] = strdup("--gen-mem=no");
+        opts += " --gen-mem=yes" :
+        opts += " --gen-mem=no";
     reqs[COMPUTE] == availability::enabled ?
-        vg_opts[i++] = strdup("--gen-comp=yes") :
-        vg_opts[i++] = strdup("--gen-comp=no");
+        opts += " --gen-comp=yes" :
+        opts += " --gen-comp=no";
     reqs[SYNC] == availability::enabled ?
-        vg_opts[i++] = strdup("--gen-sync=yes") :
-        vg_opts[i++] = strdup("--gen-sync=no");
+        opts += " --gen-sync=yes" :
+        opts += " --gen-sync=no";
     reqs[CONTEXT_INSTRUCTION] == availability::enabled ?
-        vg_opts[i++] = strdup("--gen-instr=yes") :
-        vg_opts[i++] = strdup("--gen-instr=no");
+        opts += " --gen-instr=yes" :
+        opts += " --gen-instr=no";
     reqs[CONTEXT_BASIC_BLOCK] == availability::enabled ?
-        vg_opts[i++] = strdup("--gen-bb=yes") :
-        vg_opts[i++] = strdup("--gen-bb=no");
+        opts += " --gen-bb=yes" :
+        opts += " --gen-bb=no";
     reqs[CONTEXT_FUNCTION] == availability::enabled ?
-        vg_opts[i++] = strdup("--gen-fn=yes") :
-        vg_opts[i++] = strdup("--gen-fn=no");
-    vg_opts[i++] = strdup("--gen-cf=no");
+        opts += " --gen-fn=yes" :
+        opts += " --gen-fn=no";
+    opts += " --gen-cf=no";
 
     /* command line arguments will override capabilities */
     for (auto &arg : args)
-        vg_opts[i++] = strdup(arg.c_str());
+        opts += " " + arg;
 
     for (auto &arg : userExec)
-        vg_opts[i++] = strdup(arg.c_str());
+        opts += " " + arg;
 
-    vg_opts[i] = nullptr;
-
-    return vg_opts;
+    return opts;
 }
 
 
 auto configureValgrind(const std::vector<std::string> &userExec,
                        const std::vector<std::string> &args,
                        const std::string &ipcDir,
-                       const sigil2::capabilities &reqs) -> Exec
+                       const sigil2::capabilities &reqs) -> std::string
 {
     int len, dirname_len;
     len = wai_getExecutablePath(NULL, 0, &dirname_len);
@@ -239,12 +223,12 @@ auto configureValgrind(const std::vector<std::string> &userExec,
      * the user to avoid confusion */
     setenv("VALGRIND_LIB", std::string(path).append("/vg/lib/valgrind").c_str(), true);
 
-    std::string vg_exec = std::string(path).append("/vg/bin/valgrind");
+    std::string exec = std::string(path).append("/vg/bin/valgrind");
 
     /* execvp() expects a const char* const* */
-    auto vg_opts = tokenizeOpts(userExec, args, ipcDir, reqs);
+    auto opts = vgOpts(userExec, args, ipcDir, reqs);
 
-    return std::make_pair(vg_exec, vg_opts);
+    return exec + " " + opts;
 }
 
 
@@ -285,8 +269,19 @@ auto startSigrind(Args execArgs, Args feArgs, unsigned threads, sigil2::capabili
     {
         if (pid == 0)
         {
-            auto valgrindArgs = configureValgrind(execArgs, feArgs, ipcDir, reqs);
-            int res = execvp(valgrindArgs.first.c_str(), valgrindArgs.second);
+            const char* bash = "bash";
+            std::string valgrindArgs = configureValgrind(execArgs, feArgs, ipcDir, reqs);
+
+            /* format dynamorio options */
+            int bashOptsSize = 4;
+            char **bashOpts = static_cast<char **>(malloc(bashOptsSize * sizeof(char *)));
+            int i = 0;
+            bashOpts[i++] = strdup("bash");
+            bashOpts[i++] = strdup("-c");
+            bashOpts[i++] = strdup(valgrindArgs.c_str());
+            bashOpts[i++] = nullptr;
+
+            int res = execvp(bash, bashOpts);
             if (res == -1)
                 fatal(std::string("starting valgrind failed -- ") + strerror(errno));
         }
