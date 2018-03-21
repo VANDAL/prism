@@ -4,9 +4,14 @@
 namespace sigil2
 {
 
-auto Config::registerBackend(ToolName name, Backend be) -> Config&
+auto Config::registerBackend(ToolName name,
+                             BackendIfaceGenerator beGenerator,
+                             BackendParser beParser,
+                             BackendFinish beFinish,
+                             sigil2::capabilities beRequirements) -> Config&
 {
     std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+    Backend be = {beGenerator, beParser, beFinish, beRequirements, {}};
     beFactory.add(name, be);
     return *this;
 }

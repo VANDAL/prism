@@ -12,7 +12,11 @@ namespace sigil2
 class Config
 {
   public:
-    auto registerBackend(ToolName name, Backend be) -> Config&;
+    auto registerBackend(ToolName name,
+                         BackendIfaceGenerator beGenerator,
+                         BackendParser beParser,
+                         BackendFinish beFinish,
+                         sigil2::capabilities beRequirements) -> Config&;
     auto registerFrontend(ToolName name, Frontend fe) -> Config&;
     auto parseCommandLine(int argc, char* argv[]) -> Config&;
     /* configuration */

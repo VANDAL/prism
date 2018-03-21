@@ -7,10 +7,6 @@
 #include "Backends/SimpleCount/Handler.hpp"
 #include "Backends/SigilClassic/Handler.hpp"
 
-#ifdef PRETTY_PRINT_TITLE
-#include <iostream>
-#endif
-
 using namespace SigiLog;
 using namespace sigil2;
 
@@ -21,19 +17,6 @@ auto startSigil2(const Config& config) -> int;
 
 int main(int argc, char* argv[])
 {
-#ifdef PRETTY_PRINT_TITLE
-    std::string title =
-        "    ______    _           _  __   _____   \n"
-        "  .' ____ \\  (_)         (_)[  | / ___ `. \n"
-        "  | (___ \\_| __   .--./) __  | ||_/___) | \n"
-        "   _.____`. [  | / /'`\\;[  | | | .'____.' \n"
-        "  | \\____) | | | \\ \\._// | | | |/ /_____  \n"
-        "   \\______.'[___].',__` [___|___]_______| \n"
-        "                 ( ( __))                 \n"
-        "                                          \n";
-    std::cerr << title;
-#endif
-
     auto config = Config()
         .registerFrontend("valgrind",
                           {startSigrind,
@@ -45,29 +28,25 @@ int main(int argc, char* argv[])
                           {startPerfPT,
                           perfPTCapabilities()})
         .registerBackend("stgen",
-                         {[]{return std::make_unique<::STGen::EventHandlers>();},
-                          ::STGen::onParse,
-                          ::STGen::onExit,
-                          ::STGen::requirements(),
-                          {},})
+                         []{return std::make_unique<::STGen::EventHandlers>();},
+                         ::STGen::onParse,
+                         ::STGen::onExit,
+                         ::STGen::requirements())
         .registerBackend("simplecount",
-                         {[]{return std::make_unique<::SimpleCount::Handler>();},
-                          {},
-                          ::SimpleCount::cleanup,
-                          ::SimpleCount::requirements(),
-                          {},})
+                         []{return std::make_unique<::SimpleCount::Handler>();},
+                         {},
+                         ::SimpleCount::cleanup,
+                         ::SimpleCount::requirements())
         .registerBackend("sigilclassic",
-                         {[]{return std::make_unique<::SigilClassic::Handler>();},
-                          {},
-                          {},
-                          initCaps(), //TODO
-                          {},})
+                         []{return std::make_unique<::SigilClassic::Handler>();},
+                         {},
+                         {},
+                         initCaps())
         .registerBackend("null",
-                         {[]{return std::make_unique<::BackendIface>();},
-                          {},
-                          {},
-                          initCaps(),
-                          {},})
+                         []{return std::make_unique<::BackendIface>();},
+                         {},
+                         {},
+                         initCaps())
         .parseCommandLine(argc, argv);
 
     return startSigil2(config);
