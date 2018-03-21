@@ -1,18 +1,18 @@
-#ifndef SIGIL2_FILE_LOGGER_H
-#define SIGIL2_FILE_LOGGER_H
+#ifndef PRISM_FILE_LOGGER_H
+#define PRISM_FILE_LOGGER_H
 
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/ostream_sink.h"
 #include "zfstream.h"
 #include <fstream>
 
-#include "Core/SigiLog.hpp"
-using SigiLog::info;
-using SigiLog::fatal;
+#include "Core/PrismLog.hpp"
+using PrismLog::info;
+using PrismLog::fatal;
 
 /* Convenience functions for setting up 'spdlog' loggers */
 
-namespace sigil2
+namespace prism
 {
 
 inline auto getFileLogger(std::string filePath)

@@ -1,13 +1,13 @@
-#include "Core/SigiLog.hpp"
+#include "Core/PrismLog.hpp"
 #include "DrSigilFrontend.hpp"
 #include "FrontendShmemIPC.hpp"
 #include "whereami.h"
 #include "glob.h"
 
-auto drSigilCapabilities() -> sigil2::capabilities
+auto drSigilCapabilities() -> prism::capabilities
 {
-    using namespace sigil2;
-    using namespace sigil2::capability;
+    using namespace prism;
+    using namespace prism::capability;
 
     auto caps = initCaps();
 
@@ -37,20 +37,20 @@ auto drSigilCapabilities() -> sigil2::capabilities
 };
 
 #ifndef DYNAMORIO_ENABLE
-auto startDrSigil(Args execArgs, Args feArgs, unsigned threads, sigil2::capabilities reqs)
+auto startDrSigil(Args execArgs, Args feArgs, unsigned threads, prism::capabilities reqs)
     -> FrontendIfaceGenerator
 {
     (void)execArgs;
     (void)feArgs;
     (void)threads;
     (void)reqs;
-    SigiLog::fatal("DynamoRIO frontend not available");
+    PrismLog::fatal("DynamoRIO frontend not available");
 }
 #else
 
-#define DIR_TEMPLATE "/sgl2-XXXXXX"
+#define DIR_TEMPLATE "/prism-XXXXXX"
 
-using SigiLog::fatal;
+using PrismLog::fatal;
 
 ////////////////////////////////////////////////////////////
 // Launching DynamoRIO
@@ -64,10 +64,10 @@ using Exec = std::pair<std::string, ExecArgs>;
 auto getDynamoRIOArgs(const std::string &sigilBinDir,
                       const std::string &ipcDir,
                       uint16_t threads,
-                      const sigil2::capabilities &reqs) -> Args
+                      const prism::capabilities &reqs) -> Args
 {
-    using namespace sigil2;
-    using namespace sigil2::capability;
+    using namespace prism;
+    using namespace prism::capability;
 
     Args drArgs;
 
@@ -126,7 +126,7 @@ auto tokenizeOpts(const std::vector<std::string> &userExec,
                   const std::string &sigilBinDir,
                   const std::string &ipcDir,
                   const uint16_t threads,
-                  const sigil2::capabilities &reqs) -> ExecArgs
+                  const prism::capabilities &reqs) -> ExecArgs
 {
     assert(!userExec.empty() && !ipcDir.empty());
 
@@ -163,7 +163,7 @@ auto configureDynamoRIO(const std::vector<std::string> &user_exec,
                         const std::vector<std::string> &args,
                         const std::string &ipc_dir,
                         const uint16_t num_threads,
-                        const sigil2::capabilities &reqs) -> Exec
+                        const prism::capabilities &reqs) -> Exec
 {
     int dirname_len;
     int len = wai_getExecutablePath(NULL, 0, &dirname_len);
@@ -196,13 +196,13 @@ auto configureDynamoRIO(const std::vector<std::string> &user_exec,
 auto configureIpcDir() -> std::string
 {
     /* check IPC path */
-    std::string shm_path = getenv("SIGIL2_SHM_DIR") != nullptr ?  getenv("SIGIL2_SHM_DIR") :
+    std::string shm_path = getenv("PRISM_SHM_DIR") != nullptr ?  getenv("PRISM_SHM_DIR") :
                            getenv("XDG_RUNTIME_DIR") != nullptr ? getenv("XDG_RUNTIME_DIR") :
                            "/dev/shm";
     struct stat info;
     if (stat(shm_path.c_str(), &info) != 0)
         fatal(std::string{shm_path} + " not found\n" +
-              "\tset environment var 'SIGIL2_SHM_DIR' to a tmpfs mount");
+              "\tset environment var 'PRISM_SHM_DIR' to a tmpfs mount");
 
     std::string shm_template = shm_path + DIR_TEMPLATE;
     if (mkdtemp(&shm_template[0]) == nullptr)
@@ -214,9 +214,9 @@ auto configureIpcDir() -> std::string
 
 
 ////////////////////////////////////////////////////////////
-// Interface to Sigil2 core
+// Interface to Prism core
 ////////////////////////////////////////////////////////////
-auto startDrSigil(Args execArgs, Args feArgs, unsigned threads, sigil2::capabilities reqs)
+auto startDrSigil(Args execArgs, Args feArgs, unsigned threads, prism::capabilities reqs)
     -> FrontendIfaceGenerator
 {
     auto ipcDir = configureIpcDir();
@@ -236,7 +236,7 @@ auto startDrSigil(Args execArgs, Args feArgs, unsigned threads, sigil2::capabili
     else
         fatal(std::string("sigrind fork failed -- ") + strerror(errno));
 
-    return [=]{ return std::make_unique<ShmemFrontend<Sigil2DBISharedData>>(ipcDir); };
+    return [=]{ return std::make_unique<ShmemFrontend<PrismDBISharedData>>(ipcDir); };
 }
 
 #endif

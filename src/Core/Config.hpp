@@ -1,12 +1,12 @@
-#ifndef SIGIL2_CONFIG_H
-#define SIGIL2_CONFIG_H
+#ifndef PRISM_CONFIG_H
+#define PRISM_CONFIG_H
 
 #include "Backends.hpp"
 #include "Frontends.hpp"
 #include "Parser.hpp"
 #include <cassert>
 
-namespace sigil2
+namespace prism
 {
 
 class Config
@@ -16,7 +16,7 @@ class Config
                          BackendIfaceGenerator beGenerator,
                          BackendParser beParser,
                          BackendFinish beFinish,
-                         sigil2::capabilities beRequirements) -> Config&;
+                         prism::capabilities beRequirements) -> Config&;
     auto registerFrontend(ToolName name, Frontend fe) -> Config&;
     auto parseCommandLine(int argc, char* argv[]) -> Config&;
     /* configuration */
@@ -49,6 +49,6 @@ class Config
     bool parsed{false};
 };
 
-}; //end namespace sigil2
+}; //end namespace prism
 
 #endif

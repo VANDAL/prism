@@ -2,7 +2,7 @@
 #define SHADOWMEMORY_H
 
 #include "Core/Primitive.h" // PtrVal type
-#include "Core/SigiLog.hpp"
+#include "Core/PrismLog.hpp"
 
 #include <limits>
 #include <vector>
@@ -16,8 +16,8 @@
  */
 
 using Addr = PtrVal;
-using SigiLog::fatal;
-using SigiLog::warn;
+using PrismLog::fatal;
+using PrismLog::warn;
 
 /* XXX: Setting {addr, pm} bits too large can cause bad_alloc errors */
 template <typename SO, unsigned ADDR_BITS = 38, unsigned PM_BITS = 16>

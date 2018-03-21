@@ -1,5 +1,5 @@
-#ifndef SIGIL2_FRONTEND_COMMON_H
-#define SIGIL2_FRONTEND_COMMON_H
+#ifndef PRISM_FRONTEND_COMMON_H
+#define PRISM_FRONTEND_COMMON_H
 
 #include <mutex>
 #include <condition_variable>

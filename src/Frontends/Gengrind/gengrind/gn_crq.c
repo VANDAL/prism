@@ -35,7 +35,7 @@ Bool GN_(handleClientRequest)(ThreadId tid, UWord *args, UWord *ret)
     case VG_USERREQ__GN_PTHREAD_JOIN_ENTER:
         /* log when the thread join is ENTERED and disable */
         if (GN_(EventGenerationEnabled))
-            GN_(flush_Sync)((UChar)SGLPRIM_SYNC_JOIN, (SyncID*)&args[1], 1);
+            GN_(flush_Sync)((UChar)PRISM_SYNC_JOIN, (SyncID*)&args[1], 1);
         GN_(setInSyncCall)(tid);
         break;
     case VG_USERREQ__GN_PTHREAD_JOIN_LEAVE:
@@ -59,7 +59,7 @@ Bool GN_(handleClientRequest)(ThreadId tid, UWord *args, UWord *ret)
         /* enable and log once the lock has been acquired */
         GN_(resetInSyncCall)(tid);
         if (GN_(EventGenerationEnabled))
-            GN_(flush_Sync)((UChar)SGLPRIM_SYNC_LOCK, (SyncID*)&args[1], 1);
+            GN_(flush_Sync)((UChar)PRISM_SYNC_LOCK, (SyncID*)&args[1], 1);
         break;
 
     case VG_USERREQ__GN_GOMP_UNLOCK_ENTER:
@@ -78,7 +78,7 @@ Bool GN_(handleClientRequest)(ThreadId tid, UWord *args, UWord *ret)
     case VG_USERREQ__GN_PTHREAD_UNLOCK_LEAVE:
         GN_(resetInSyncCall)(tid);
         if (GN_(EventGenerationEnabled))
-            GN_(flush_Sync)((UChar)SGLPRIM_SYNC_UNLOCK, (SyncID*)&args[1], 1);
+            GN_(flush_Sync)((UChar)PRISM_SYNC_UNLOCK, (SyncID*)&args[1], 1);
         break;
 
     case VG_USERREQ__GN_GOMP_BARRIER_ENTER:
@@ -87,7 +87,7 @@ Bool GN_(handleClientRequest)(ThreadId tid, UWord *args, UWord *ret)
     case VG_USERREQ__GN_PTHREAD_BARRIER_ENTER:
         /* log once the barrier is ENTERED and waiting and disable */
         if (GN_(EventGenerationEnabled))
-            GN_(flush_Sync)((UChar)SGLPRIM_SYNC_BARRIER, (SyncID*)&args[1], 1);
+            GN_(flush_Sync)((UChar)PRISM_SYNC_BARRIER, (SyncID*)&args[1], 1);
         GN_(setInSyncCall)(tid);
         break;
     case VG_USERREQ__GN_GOMP_BARRIER_LEAVE:
@@ -103,7 +103,7 @@ Bool GN_(handleClientRequest)(ThreadId tid, UWord *args, UWord *ret)
     case VG_USERREQ__GN_PTHREAD_CONDWAIT_LEAVE:
         GN_(resetInSyncCall)(tid);
         if (GN_(EventGenerationEnabled))
-            GN_(flush_Sync)((UChar)SGLPRIM_SYNC_CONDWAIT, (SyncID*)&args[1], 2);
+            GN_(flush_Sync)((UChar)PRISM_SYNC_CONDWAIT, (SyncID*)&args[1], 2);
         break;
 
     case VG_USERREQ__GN_PTHREAD_CONDSIG_ENTER:
@@ -112,7 +112,7 @@ Bool GN_(handleClientRequest)(ThreadId tid, UWord *args, UWord *ret)
     case VG_USERREQ__GN_PTHREAD_CONDSIG_LEAVE:
         GN_(resetInSyncCall)(tid);
         if (GN_(EventGenerationEnabled))
-            GN_(flush_Sync)((UChar)SGLPRIM_SYNC_CONDSIG, (SyncID*)&args[1], 1);
+            GN_(flush_Sync)((UChar)PRISM_SYNC_CONDSIG, (SyncID*)&args[1], 1);
         break;
 
     case VG_USERREQ__GN_PTHREAD_CONDBROAD_ENTER:
@@ -121,7 +121,7 @@ Bool GN_(handleClientRequest)(ThreadId tid, UWord *args, UWord *ret)
     case VG_USERREQ__GN_PTHREAD_CONDBROAD_LEAVE:
         GN_(resetInSyncCall)(tid);
         if (GN_(EventGenerationEnabled))
-            GN_(flush_Sync)((UChar)SGLPRIM_SYNC_CONDBROAD, (SyncID*)&args[1], 1);
+            GN_(flush_Sync)((UChar)PRISM_SYNC_CONDBROAD, (SyncID*)&args[1], 1);
         break;
 
     case VG_USERREQ__GN_PTHREAD_SPINLOCK_ENTER:
@@ -130,7 +130,7 @@ Bool GN_(handleClientRequest)(ThreadId tid, UWord *args, UWord *ret)
     case VG_USERREQ__GN_PTHREAD_SPINLOCK_LEAVE:
         GN_(resetInSyncCall)(tid);
         if (GN_(EventGenerationEnabled))
-            GN_(flush_Sync)((UChar)SGLPRIM_SYNC_SPINLOCK, (SyncID*)&args[1], 1);
+            GN_(flush_Sync)((UChar)PRISM_SYNC_SPINLOCK, (SyncID*)&args[1], 1);
         break;
 
     case VG_USERREQ__GN_PTHREAD_SPINUNLOCK_ENTER:
@@ -139,7 +139,7 @@ Bool GN_(handleClientRequest)(ThreadId tid, UWord *args, UWord *ret)
     case VG_USERREQ__GN_PTHREAD_SPINUNLOCK_LEAVE:
         GN_(resetInSyncCall)(tid);
         if (GN_(EventGenerationEnabled))
-            GN_(flush_Sync)((UChar)SGLPRIM_SYNC_SPINUNLOCK, (SyncID*)&args[1], 1);
+            GN_(flush_Sync)((UChar)PRISM_SYNC_SPINUNLOCK, (SyncID*)&args[1], 1);
         break;
 
     default:

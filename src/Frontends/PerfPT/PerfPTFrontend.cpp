@@ -1,13 +1,13 @@
-#include "Core/SigiLog.hpp"
+#include "Core/PrismLog.hpp"
 #include "PerfPTFrontend.hpp"
 #include "FrontendShmemIPC.hpp"
 #include "whereami.h"
 #include <fstream>
 
-auto perfPTCapabilities() -> sigil2::capabilities 
+auto perfPTCapabilities() -> prism::capabilities 
 {
-    using namespace sigil2;
-    using namespace sigil2::capability;
+    using namespace prism;
+    using namespace prism::capability;
 
     auto caps = initCaps();
 
@@ -37,22 +37,22 @@ auto perfPTCapabilities() -> sigil2::capabilities
 };
 
 #ifndef PERF_ENABLE
-auto startPerfPT(Args execArgs, Args feArgs, unsigned threads, sigil2::capabilities reqs)
+auto startPerfPT(Args execArgs, Args feArgs, unsigned threads, prism::capabilities reqs)
     -> FrontendIfaceGenerator
 {
     (void)execArgs;
     (void)feArgs;
     (void)threads;
     (void)reqs;
-    SigiLog::fatal("Perf frontend not available");
+    PrismLog::fatal("Perf frontend not available");
 }
 #else
 
-#define DIR_TEMPLATE "/sgl2-XXXXXX"
+#define DIR_TEMPLATE "/prism-XXXXXX"
 
-using SigiLog::fatal;
-using SigiLog::error;
-using SigiLog::warn;
+using PrismLog::fatal;
+using PrismLog::error;
+using PrismLog::warn;
 
 //-----------------------------------------------------------------------------
 /** Launching Perf **/
@@ -143,13 +143,13 @@ auto configurePerf(const std::vector<std::string>& userExec,
 auto configureIpcDir() -> std::string
 {
     /* check IPC path */
-    std::string shm_path = getenv("SIGIL2_SHM_DIR") != nullptr ?
-                           getenv("SIGIL2_SHM_DIR") : "/dev/shm";
+    std::string shm_path = getenv("PRISM_SHM_DIR") != nullptr ?
+                           getenv("PRISM_SHM_DIR") : "/dev/shm";
 
     struct stat info;
     if (stat(shm_path.c_str(), &info) != 0)
         fatal(std::string(shm_path) + " not found\n" +
-              "\tset environment var 'SIGIL2_SHM_DIR' to a tmpfs mount");
+              "\tset environment var 'PRISM_SHM_DIR' to a tmpfs mount");
 
     std::string shm_template = shm_path + DIR_TEMPLATE;
     if (mkdtemp(&shm_template[0]) == nullptr)
@@ -161,9 +161,9 @@ auto configureIpcDir() -> std::string
 
 
 //-----------------------------------------------------------------------------
-/** Interface to Sigil2 core **/
+/** Interface to Prism core **/
 
-auto startPerfPT(Args execArgs, Args feArgs, unsigned threads, sigil2::capabilities reqs)
+auto startPerfPT(Args execArgs, Args feArgs, unsigned threads, prism::capabilities reqs)
     -> FrontendIfaceGenerator
 {
     //TODO add command line switches for perf to handle capabilities
@@ -186,7 +186,7 @@ auto startPerfPT(Args execArgs, Args feArgs, unsigned threads, sigil2::capabilit
     else
         fatal(std::string("perf fork failed -- ") + strerror(errno));
 
-    return [=]{ return std::make_unique<ShmemFrontend<Sigil2PerfSharedData>>(ipcDir); };
+    return [=]{ return std::make_unique<ShmemFrontend<PrismPerfSharedData>>(ipcDir); };
 }
 
 #endif // PERF_ENABLE

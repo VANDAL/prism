@@ -26,5 +26,5 @@
 	path = src/Frontends/DrSigil/dynamorio
 	url = https://github.com/DynamoRIO/dynamorio
 [submodule "src/Frontends/Sigrind/valgrind"]
-	path = src/Frontends/Sigrind/valgrind
+	path = src/Frontends/Gengrind/valgrind
 	url = git://sourceware.org/git/valgrind.git

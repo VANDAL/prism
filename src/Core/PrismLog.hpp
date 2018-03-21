@@ -1,5 +1,5 @@
-#ifndef SIGIL2_LOG_H
-#define SIGIL2_LOG_H
+#ifndef PRISM_LOG_H
+#define PRISM_LOG_H
 
 #include "spdlog/spdlog.h"
 #include <atomic>
@@ -8,25 +8,25 @@ namespace
 {
 /* TODO(cleanup) : singleton is used for cleaner interface to spdlog,
  * but it's a bit messy */
-class SigilLogger
+class PrismLogger
 {
   public:
     static auto& instance()
     {
-        static SigilLogger* l = new SigilLogger();
+        static PrismLogger* l = new PrismLogger();
         return l->logger;
     }
 
   private:
-    SigilLogger()
+    PrismLogger()
     {
-        if ((logger = spdlog::get("SIGIL2")) == nullptr)
+        if ((logger = spdlog::get("PRISM")) == nullptr)
         {
             spdlog::set_sync_mode();
             if (isatty(fileno(stdout)))
-                logger = spdlog::stderr_color_mt("SIGIL2");
+                logger = spdlog::stderr_color_mt("PRISM");
             else
-                logger = spdlog::stderr_logger_mt("SIGIL2");
+                logger = spdlog::stderr_logger_mt("PRISM");
             logger->set_pattern("[%n] [%l] %v");
         }
     }
@@ -36,39 +36,39 @@ class SigilLogger
 }; // end namespace
 
 
-namespace SigiLog
+namespace PrismLog
 {
     inline auto enableDebug()
     {
-        SigilLogger::instance()->set_level(spdlog::level::debug);
+        PrismLogger::instance()->set_level(spdlog::level::debug);
     }
 
     inline auto info(const std::string &msg)
     {
-        SigilLogger::instance()->info(msg);
+        PrismLogger::instance()->info(msg);
     }
     
     inline auto warn(const std::string &msg)
     {
-        SigilLogger::instance()->warn(msg);
+        PrismLogger::instance()->warn(msg);
     }
     
     inline auto error(const std::string& msg)
     {
-        SigilLogger::instance()->error(msg);
+        PrismLogger::instance()->error(msg);
     }
     
     inline auto debug(const std::string &msg)
     {
-        SigilLogger::instance()->debug(msg);
+        PrismLogger::instance()->debug(msg);
     }
     
     [[noreturn]]
     inline auto fatal(const std::string &msg)
     {
-        SigilLogger::instance()->critical(msg);
+        PrismLogger::instance()->critical(msg);
         std::exit(EXIT_FAILURE);
     }
-}; //end namespace SigiLog
+}; //end namespace PrismLog
 
 #endif

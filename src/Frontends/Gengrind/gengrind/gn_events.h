@@ -10,8 +10,8 @@
 
 typedef struct GN_(_EvVariant) GN_(EvVariant);
 typedef struct GN_(_MemoryEvent) GN_(MemoryEvent);
-typedef SglCxtEv GN_(InstrEvent);
-typedef SglCompEv GN_(ComputeEvent);
+typedef PrismCxtEv GN_(InstrEvent);
+typedef PrismCompEv GN_(ComputeEvent);
 typedef GnJumpKind GN_(JKEvent);
 typedef struct GN_(Flush) GN_(Flush);
 

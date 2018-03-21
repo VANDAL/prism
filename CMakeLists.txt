@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.1.3)
-project(sigil2)
+project(prism)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
@@ -76,9 +76,9 @@ if(NOT PERF_ENABLE)
 endif(NOT PERF_ENABLE)
 
 
-################
-# Build Sigil2 #
-################
+###############
+# Build Prism #
+###############
 set(SOURCES
 	${THIRD_PARTY}/whereami/src/whereami.c
 	${SRC_CORE}/Backends.cpp
@@ -86,9 +86,9 @@ set(SOURCES
 	${SRC_CORE}/Parser.cpp
 	${SRC_CORE}/Config.cpp
 	${SRC_CORE}/main.cpp)
-add_executable(sigil2 ${SOURCES})
-target_link_libraries(sigil2 pthread rt)
-set_target_properties(sigil2
+add_executable(prism ${SOURCES})
+target_link_libraries(prism pthread rt)
+set_target_properties(prism
 	PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
@@ -96,17 +96,17 @@ set_target_properties(sigil2
 # Plugin Backends #
 ###################
 add_subdirectory(${SRC_BACKENDS}/SynchroTraceGen)
-add_dependencies(sigil2 STGen)
-target_link_libraries(sigil2 ${STGEN_LIB} z)
+add_dependencies(prism STGen)
+target_link_libraries(prism ${STGEN_LIB} z)
 
 add_subdirectory(${SRC_BACKENDS}/SimpleCount)
-target_link_libraries(sigil2 SimpleCount)
+target_link_libraries(prism SimpleCount)
 
 add_subdirectory(${SRC_BACKENDS}/SigilClassic)
-target_link_libraries(sigil2 SigilClassic)
+target_link_libraries(prism SigilClassic)
 
 ##########################
 # Interface to Frontends #
 ##########################
 add_subdirectory(${SRC_FRONTENDS})
-target_link_libraries(sigil2 frontends)
+target_link_libraries(prism frontends)

@@ -25,7 +25,7 @@ Each trace file is:
                         lowered via an argument, to preserve memory ordering.
 
 
-This Backend holds a different context for each thread. Each time the Sigil2
+This Backend holds a different context for each thread. Each time the Prism
 core informs the backend that the thread stream has switched, the current
 context switches.
 
@@ -45,7 +45,7 @@ an 'uncompressed' context, which generate mutually exclusive 'compressed' and
 
 The general architecture:
                  +------------------+
-                 |    Sigil2 Core   |
+                 |    Prism Core    |
                  +------------------+
                            |
                            v

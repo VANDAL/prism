@@ -10,7 +10,7 @@
 
 typedef struct EventNameSlotTuple
 {
-    SglEvVariant*  event_slot;
+    PrismEvVariant*  event_slot;
     char*          name_slot;
     UInt           name_idx;
 } EventNameSlotTuple;
@@ -18,7 +18,7 @@ typedef struct EventNameSlotTuple
 void SGL_(init_IPC)(void);
 void SGL_(term_IPC)(void);
 
-SglEvVariant* SGL_(acq_event_slot)(void);
+PrismEvVariant* SGL_(acq_event_slot)(void);
 /* Get a buffer slot to add an event */
 
 EventNameSlotTuple SGL_(acq_event_name_slot)(UInt size);

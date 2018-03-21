@@ -10,23 +10,23 @@
 static Bool initialized = False;
 static Int gnEmptyFd;
 static Int gnFullFd;
-static Sigil2DBISharedData* gnShmem;
+static PrismDBISharedData* gnShmem;
 
-SglEvVariant *GN_(currEv);
-SglEvVariant *GN_(endEv);
+PrismEvVariant *GN_(currEv);
+PrismEvVariant *GN_(endEv);
 size_t *GN_(usedEv);
 /* IPC channel */
 
 static UInt          gnNextIdx;
 static UInt          gnCurrIdx;
 static EventBuffer   *gnCurrEvBuf;
-//static SglEvVariant  *currEvSlot;
+//static PrismEvVariant  *currEvSlot;
 //static NameBuffer    *currNameBuf;
 //static char*         currNameSlot;
 /* cached IPC state */
 
 
-static Bool isFull[SIGIL2_IPC_BUFFERS];
+static Bool isFull[PRISM_IPC_BUFFERS];
 /* track available buffers */
 
 
@@ -34,11 +34,11 @@ static Bool isFull[SIGIL2_IPC_BUFFERS];
 //{
 //    /* try the next buffer, circular */
 //    ++curr_idx;
-//    if (curr_idx == SIGIL2_IPC_BUFFERS)
+//    if (curr_idx == PRISM_IPC_BUFFERS)
 //        curr_idx = 0;
 //
 //    /* if the next buffer is full,
-//     * wait until Sigil2 communicates that it's free */
+//     * wait until Prism communicates that it's free */
 //    if (is_full[curr_idx])
 //    {
 //        UInt buf_idx;
@@ -51,7 +51,7 @@ static Bool isFull[SIGIL2_IPC_BUFFERS];
 //            VG_(exit)(1);
 //        }
 //
-//        tl_assert(buf_idx < SIGIL2_IPC_BUFFERS);
+//        tl_assert(buf_idx < PRISM_IPC_BUFFERS);
 //        tl_assert(buf_idx == curr_idx);
 //        curr_idx = buf_idx;
 //        is_full[curr_idx] = False;
@@ -63,17 +63,17 @@ static Bool isFull[SIGIL2_IPC_BUFFERS];
 //
 //static inline Bool is_events_full(void)
 //{
-//    return curr_ev_buf->used == SIGIL2_EVENTS_BUFFER_SIZE;
+//    return curr_ev_buf->used == PRISM_EVENTS_BUFFER_SIZE;
 //}
 //
 //
 //static inline Bool is_names_full(UInt size)
 //{
-//    return (curr_name_buf->used + size) > SIGIL2_EVENTS_BUFFER_SIZE;
+//    return (curr_name_buf->used + size) > PRISM_EVENTS_BUFFER_SIZE;
 //}
 //
 //
-//SglEvVariant* GN_(acq_event_slot)()
+//PrismEvVariant* GN_(acq_event_slot)()
 //{
 //    tl_assert(initialized == True);
 //
@@ -129,7 +129,7 @@ static int openFifo(const HChar *fifo_path, int flags)
             req.tv_sec = 0;
             req.tv_nsec = 500000000;
             /* wait some time before trying to connect,
-             * giving Sigil2 time to bring up IPC */
+             * giving Prism time to bring up IPC */
             VG_(do_syscall2)(__NR_nanosleep, (UWord)&req, 0);
 #else
 #error "Only linux is supported"
@@ -147,7 +147,7 @@ static int openFifo(const HChar *fifo_path, int flags)
 }
 
 
-static Sigil2DBISharedData* openShmem(const HChar *gnShmem_path, int flags)
+static PrismDBISharedData* openShmem(const HChar *gnShmem_path, int flags)
 {
     tl_assert(initialized == False);
 
@@ -158,7 +158,7 @@ static Sigil2DBISharedData* openShmem(const HChar *gnShmem_path, int flags)
         VG_(exit)(1);
     }
 
-    SysRes res = VG_(am_shared_mmap_file_float_valgrind)(sizeof(Sigil2DBISharedData),
+    SysRes res = VG_(am_shared_mmap_file_float_valgrind)(sizeof(PrismDBISharedData),
                                                          VKI_PROT_READ|VKI_PROT_WRITE,
                                                          shared_mem_fd, (Off64T)0);
     if (sr_isError(res)) {
@@ -171,7 +171,7 @@ static Sigil2DBISharedData* openShmem(const HChar *gnShmem_path, int flags)
     Addr addr_shared = sr_Res (res);
     VG_(close)(shared_mem_fd);
 
-    return (Sigil2DBISharedData*) addr_shared;
+    return (PrismDBISharedData*) addr_shared;
 }
 
 
@@ -191,7 +191,7 @@ void GN_(initIPC)()
         /* ensure events is an array, not a pointer */
         tl_assert(sizeof(gnCurrEvBuf->events) != sizeof(gnCurrEvBuf->events[0]));
         GN_(endEv) = gnCurrEvBuf->events + sizeof(gnCurrEvBuf->events)/sizeof(gnCurrEvBuf->events[0]);
-        for (UInt i=0; i<SIGIL2_IPC_BUFFERS; ++i)
+        for (UInt i=0; i<PRISM_IPC_BUFFERS; ++i)
             isFull[i] = False;
 
         ++gnNextIdx;
@@ -209,17 +209,17 @@ void GN_(initIPC)()
     Int filenameLen;
 
     //len is strlen + null + other chars (/ and -0)
-    filenameLen = ipcDirLen + VG_(strlen)(SIGIL2_IPC_SHMEM_BASENAME) + 4;
+    filenameLen = ipcDirLen + VG_(strlen)(PRISM_IPC_SHMEM_BASENAME) + 4;
     HChar gnShmemPath[filenameLen];
-    VG_(snprintf)(gnShmemPath, filenameLen, "%s/%s-0", GN_(clo).ipc_dir, SIGIL2_IPC_SHMEM_BASENAME);
+    VG_(snprintf)(gnShmemPath, filenameLen, "%s/%s-0", GN_(clo).ipc_dir, PRISM_IPC_SHMEM_BASENAME);
 
-    filenameLen = ipcDirLen + VG_(strlen)(SIGIL2_IPC_EMPTYFIFO_BASENAME) + 4;
+    filenameLen = ipcDirLen + VG_(strlen)(PRISM_IPC_EMPTYFIFO_BASENAME) + 4;
     HChar emptyfifoPath[filenameLen];
-    VG_(snprintf)(emptyfifoPath, filenameLen, "%s/%s-0", GN_(clo).ipc_dir, SIGIL2_IPC_EMPTYFIFO_BASENAME);
+    VG_(snprintf)(emptyfifoPath, filenameLen, "%s/%s-0", GN_(clo).ipc_dir, PRISM_IPC_EMPTYFIFO_BASENAME);
 
-    filenameLen = ipcDirLen + VG_(strlen)(SIGIL2_IPC_FULLFIFO_BASENAME) + 4;
+    filenameLen = ipcDirLen + VG_(strlen)(PRISM_IPC_FULLFIFO_BASENAME) + 4;
     HChar fullfifoPath[filenameLen];
-    VG_(snprintf)(fullfifoPath, filenameLen, "%s/%s-0", GN_(clo).ipc_dir, SIGIL2_IPC_FULLFIFO_BASENAME);
+    VG_(snprintf)(fullfifoPath, filenameLen, "%s/%s-0", GN_(clo).ipc_dir, PRISM_IPC_FULLFIFO_BASENAME);
 
     gnEmptyFd = openFifo(emptyfifoPath, VKI_O_RDONLY);
     gnFullFd  = openFifo(fullfifoPath, VKI_O_WRONLY);
@@ -231,7 +231,7 @@ void GN_(initIPC)()
     gnCurrIdx = 0;
     gnNextIdx = 0;
     GN_(setNextBuffer)();
-    for (UInt i=0; i<SIGIL2_IPC_BUFFERS; ++i)
+    for (UInt i=0; i<PRISM_IPC_BUFFERS; ++i)
         isFull[i] = False;
 
     initialized = True;
@@ -257,7 +257,7 @@ void GN_(termIPC)(void)
     GN_(flushCurrBuffer)();
 
     /* ... and send finish sequence */
-    UInt finished = SIGIL2_IPC_FINISHED;
+    UInt finished = PRISM_IPC_FINISHED;
     if (VG_(write)(gnFullFd, &finished, sizeof(finished)) != sizeof(finished)) {
         VG_(umsg)("error VG_(write)\n");
         VG_(umsg)("error writing to Sigrind fifo\n");
@@ -276,7 +276,7 @@ void GN_(termIPC)(void)
 void GN_(flushCurrBuffer)(void)
 {
     /* Mark that the buffer is being flushed,
-     * and tell Sigil2 the buffer is ready to consume */
+     * and tell Prism the buffer is ready to consume */
     isFull[gnCurrIdx] = True;
     Int res = VG_(write)(gnFullFd, &gnCurrIdx, sizeof(gnCurrIdx));
     if (res != sizeof(gnCurrIdx)) {
@@ -291,11 +291,11 @@ void GN_(flushCurrBuffer)(void)
 void GN_(setNextBuffer)(void)
 {
     /* try the next buffer, circular */
-    if (gnNextIdx == SIGIL2_IPC_BUFFERS)
+    if (gnNextIdx == PRISM_IPC_BUFFERS)
         gnNextIdx = 0;
 
     /* if the next buffer is full,
-     * wait until Sigil2 communicates that it's free */
+     * wait until Prism communicates that it's free */
     if (isFull[gnNextIdx]) {
         UInt bufIdx;
         Int res = VG_(read)(gnEmptyFd, &bufIdx, sizeof(bufIdx));
@@ -306,7 +306,7 @@ void GN_(setNextBuffer)(void)
             VG_(exit)(1);
         }
 
-        tl_assert(bufIdx < SIGIL2_IPC_BUFFERS);
+        tl_assert(bufIdx < PRISM_IPC_BUFFERS);
         tl_assert(bufIdx == gnNextIdx);
         isFull[gnNextIdx] = False;
     }

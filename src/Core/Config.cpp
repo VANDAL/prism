@@ -1,14 +1,14 @@
 #include "Config.hpp"
 #include <numeric>
 
-namespace sigil2
+namespace prism
 {
 
 auto Config::registerBackend(ToolName name,
                              BackendIfaceGenerator beGenerator,
                              BackendParser beParser,
                              BackendFinish beFinish,
-                             sigil2::capabilities beRequirements) -> Config&
+                             prism::capabilities beRequirements) -> Config&
 {
     std::transform(name.begin(), name.end(), name.begin(), ::tolower);
     Backend be = {beGenerator, beParser, beFinish, beRequirements, {}};
@@ -48,4 +48,4 @@ auto Config::parseCommandLine(int argc, char* argv[]) -> Config&
     return *this;
 }
 
-}; //end namespace sigil2
+}; //end namespace prism

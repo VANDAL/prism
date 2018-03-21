@@ -1,7 +1,7 @@
 #ifndef STGEN_CAPNLOGGER_H
 #define STGEN_CAPNLOGGER_H
 
-#include "Core/SigiLog.hpp"
+#include "Core/PrismLog.hpp"
 #include "STLogger.hpp"
 #include "STEventTraceCompressed.capnp.h"
 #include "STEventTraceUncompressed.capnp.h"
@@ -15,7 +15,7 @@
  * Binary serialization schemes may provide faster parsing
  * of the event stream and better compression */
 
-using SigiLog::fatal;
+using PrismLog::fatal;
 
 namespace STGen
 {

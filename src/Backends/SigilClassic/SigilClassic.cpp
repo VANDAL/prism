@@ -1,5 +1,5 @@
 #include "SigilClassic.hpp"
-#include "Core/SigiLog.hpp"
+#include "Core/PrismLog.hpp"
 
 /* XXX overflow builtin not in GCC <5.
  * This overflow check should only be used for
@@ -49,7 +49,7 @@ auto SigilContext::enterEntity(std::string name) -> void
 
     /* count is not bounded, error if too many functions */
     if(INCR_EID_OVERFLOW(global_eid_cnt))
-        SigiLog::fatal("SigilClassic detected overflow in entity count");
+        PrismLog::fatal("SigilClassic detected overflow in entity count");
 
     EID caller = *cur_eid;
     *cur_eid = global_eid_cnt;

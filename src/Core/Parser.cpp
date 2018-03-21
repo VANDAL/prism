@@ -2,10 +2,10 @@
 #include <sstream>
 #include <iterator>
 
-using SigiLog::warn;
-using SigiLog::fatal;
+using PrismLog::warn;
+using PrismLog::fatal;
 
-namespace sigil2
+namespace prism
 {
 
 //-----------------------------------------------------------------------------
@@ -27,9 +27,9 @@ Parser::Parser(int argc, char* argv[])
 
 auto Parser::threads() const -> int
 {
-    /* The number of 'threads' Sigil2 will use */
+    /* The number of 'threads' Prism will use */
     /* MDL20160805 Currently only valid with DynamoRIO frontend.
-     * This will cause 'n' event streams between Sigil2 and DynamoRIO
+     * This will cause 'n' event streams between Prism and DynamoRIO
      * to be generated, and 'n' separate backend instances will
      * read from those event streams as separate threads */
 
@@ -117,7 +117,7 @@ auto ArgGroup::display_help() -> void
     std::string help;
     help = "Usage: \n";
     help += "                ";
-    help += "sigil2 [options] ";
+    help += "prism [options] ";
 
     for (const auto &option : optional_groups)
         help += "[--" + option + "=VALUE" + " [options]] ";
@@ -272,4 +272,4 @@ auto ArgGroup::parse(int argc, char* argv[]) -> bool
     return true;
 }
 
-}; //end namespace sigil2
+}; //end namespace prism

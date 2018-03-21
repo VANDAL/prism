@@ -1,7 +1,7 @@
-#ifndef SIGIL2_FRONTEND_H
-#define SIGIL2_FRONTEND_H
+#ifndef PRISM_FRONTEND_H
+#define PRISM_FRONTEND_H
 
-#include "SigiLog.hpp"
+#include "PrismLog.hpp"
 #include "EventBuffer.h"
 #include <map>
 #include <functional>
@@ -17,7 +17,7 @@ using Args = std::vector<std::string>;
 using GetNameBase = std::function<const char*(void)>;
 class FrontendIface
 {
-    /* The Sigil2 core asynchronously requests an event buffer
+    /* The Prism core asynchronously requests an event buffer
      * from the frontend to send events to the backend. */
 
   public:
@@ -27,7 +27,7 @@ class FrontendIface
     virtual auto acquireBuffer() -> EventBufferPtr = 0;
     virtual auto releaseBuffer(EventBufferPtr) -> void = 0;
     /* The ownership of this buffer is acquired by
-     * Sigil2 until it explicitly releases ownership back to the frontend.
+     * Prism until it explicitly releases ownership back to the frontend.
      * That is, for every acquire, there shall be one and only one release.
      * When the frontend runs out of events, a null pointer is returned. */
 
@@ -46,7 +46,7 @@ class FrontendIface
 using FrontendPtr = std::unique_ptr<FrontendIface>;
 using FrontendIfaceGenerator = std::function<FrontendPtr(void)>;
 using FrontendStarter = std::function<FrontendIfaceGenerator(Args, Args, unsigned,
-                                                             const sigil2::capabilities&)>;
+                                                             const prism::capabilities&)>;
 using FrontendStarterWrapper = std::function<FrontendIfaceGenerator()>;
 /* The actual frontend must provide a 'starter' function that returns
  * a function to generate interfaces to the frontend as defined above.
@@ -64,7 +64,7 @@ using FrontendStarterWrapper = std::function<FrontendIfaceGenerator()>;
 struct Frontend
 {
     FrontendStarter starter;
-    sigil2::capabilities caps;
+    prism::capabilities caps;
 };
 
 
@@ -75,7 +75,7 @@ class FrontendFactory
     ~FrontendFactory() = default;
 
     auto create(ToolName name, Args exec, Args fe, unsigned threads,
-                const sigil2::capabilities &beReqs) const -> FrontendStarterWrapper;
+                const prism::capabilities &beReqs) const -> FrontendStarterWrapper;
     auto add(ToolName name, Frontend fe) -> void;
     auto exists(ToolName name) const -> bool;
     auto available() const -> std::vector<std::string>;

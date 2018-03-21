@@ -83,13 +83,13 @@ TextLoggerCompressed::TextLoggerCompressed(TID tid, std::string outputPath)
     spdlog::set_async_mode(1 << 14);
 
     auto filePath = outputPath + "/sigil.events.out-" + std::to_string(tid) + ".gz";
-    std::tie(logger, gzfile) = sigil2::getGzLogger(filePath);
+    std::tie(logger, gzfile) = prism::getGzLogger(filePath);
 }
 
 
 TextLoggerCompressed::~TextLoggerCompressed()
 {
-    sigil2::blockingFlushAndDeleteLogger(logger);
+    prism::blockingFlushAndDeleteLogger(logger);
     /* gzofstream destructor closes gzfile  */
 }
 
@@ -184,13 +184,13 @@ TextLoggerUncompressed::TextLoggerUncompressed(TID tid, std::string outputPath)
     spdlog::set_async_mode(1 << 14);
 
     auto filePath = outputPath + "/sigil.events.out-" + std::to_string(tid) + ".gz";
-    std::tie(logger, gzfile) = sigil2::getGzLogger(filePath);
+    std::tie(logger, gzfile) = prism::getGzLogger(filePath);
 }
 
 
 TextLoggerUncompressed::~TextLoggerUncompressed()
 {
-    sigil2::blockingFlushAndDeleteLogger(logger);
+    prism::blockingFlushAndDeleteLogger(logger);
     /* gzofstream destructor closes gzfile  */
 }
 
@@ -281,7 +281,7 @@ auto flushPthread(std::string filePath,
                   SpawnList threadSpawns,
                   BarrierList barrierParticipants) -> void
 {
-    auto loggerPair = sigil2::getFileLogger(filePath);
+    auto loggerPair = prism::getFileLogger(filePath);
     auto logger = std::move(loggerPair.first);
     info("Flushing thread metadata to: " + logger->name());
 
@@ -318,13 +318,13 @@ auto flushPthread(std::string filePath,
     }
 
     logger->flush();
-    sigil2::blockingFlushAndDeleteLogger(logger);
+    prism::blockingFlushAndDeleteLogger(logger);
 }
 
 
 auto flushStats(std::string filePath, ThreadStatMap allThreadsStats) -> void
 {
-    auto loggerPair = sigil2::getFileLogger(filePath);
+    auto loggerPair = prism::getFileLogger(filePath);
     auto logger = std::move(loggerPair.first);
     info("Flushing statistics to: " + logger->name());
 
@@ -392,7 +392,7 @@ auto flushStats(std::string filePath, ThreadStatMap allThreadsStats) -> void
 
     logger->info("Total instructions for all threads: " + std::to_string(totalInstrs));
     logger->flush();
-    sigil2::blockingFlushAndDeleteLogger(logger);
+    prism::blockingFlushAndDeleteLogger(logger);
 }
 
 }; //end namespace STGen

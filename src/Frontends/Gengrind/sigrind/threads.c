@@ -139,7 +139,7 @@ void SGL_(switch_thread)(ThreadId tid)
   /* ML: always send thread switch events; 
    * valgrind can change at any time, even if sigrind is 'inside' 
    * a synchronization call or outside the function being collected */ 
-  SGL_(log_sync)(SGLPRIM_SYNC_SWAP, SGL_(active_tid), UNUSED_SYNC_DATA);
+  SGL_(log_sync)(PRISM_SYNC_SWAP, SGL_(active_tid), UNUSED_SYNC_DATA);
 }
 
 void CLG_(switch_thread)(ThreadId tid)

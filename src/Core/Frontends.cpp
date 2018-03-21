@@ -1,11 +1,11 @@
 #include "Frontends.hpp"
-#include "SigiLog.hpp"
+#include "PrismLog.hpp"
 #include <algorithm>
 
 decltype(FrontendIface::uidCount) FrontendIface::uidCount{0};
 
 auto FrontendFactory::create(ToolName name, Args exec, Args fe, unsigned threads,
-                             const sigil2::capabilities &beReqs) const -> FrontendStarterWrapper
+                             const prism::capabilities &beReqs) const -> FrontendStarterWrapper
 {
     using namespace std::placeholders;
 
@@ -22,7 +22,7 @@ auto FrontendFactory::create(ToolName name, Args exec, Args fe, unsigned threads
 
         /* Resolve difference between requested capabilities (granularity)
          * from the backend, and the available capabilities in the frontend */
-        auto caps = sigil2::resolveCaps(feCaps, beReqs);;
+        auto caps = prism::resolveCaps(feCaps, beReqs);;
         return [=]{ return start(exec, fe, threads, caps); };
     }
     else
@@ -34,7 +34,7 @@ auto FrontendFactory::create(ToolName name, Args exec, Args fe, unsigned threads
         for (auto name : available())
             error.append("\n\t").append(name);
 
-        SigiLog::fatal(error);
+        PrismLog::fatal(error);
     }
 }
 

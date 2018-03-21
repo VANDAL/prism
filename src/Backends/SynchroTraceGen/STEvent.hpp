@@ -25,7 +25,7 @@ namespace STGen
 /**
  * A SynchroTrace Compute Event.
  *
- * SynchroTrace compute events comprise of one or more Sigil primitive events.
+ * SynchroTrace compute events comprise of one or more Prism primitive events.
  * I.e., a ST compute event can be any number of local thread load, store,
  * and compute primitives.
  *

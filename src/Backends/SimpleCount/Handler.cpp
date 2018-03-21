@@ -29,9 +29,9 @@ std::atomic<unsigned long> global_broad_cnt{0};
 namespace SimpleCount
 {
 
-auto Handler::onSyncEv(const sigil2::SyncEvent &ev) -> void
+auto Handler::onSyncEv(const prism::SyncEvent &ev) -> void
 {
-    if (ev.type() == SGLPRIM_SYNC_SWAP)
+    if (ev.type() == PRISM_SYNC_SWAP)
     {
         ++swap_cnt;
     }
@@ -40,28 +40,28 @@ auto Handler::onSyncEv(const sigil2::SyncEvent &ev) -> void
         ++sync_cnt;
         switch(ev.type())
         {
-        case SGLPRIM_SYNC_CREATE:
+        case PRISM_SYNC_CREATE:
             ++spawn_cnt;
             break;
-        case SGLPRIM_SYNC_JOIN:
+        case PRISM_SYNC_JOIN:
             ++join_cnt;
             break;
-        case SGLPRIM_SYNC_LOCK:
+        case PRISM_SYNC_LOCK:
             ++lock_cnt;
             break;
-        case SGLPRIM_SYNC_UNLOCK:
+        case PRISM_SYNC_UNLOCK:
             ++unlock_cnt;
             break;
-        case SGLPRIM_SYNC_BARRIER:
+        case PRISM_SYNC_BARRIER:
             ++barrier_cnt;
             break;
-        case SGLPRIM_SYNC_CONDWAIT:
+        case PRISM_SYNC_CONDWAIT:
             ++wait_cnt;
             break;
-        case SGLPRIM_SYNC_CONDSIG:
+        case PRISM_SYNC_CONDSIG:
             ++sig_cnt;
             break;
-        case SGLPRIM_SYNC_CONDBROAD:
+        case PRISM_SYNC_CONDBROAD:
             ++broad_cnt;
             break;
 
@@ -70,7 +70,7 @@ auto Handler::onSyncEv(const sigil2::SyncEvent &ev) -> void
 }
 
 
-auto Handler::onCompEv(const sigil2::CompEvent &ev) -> void
+auto Handler::onCompEv(const prism::CompEvent &ev) -> void
 {
     ++comp_cnt;
     if (ev.isIOP())
@@ -80,7 +80,7 @@ auto Handler::onCompEv(const sigil2::CompEvent &ev) -> void
 }
 
 
-auto Handler::onMemEv(const sigil2::MemEvent &ev) -> void
+auto Handler::onMemEv(const prism::MemEvent &ev) -> void
 {
     ++mem_cnt;
     if (ev.isStore())
@@ -90,16 +90,16 @@ auto Handler::onMemEv(const sigil2::MemEvent &ev) -> void
 }
 
 
-auto Handler::onCFEv(const SglCFEv &ev) -> void
+auto Handler::onCFEv(const PrismCFEv &ev) -> void
 {
     ++cf_cnt;
 }
 
 
-auto Handler::onCxtEv(const sigil2::CxtEvent &ev) -> void
+auto Handler::onCxtEv(const prism::CxtEvent &ev) -> void
 {
     ++cxt_cnt;
-    if (ev.type() == SGLPRIM_CXT_INSTR)
+    if (ev.type() == PRISM_CXT_INSTR)
         ++instr_cnt;
 }
 
@@ -155,10 +155,10 @@ auto cleanup() -> void
 }
 
 
-auto requirements() -> sigil2::capabilities
+auto requirements() -> prism::capabilities
 {
-    using namespace sigil2;
-    using namespace sigil2::capability;
+    using namespace prism;
+    using namespace prism::capability;
 
     auto caps = initCaps();
 

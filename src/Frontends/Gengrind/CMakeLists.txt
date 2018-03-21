@@ -1,7 +1,7 @@
 # Build destinations
-get_target_property(SIGIL2_BIN sigil2 RUNTIME_OUTPUT_DIRECTORY)
+get_target_property(PRISM_BIN prism RUNTIME_OUTPUT_DIRECTORY)
 set(VG_PREFIX vg)
-set(VGINST_DIR ${SIGIL2_BIN}/${VG_PREFIX})
+set(VGINST_DIR ${PRISM_BIN}/${VG_PREFIX})
 set(VGSRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/valgrind)
 set(PATCH ${CMAKE_CURRENT_SOURCE_DIR}/gitpatches/sigrind.patch)
 
@@ -48,8 +48,8 @@ endif()
 
 ###############################################################################
 # frontend interface
-set(SOURCES SigrindFrontend.cpp)
-add_library(Sigrind OBJECT ${SOURCES})
+set(SOURCES GengrindFrontend.cpp)
+add_library(Gengrind OBJECT ${SOURCES})
 
 ###############################################################################
 # valgrind build
@@ -77,7 +77,7 @@ ExternalProject_Add_Step(valgrind autogen
 	WORKING_DIRECTORY ${VGSRC_DIR}
 	DEPENDERS configure)
 
-add_dependencies(Sigrind valgrind)
+add_dependencies(Gengrind valgrind)
 
 ###############################################################################
 # Function wrapper for intercepting multithreading libs
@@ -85,16 +85,16 @@ add_dependencies(Sigrind valgrind)
 include_directories(
 	gcc-4.9.2
 	${VGBUILD_DIR})
-add_library(sglwrapper-shared SHARED sglwrapper.c)
-add_library(sglwrapper-static STATIC sglwrapper.c)
-set_target_properties(sglwrapper-shared
+add_library(prismvgwrapper-shared SHARED prismvgwrapper.c)
+add_library(prismvgwrapper-static STATIC prismvgwrapper.c)
+set_target_properties(prismvgwrapper-shared
 	PROPERTIES
 	LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin
-	OUTPUT_NAME sglwrapper)
-set_target_properties(sglwrapper-static
+	OUTPUT_NAME prismvgwrapper)
+set_target_properties(prismvgwrapper-static
 	PROPERTIES
 	ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin
-	OUTPUT_NAME sglwrapper)
+	OUTPUT_NAME prismvgwrapper)
 
 if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
 	set(VG_ARCH VGA_amd64)
@@ -103,9 +103,9 @@ elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64")
 else()
 	message(FATAL_ERROR "Unsupported architecture")
 endif()
-target_compile_definitions(sglwrapper-shared PUBLIC -DVGO_linux=1 -D${VG_ARCH})
-target_compile_definitions(sglwrapper-static PUBLIC -DVGO_linux=1 -D${VG_ARCH})
+target_compile_definitions(prismvgwrapper-shared PUBLIC -DVGO_linux=1 -D${VG_ARCH})
+target_compile_definitions(prismvgwrapper-static PUBLIC -DVGO_linux=1 -D${VG_ARCH})
 
-add_dependencies(sglwrapper-static valgrind)
-add_dependencies(sglwrapper-shared valgrind)
-add_dependencies(Sigrind sglwrapper-shared sglwrapper-static)
+add_dependencies(prismvgwrapper-static valgrind)
+add_dependencies(prismvgwrapper-shared valgrind)
+add_dependencies(Gengrind prismvgwrapper-shared prismvgwrapper-static)

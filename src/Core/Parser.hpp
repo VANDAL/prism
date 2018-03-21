@@ -1,17 +1,17 @@
-#ifndef SIGIL2_PARSER_H
-#define SIGIL2_PARSER_H
+#ifndef PRISM_PARSER_H
+#define PRISM_PARSER_H
 
 #include <map>
-#include "SigiLog.hpp"
+#include "PrismLog.hpp"
 #include "Backends.hpp"
 #include "Frontends.hpp"
 
-namespace sigil2
+namespace prism
 {
 
 class ArgGroup
 {
-    /* Sigil2 groups options together based on their position
+    /* Prism groups options together based on their position
      * in order to pass the option group to the frontend
      * instrumentation, the backend analysis, or the executable
      *
@@ -81,6 +81,6 @@ class Parser
     static constexpr char timeOption[]       = "sgl-time";
 };
 
-}; //end namespace sigil2
+}; //end namespace prism
 
 #endif

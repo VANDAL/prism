@@ -7,20 +7,20 @@
 #include "Backends/SimpleCount/Handler.hpp"
 #include "Backends/SigilClassic/Handler.hpp"
 
-using namespace SigiLog;
-using namespace sigil2;
+using namespace PrismLog;
+using namespace prism;
 
 namespace
 {
-auto startSigil2(const Config& config) -> int;
+auto startPrism(const Config& config) -> int;
 };
 
 int main(int argc, char* argv[])
 {
     auto config = Config()
         .registerFrontend("valgrind",
-                          {startSigrind,
-                          sigrindCapabilities()})
+                          {startGengrind,
+                          gengrindCapabilities()})
         .registerFrontend("dynamorio",
                           {startDrSigil,
                           drSigilCapabilities()})
@@ -49,7 +49,7 @@ int main(int argc, char* argv[])
                          initCaps())
         .parseCommandLine(argc, argv);
 
-    return startSigil2(config);
+    return startPrism(config);
 }
 
 
@@ -62,23 +62,23 @@ auto flushToBackend(BackendIface &be,
 {
     for (decltype(buf.used) i = 0; i < buf.used; ++i)
     {
-        const SglEvVariant &ev = buf.events[i];
+        const PrismEvVariant &ev = buf.events[i];
 
         switch (ev.tag)
         {
-        case EvTagEnum::SGL_MEM_TAG:
+        case EvTagEnum::PRISM_MEM_TAG:
             be.onMemEv({ev.mem});
             break;
-        case EvTagEnum::SGL_COMP_TAG:
+        case EvTagEnum::PRISM_COMP_TAG:
             be.onCompEv({ev.comp});
             break;
-        case EvTagEnum::SGL_SYNC_TAG:
+        case EvTagEnum::PRISM_SYNC_TAG:
             be.onSyncEv({ev.sync});
             break;
-        case EvTagEnum::SGL_CXT_TAG:
+        case EvTagEnum::PRISM_CXT_TAG:
             be.onCxtEv({ev.cxt, nameBase});
             break;
-        case EvTagEnum::SGL_CF_TAG:
+        case EvTagEnum::PRISM_CF_TAG:
             be.onCFEv(ev.cf);
             break;
         default:
@@ -110,7 +110,7 @@ auto consumeEvents(BackendIfaceGenerator createBEIface,
 }
 
 
-auto startSigil2(const Config& config) -> int
+auto startPrism(const Config& config) -> int
 {
     using std::chrono::high_resolution_clock;
 
@@ -155,7 +155,7 @@ auto startSigil2(const Config& config) -> int
     {
         end = high_resolution_clock::now();
         auto ms = std::chrono::duration<double>(end - start);
-        info("Sigil2 duration: " + std::to_string(ms.count()) + "s");
+        info("Prism duration: " + std::to_string(ms.count()) + "s");
     }
 
     return EXIT_SUCCESS;

@@ -71,7 +71,7 @@ void GN_(preVGThreadCreate)(ThreadId parent, ThreadId child)
     SyncID spawnData;
     spawnData = threadIdMap[child];
 
-    GN_(flush_Sync)((UChar)SGLPRIM_SYNC_CREATE, &spawnData, 1);
+    GN_(flush_Sync)((UChar)PRISM_SYNC_CREATE, &spawnData, 1);
 }
 
 
@@ -87,7 +87,7 @@ void GN_(preVGThreadExit)(ThreadId quitTid)
 
     /* TODO(soonish)
      * MDL20180304 is sending the manner of exit (e.g. join) enough,
-     * or do we walso send a SGLPRIM_SYNC_EXIT? */
+     * or do we walso send a PRISM_SYNC_EXIT? */
 }
 
 
@@ -136,9 +136,9 @@ void GN_(checkSwitchThread)(void)
         GN_ASSERT(GN_(currEv) < GN_(endEv));
 
         /* add event */
-        SglEvVariant *slot = GN_(currEv);
-        slot->tag = SGL_SYNC_TAG;
-        slot->sync.type = SGLPRIM_SYNC_SWAP;
+        PrismEvVariant *slot = GN_(currEv);
+        slot->tag = PRISM_SYNC_TAG;
+        slot->sync.type = PRISM_SYNC_SWAP;
         slot->sync.data[0] = threadIdMap[tid];
 
         /* increment event slot */

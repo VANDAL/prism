@@ -7,18 +7,18 @@ namespace SimpleCount
 {
 
 auto cleanup() -> void;
-auto requirements() -> sigil2::capabilities;
-/* Sigil2 hooks */
+auto requirements() -> prism::capabilities;
+/* Prism hooks */
 
 class Handler : public BackendIface
 {
-    /* interface to Sigil2 */
+    /* interface to Prism */
 
-    virtual auto onSyncEv(const sigil2::SyncEvent &ev) -> void override;
-    virtual auto onCompEv(const sigil2::CompEvent &ev) -> void override;
-    virtual auto onMemEv(const sigil2::MemEvent &ev) -> void override;
-    virtual auto onCFEv(const SglCFEv &ev) -> void override;
-    virtual auto onCxtEv(const sigil2::CxtEvent &ev) -> void override;
+    virtual auto onSyncEv(const prism::SyncEvent &ev) -> void override;
+    virtual auto onCompEv(const prism::CompEvent &ev) -> void override;
+    virtual auto onMemEv(const prism::MemEvent &ev) -> void override;
+    virtual auto onCFEv(const PrismCFEv &ev) -> void override;
+    virtual auto onCxtEv(const prism::CxtEvent &ev) -> void override;
 
     unsigned long read_cnt{0};
     unsigned long write_cnt{0};

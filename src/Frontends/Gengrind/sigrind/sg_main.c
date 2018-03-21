@@ -1381,7 +1381,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       SGL_(thread_in_synccall)[SGL_(active_tid)] = False;
       if ( EVENT_GENERATION_ENABLED )
       {
-         SGL_(log_sync)((UChar)SGLPRIM_SYNC_CREATE, args[1], UNUSED_SYNC_DATA);
+         SGL_(log_sync)((UChar)PRISM_SYNC_CREATE, args[1], UNUSED_SYNC_DATA);
       }
       break;
 
@@ -1389,7 +1389,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       /* log when the thread join is ENTERED and disable */
       if ( EVENT_GENERATION_ENABLED )
       {
-         SGL_(log_sync)((UChar)SGLPRIM_SYNC_JOIN, args[1], UNUSED_SYNC_DATA);
+         SGL_(log_sync)((UChar)PRISM_SYNC_JOIN, args[1], UNUSED_SYNC_DATA);
       }
       SGL_(thread_in_synccall)[SGL_(active_tid)] = True;
       break;
@@ -1415,7 +1415,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       SGL_(thread_in_synccall)[SGL_(active_tid)] = False;
       if ( EVENT_GENERATION_ENABLED )
       {
-         SGL_(log_sync)((UChar)SGLPRIM_SYNC_LOCK, args[1], UNUSED_SYNC_DATA);
+         SGL_(log_sync)((UChar)PRISM_SYNC_LOCK, args[1], UNUSED_SYNC_DATA);
       }
       break;
 
@@ -1436,7 +1436,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       SGL_(thread_in_synccall)[SGL_(active_tid)] = False;
       if ( EVENT_GENERATION_ENABLED )
       {
-         SGL_(log_sync)((UChar)SGLPRIM_SYNC_UNLOCK, args[1], UNUSED_SYNC_DATA);
+         SGL_(log_sync)((UChar)PRISM_SYNC_UNLOCK, args[1], UNUSED_SYNC_DATA);
       }
       break;
 
@@ -1447,7 +1447,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       /* log once the barrier is ENTERED and waiting and disable */
       if ( EVENT_GENERATION_ENABLED )
       {
-         SGL_(log_sync)((UChar)SGLPRIM_SYNC_BARRIER, args[1], UNUSED_SYNC_DATA);
+         SGL_(log_sync)((UChar)PRISM_SYNC_BARRIER, args[1], UNUSED_SYNC_DATA);
       }
       SGL_(thread_in_synccall)[SGL_(active_tid)] = True;
       break;
@@ -1465,7 +1465,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       SGL_(thread_in_synccall)[SGL_(active_tid)] = False;
       if ( EVENT_GENERATION_ENABLED )
       {
-         SGL_(log_sync)((UChar)SGLPRIM_SYNC_CONDWAIT, args[1], args[2]);
+         SGL_(log_sync)((UChar)PRISM_SYNC_CONDWAIT, args[1], args[2]);
       }
       break;
 
@@ -1476,7 +1476,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       SGL_(thread_in_synccall)[SGL_(active_tid)] = False;
       if ( EVENT_GENERATION_ENABLED )
       {
-         SGL_(log_sync)((UChar)SGLPRIM_SYNC_CONDSIG, args[1], UNUSED_SYNC_DATA);
+         SGL_(log_sync)((UChar)PRISM_SYNC_CONDSIG, args[1], UNUSED_SYNC_DATA);
       }
       break;
 
@@ -1487,7 +1487,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       SGL_(thread_in_synccall)[SGL_(active_tid)] = False;
       if ( EVENT_GENERATION_ENABLED )
       {
-         SGL_(log_sync)((UChar)SGLPRIM_SYNC_CONDBROAD, args[1], UNUSED_SYNC_DATA);
+         SGL_(log_sync)((UChar)PRISM_SYNC_CONDBROAD, args[1], UNUSED_SYNC_DATA);
       }
       break;
 
@@ -1498,7 +1498,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       SGL_(thread_in_synccall)[SGL_(active_tid)] = False;
       if ( EVENT_GENERATION_ENABLED )
       {
-         SGL_(log_sync)((UChar)SGLPRIM_SYNC_SPINLOCK, args[1], UNUSED_SYNC_DATA);
+         SGL_(log_sync)((UChar)PRISM_SYNC_SPINLOCK, args[1], UNUSED_SYNC_DATA);
       }
       break;
 
@@ -1509,7 +1509,7 @@ Bool CLG_(handle_client_request)(ThreadId tid, UWord *args, UWord *ret)
       SGL_(thread_in_synccall)[SGL_(active_tid)] = False;
       if ( EVENT_GENERATION_ENABLED )
       {
-         SGL_(log_sync)((UChar)SGLPRIM_SYNC_SPINUNLOCK, args[1], UNUSED_SYNC_DATA);
+         SGL_(log_sync)((UChar)PRISM_SYNC_SPINUNLOCK, args[1], UNUSED_SYNC_DATA);
       }
       break;
 

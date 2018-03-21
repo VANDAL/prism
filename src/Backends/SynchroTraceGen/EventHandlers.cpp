@@ -3,7 +3,7 @@
 #include "TextLogger.hpp"
 #include <cassert>
 
-using namespace SigiLog; // console logging
+using namespace PrismLog; // console logging
 namespace STGen
 {
 
@@ -37,17 +37,17 @@ BarrierList barrierParticipants;
 
 //-----------------------------------------------------------------------------
 /** Synchronization Event Handling **/
-auto EventHandlers::onSyncEv(const sigil2::SyncEvent &ev) -> void
+auto EventHandlers::onSyncEv(const prism::SyncEvent &ev) -> void
 {
     auto syncType = ev.type();
     auto syncID = ev.data();
 
     /* Update global state */
-    if (syncType == SyncTypeEnum::SGLPRIM_SYNC_SWAP)
+    if (syncType == SyncTypeEnum::PRISM_SYNC_SWAP)
         return onSwapTCxt(syncID);
-    else if (syncType == SyncTypeEnum::SGLPRIM_SYNC_CREATE)
+    else if (syncType == SyncTypeEnum::PRISM_SYNC_CREATE)
         onCreate(syncID);
-    else if (syncType == SyncTypeEnum::SGLPRIM_SYNC_BARRIER)
+    else if (syncType == SyncTypeEnum::PRISM_SYNC_BARRIER)
         onBarrier(syncID);
 
     convertAndFlush(ev);
@@ -56,7 +56,7 @@ auto EventHandlers::onSyncEv(const sigil2::SyncEvent &ev) -> void
 
 //-----------------------------------------------------------------------------
 /** Compute Event Handling **/
-auto EventHandlers::onCompEv(const sigil2::CompEvent &ev) -> void
+auto EventHandlers::onCompEv(const prism::CompEvent &ev) -> void
 {
     if (ev.isIOP())
         cachedTCxt->onIop();
@@ -67,7 +67,7 @@ auto EventHandlers::onCompEv(const sigil2::CompEvent &ev) -> void
 
 //-----------------------------------------------------------------------------
 /** Memory Event Handling **/
-auto EventHandlers::onMemEv(const sigil2::MemEvent &ev) -> void
+auto EventHandlers::onMemEv(const prism::MemEvent &ev) -> void
 {
     if (ev.isLoad())
         cachedTCxt->onRead(ev.addr(), ev.bytes());
@@ -78,9 +78,9 @@ auto EventHandlers::onMemEv(const sigil2::MemEvent &ev) -> void
 
 //-----------------------------------------------------------------------------
 /** Context Event Handling (instructions) **/
-auto EventHandlers::onCxtEv(const sigil2::CxtEvent &ev) -> void
+auto EventHandlers::onCxtEv(const prism::CxtEvent &ev) -> void
 {
-    if (ev.type() == CxtTypeEnum::SGLPRIM_CXT_INSTR)
+    if (ev.type() == CxtTypeEnum::PRISM_CXT_INSTR)
         cachedTCxt->onInstr();
 }
 
@@ -161,7 +161,7 @@ auto EventHandlers::onBarrier(Addr data) -> void
         barrierParticipants[idx].second.insert(currentTID);
 }
 
-auto EventHandlers::convertAndFlush(const sigil2::SyncEvent &ev) -> void
+auto EventHandlers::convertAndFlush(const prism::SyncEvent &ev) -> void
 {
     /* Convert sync type to SynchroTrace's expected value
      * From SynchroTraceSim source code:
@@ -195,37 +195,37 @@ auto EventHandlers::convertAndFlush(const sigil2::SyncEvent &ev) -> void
 
     switch (ev.type())
     {
-    case ::SGLPRIM_SYNC_LOCK:
+    case ::PRISM_SYNC_LOCK:
         stSyncType = 1;
         break;
-    case ::SGLPRIM_SYNC_UNLOCK:
+    case ::PRISM_SYNC_UNLOCK:
         stSyncType = 2;
         break;
-    case ::SGLPRIM_SYNC_CREATE:
+    case ::PRISM_SYNC_CREATE:
         stSyncType = 3;
         break;
-    case ::SGLPRIM_SYNC_JOIN:
+    case ::PRISM_SYNC_JOIN:
         stSyncType = 4;
         break;
-    case ::SGLPRIM_SYNC_BARRIER:
+    case ::PRISM_SYNC_BARRIER:
         stSyncType = 5;
         break;
-    case ::SGLPRIM_SYNC_CONDWAIT:
+    case ::PRISM_SYNC_CONDWAIT:
         stSyncType = 6;
         numArgs = 2;
         args[1] = ev.dataExtra();
         /* uncommon case, condwaits have condition variable and mutex */
         break;
-    case ::SGLPRIM_SYNC_CONDSIG:
+    case ::PRISM_SYNC_CONDSIG:
         stSyncType = 7;
         break;
-    case ::SGLPRIM_SYNC_CONDBROAD:
+    case ::PRISM_SYNC_CONDBROAD:
         stSyncType = 8;
         break;
-    case ::SGLPRIM_SYNC_SPINLOCK:
+    case ::PRISM_SYNC_SPINLOCK:
         stSyncType = 9;
         break;
-    case ::SGLPRIM_SYNC_SPINUNLOCK:
+    case ::PRISM_SYNC_SPINUNLOCK:
         stSyncType = 10;
         break;
     default:
@@ -357,10 +357,10 @@ auto onParse(Args args) -> void
 }
 
 
-auto requirements() -> sigil2::capabilities
+auto requirements() -> prism::capabilities
 {
-    using namespace sigil2;
-    using namespace sigil2::capability;
+    using namespace prism;
+    using namespace prism::capability;
 
     auto caps = initCaps();
 

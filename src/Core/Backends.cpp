@@ -1,5 +1,5 @@
 #include "Backends.hpp"
-#include "SigiLog.hpp"
+#include "PrismLog.hpp"
 #include <algorithm>
 
 auto BackendFactory::create(ToolName name, Args args) const -> Backend
@@ -20,7 +20,7 @@ auto BackendFactory::create(ToolName name, Args args) const -> Backend
         for (auto name : available())
             error.append("\n\t").append(name);
 
-        SigiLog::fatal(error);
+        PrismLog::fatal(error);
     }
 }
 

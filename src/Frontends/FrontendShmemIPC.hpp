@@ -1,7 +1,7 @@
-#ifndef SIGIL2_FRONTEND_SHMEM_IPC_H
-#define SIGIL2_FRONTEND_SHMEM_IPC_H
+#ifndef PRISM_FRONTEND_SHMEM_IPC_H
+#define PRISM_FRONTEND_SHMEM_IPC_H
 
-#include "Core/SigiLog.hpp"
+#include "Core/PrismLog.hpp"
 #include "Core/Frontends.hpp"
 #include "CommonShmemIPC.h"
 #include "Common.hpp"
@@ -10,30 +10,30 @@
 #include <sys/mman.h>
 
 /**
- * Sigil2 receives events from external tools via an array of
+ * Prism receives events from external tools via an array of
  * shared memory buffers. The external tools fill the buffers as a
  * forked process. See CommonShmemIPC.h for details of these buffers.
  *
  * There should exist at least 2 buffers, so the external tool can fill a buffer
- * while Sigil2 reads from the other buffer.
+ * while Prism reads from the other buffer.
  * The optimal amount of buffering done depends on the system resources
  * and the variation in the event processing backend.
  *
- * Named pipes are used for syncing buffering between Sigil2 and the external
+ * Named pipes are used for syncing buffering between Prism and the external
  * tool. This allows each process to block when they cannot proceed,
  * as in the case of no empty buffers to write to (external tool)
- * or no full buffers to read from (Sigil2 backend).
+ * or no full buffers to read from (Prism backend).
  * Otherwise each process would require less efficient synchronization methods
  * such as spinning.
  *
  * XXX The term 'full' buffer is for historical reasons. A buffer does not
- * necessarily have to be full when used by Sigil2. There should be metadata
- * available to let Sigil2 know how many valid events are in the buffer.
+ * necessarily have to be full when used by Prism. There should be metadata
+ * available to let Prism know how many valid events are in the buffer.
  */
 
 
-using SigiLog::warn;
-using SigiLog::fatal;
+using PrismLog::warn;
+using PrismLog::fatal;
 
 namespace Cleanup
 {
@@ -54,8 +54,8 @@ class ShmemFrontend : public FrontendIface
     SharedData *shmem;
 
     /* IPC configuration */
-    CircularQueue<int, SIGIL2_IPC_BUFFERS> q;
-    Sem filled{0}, emptied{SIGIL2_IPC_BUFFERS};
+    CircularQueue<int, PRISM_IPC_BUFFERS> q;
+    Sem filled{0}, emptied{PRISM_IPC_BUFFERS};
     int lastBufferIdx;
     /* Keep track of which buffers are in use/ready */
 
@@ -65,9 +65,9 @@ class ShmemFrontend : public FrontendIface
   public:
     ShmemFrontend(const std::string &ipcDir)
         : ipcDir       (ipcDir)
-        , emptyFifoName(ipcDir + "/" + SIGIL2_IPC_EMPTYFIFO_BASENAME + "-" + std::to_string(uid))
-        , fullFifoName (ipcDir + "/" + SIGIL2_IPC_FULLFIFO_BASENAME  + "-" + std::to_string(uid))
-        , shmemName    (ipcDir + "/" + SIGIL2_IPC_SHMEM_BASENAME     + "-" + std::to_string(uid))
+        , emptyFifoName(ipcDir + "/" + PRISM_IPC_EMPTYFIFO_BASENAME + "-" + std::to_string(uid))
+        , fullFifoName (ipcDir + "/" + PRISM_IPC_FULLFIFO_BASENAME  + "-" + std::to_string(uid))
+        , shmemName    (ipcDir + "/" + PRISM_IPC_SHMEM_BASENAME     + "-" + std::to_string(uid))
     {
         initShMem();
         emptyfd = createAndOpenNewFifo(emptyFifoName.c_str(), O_WRONLY);
@@ -76,7 +76,7 @@ class ShmemFrontend : public FrontendIface
         /* asynchronously manage communications with the external tool */
         eventLoop = std::thread{&ShmemFrontend::receiveEventsLoop, this};
 
-        FrontendIface::nameBase = [&]{ assert(lastBufferIdx < decltype(lastBufferIdx){SIGIL2_IPC_BUFFERS});
+        FrontendIface::nameBase = [&]{ assert(lastBufferIdx < decltype(lastBufferIdx){PRISM_IPC_BUFFERS});
                                        return shmem->nameBuffers[lastBufferIdx].names; };
     }
 
@@ -94,7 +94,7 @@ class ShmemFrontend : public FrontendIface
         lastBufferIdx = q.dequeue();
 
         /* can be negative to signal the end of the event stream */
-        assert(lastBufferIdx < decltype(lastBufferIdx){SIGIL2_IPC_BUFFERS});
+        assert(lastBufferIdx < decltype(lastBufferIdx){PRISM_IPC_BUFFERS});
 
         if (lastBufferIdx < 0)
             return nullptr;
@@ -108,7 +108,7 @@ class ShmemFrontend : public FrontendIface
         emptied.V();
 
         /* Tell Valgrind that the buffer is empty again */
-        assert(lastBufferIdx < decltype(lastBufferIdx){SIGIL2_IPC_BUFFERS} && lastBufferIdx >= 0);
+        assert(lastBufferIdx < decltype(lastBufferIdx){PRISM_IPC_BUFFERS} && lastBufferIdx >= 0);
         writeEmptyFifo(lastBufferIdx);
     }
 
@@ -116,11 +116,11 @@ class ShmemFrontend : public FrontendIface
   private:
     auto initShMem() -> void
     {
-        /* Initialize IPC between Sigil2 and the external tool */
+        /* Initialize IPC between Prism and the external tool */
 
         shmemfp = fopen(shmemName.c_str(), "wb+");
         if (shmemfp == nullptr)
-            fatal(std::string("sigil2 shared memory file open failed -- ") + strerror(errno));
+            fatal(std::string("prism shared memory file open failed -- ") + strerror(errno));
 
         /* XXX From write(2) man pages:
          *
@@ -135,7 +135,7 @@ class ShmemFrontend : public FrontendIface
         if (count != 1)
         {
             fclose(shmemfp);
-            fatal(std::string("sigil2 shared memory file write failed -- ") + strerror(errno));
+            fatal(std::string("prism shared memory file write failed -- ") + strerror(errno));
         }
 
         shmem = reinterpret_cast<SharedData *>
@@ -144,7 +144,7 @@ class ShmemFrontend : public FrontendIface
         if (shmem == MAP_FAILED)
         {
             fclose(shmemfp);
-            fatal(std::string("sigil2 mmap shared memory failed -- ") + strerror(errno));
+            fatal(std::string("prism mmap shared memory failed -- ") + strerror(errno));
         }
     }
 
@@ -155,18 +155,18 @@ class ShmemFrontend : public FrontendIface
             if (errno == EEXIST)
             {
                 if (remove(path) != 0)
-                    fatal(std::string("sigil2 could not delete old fifos -- ") + strerror(errno));
+                    fatal(std::string("prism could not delete old fifos -- ") + strerror(errno));
 
                 if (mkfifo(path, 0600) < 0)
-                    fatal(std::string("sigil2 failed to create fifos -- ") + strerror(errno));
+                    fatal(std::string("prism failed to create fifos -- ") + strerror(errno));
             }
             else
-                fatal(std::string("sigil2 failed to create fifos -- ") + strerror(errno));
+                fatal(std::string("prism failed to create fifos -- ") + strerror(errno));
         }
 
         int fd = open(path, flags);
         if (fd < 0)
-            fatal(std::string("sigil2 failed to open fifo: ") + path + " -- " + strerror(errno));
+            fatal(std::string("prism failed to open fifo: ") + path + " -- " + strerror(errno));
 
         return fd;
     }
@@ -183,9 +183,9 @@ class ShmemFrontend : public FrontendIface
     {
         /* Reads from 'full' fifo and returns the data.
          * This is an index to the buffer array in the shared memory.
-         * It implicitly informs Sigil2 that buffer[idx] has
+         * It implicitly informs Prism that buffer[idx] has
          * been filled with events and can be consumed by
-         * the Sigil2 backend. */
+         * the Prism backend. */
 
         int full_data;
         int res = read(fullfd, &full_data, sizeof(full_data));
@@ -201,7 +201,7 @@ class ShmemFrontend : public FrontendIface
     auto writeEmptyFifo(unsigned idx) -> void
     {
         /* The 'idx' sent informs the external tool that buffer[idx]
-         * has been consumed by the Sigil2 backend,
+         * has been consumed by the Prism backend,
          * and that the external tool can now fill it with events again. */
 
         int res = write(emptyfd, &idx, sizeof(idx));
@@ -220,13 +220,13 @@ class ShmemFrontend : public FrontendIface
             unsigned fromTool = readFullFifo();
             emptied.P();
 
-            if (fromTool == SIGIL2_IPC_FINISHED)
+            if (fromTool == PRISM_IPC_FINISHED)
             {
                 finished = true;
             }
             else
             {
-                assert(fromTool < decltype(fromTool){SIGIL2_IPC_BUFFERS} &&
+                assert(fromTool < decltype(fromTool){PRISM_IPC_BUFFERS} &&
                        fromTool >= 0);
                 q.enqueue(fromTool);
                 filled.V();

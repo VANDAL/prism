@@ -3,8 +3,8 @@
 
 #include "Core/Frontends.hpp"
 
-auto startDrSigil(Args execArgs, Args feArgs, unsigned threads, sigil2::capabilities reqs)
+auto startDrSigil(Args execArgs, Args feArgs, unsigned threads, prism::capabilities reqs)
     -> FrontendIfaceGenerator;
-auto drSigilCapabilities() -> sigil2::capabilities;
+auto drSigilCapabilities() -> prism::capabilities;
 
 #endif

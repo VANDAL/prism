@@ -1,14 +1,14 @@
-#include "Core/SigiLog.hpp"
-#include "SigrindFrontend.hpp"
+#include "Core/PrismLog.hpp"
+#include "GengrindFrontend.hpp"
 #include "FrontendShmemIPC.hpp"
 #include "elfio/elfio.hpp"
 #include "whereami.h"
 #include "glob.h"
 
-auto sigrindCapabilities() -> sigil2::capabilities 
+auto gengrindCapabilities() -> prism::capabilities 
 {
-    using namespace sigil2;
-    using namespace sigil2::capability;
+    using namespace prism;
+    using namespace prism::capability;
 
     auto caps = initCaps();
 
@@ -37,10 +37,10 @@ auto sigrindCapabilities() -> sigil2::capabilities
     return caps;
 };
 
-#define DIR_TEMPLATE "/sgl2-XXXXXX"
+#define DIR_TEMPLATE "/prism-XXXXXX"
 
-using SigiLog::fatal;
-using SigiLog::warn;
+using PrismLog::fatal;
+using PrismLog::warn;
 
 ////////////////////////////////////////////////////////////
 // Launching Valgrind
@@ -114,12 +114,12 @@ auto gccWarn(const std::vector<std::string> &userExec) -> void
 }
 
 
-auto configureWrapperEnv(const std::string &sigil2_path) -> void
+auto configureWrapperEnv(const std::string &prism_path) -> void
 {
     /* check if function capture is available
      * (for multithreaded lib intercepts) */
-    std::string sglwrapper(sigil2_path + "/libsglwrapper.so");
-    std::ifstream sofile(sglwrapper);
+    std::string prismvgwrapper(prism_path + "/libprismvgwrapper.so");
+    std::ifstream sofile(prismvgwrapper);
 
     if (sofile.good() == true)
     {
@@ -127,18 +127,18 @@ auto configureWrapperEnv(const std::string &sigil2_path) -> void
         std::string set_preload;
 
         if (get_preload == nullptr)
-            set_preload = sglwrapper;
+            set_preload = prismvgwrapper;
         else
-            set_preload = std::string(get_preload) + ":" + sglwrapper;
+            set_preload = std::string(get_preload) + ":" + prismvgwrapper;
 
         setenv("LD_PRELOAD", set_preload.c_str(), true);
     }
     else
     {
         /* If the wrapper library is in LD_PRELOAD,
-         * but not in the sigil2 directory,
+         * but not in the prism directory,
          * then this warning can be ignored */
-        warn("'sglwrapper.so' not found");
+        warn("'prismvgwrapper.so' not found");
         warn("Synchronization events will not be detected without the wrapper library loaded");
     }
 
@@ -149,9 +149,9 @@ auto configureWrapperEnv(const std::string &sigil2_path) -> void
 auto vgOpts(const std::vector<std::string> &userExec,
                   const std::vector<std::string> &args,
                   const std::string &ipcDir,
-                  const sigil2::capabilities &reqs) -> std::string
+                  const prism::capabilities &reqs) -> std::string
 {
-    using namespace sigil2::capability;
+    using namespace prism::capability;
     assert(!userExec.empty() && !ipcDir.empty());
 
     std::string opts;
@@ -199,7 +199,7 @@ auto vgOpts(const std::vector<std::string> &userExec,
 auto configureValgrind(const std::vector<std::string> &userExec,
                        const std::vector<std::string> &args,
                        const std::string &ipcDir,
-                       const sigil2::capabilities &reqs) -> std::string
+                       const prism::capabilities &reqs) -> std::string
 {
     int len, dirname_len;
     len = wai_getExecutablePath(NULL, 0, &dirname_len);
@@ -235,13 +235,13 @@ auto configureValgrind(const std::vector<std::string> &userExec,
 auto configureIpcDir() -> std::string
 {
     /* check IPC path */
-    std::string shm_path = getenv("SIGIL2_SHM_DIR") != nullptr ?  getenv("SIGIL2_SHM_DIR") :
+    std::string shm_path = getenv("PRISM_SHM_DIR") != nullptr ?  getenv("PRISM_SHM_DIR") :
                            getenv("XDG_RUNTIME_DIR") != nullptr ? getenv("XDG_RUNTIME_DIR") :
                            "/dev/shm";
     struct stat info;
     if (stat(shm_path.c_str(), &info) != 0)
         fatal(std::string(shm_path) + " not found\n" +
-              "\tset environment var 'SIGIL2_SHM_DIR' to a tmpfs mount");
+              "\tset environment var 'PRISM_SHM_DIR' to a tmpfs mount");
 
     std::string shm_template = shm_path + DIR_TEMPLATE;
     if (mkdtemp(&shm_template[0]) == nullptr)
@@ -253,9 +253,9 @@ auto configureIpcDir() -> std::string
 
 
 ////////////////////////////////////////////////////////////
-// Interface to Sigil2 core
+// Interface to Prism core
 ////////////////////////////////////////////////////////////
-auto startSigrind(Args execArgs, Args feArgs, unsigned threads, sigil2::capabilities reqs)
+auto startGengrind(Args execArgs, Args feArgs, unsigned threads, prism::capabilities reqs)
     -> FrontendIfaceGenerator
 {
     if (threads != 1)
@@ -289,5 +289,5 @@ auto startSigrind(Args execArgs, Args feArgs, unsigned threads, sigil2::capabili
     else
         fatal(std::string("sigrind fork failed -- ") + strerror(errno));
 
-    return [=]{ return std::make_unique<ShmemFrontend<Sigil2DBISharedData>>(ipcDir); };
+    return [=]{ return std::make_unique<ShmemFrontend<PrismDBISharedData>>(ipcDir); };
 }

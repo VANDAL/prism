@@ -1,14 +1,14 @@
 #ifndef STGEN_TEXT_LOGGER_H
 #define STGEN_TEXT_LOGGER_H
 
-#include "Core/SigiLog.hpp"
+#include "Core/PrismLog.hpp"
 #include "Utils/FileLogger.hpp"
 #include "STLogger.hpp"
 #include "BarrierMerge.hpp"
 #include "spdlog/spdlog.h"
 #include <sstream>
 
-using SigiLog::info;
+using PrismLog::info;
 namespace STGen
 {
 

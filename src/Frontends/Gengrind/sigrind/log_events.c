@@ -62,9 +62,9 @@ void SGL_(log_1I0D)(InstrInfo* ii)
         cxt_events++;
 #endif
 
-        SglEvVariant* slot = SGL_(acq_event_slot)();
-        slot->tag          = SGL_CXT_TAG;
-        slot->cxt.type     = SGLPRIM_CXT_INSTR;
+        PrismEvVariant* slot = SGL_(acq_event_slot)();
+        slot->tag          = PRISM_CXT_TAG;
+        slot->cxt.type     = PRISM_CXT_INSTR;
         slot->cxt.id       = ii->instr_addr;
     }
 }
@@ -81,8 +81,8 @@ static inline void log_mem(Int type, Addr data_addr, Word data_size)
         ++mem_events;
 #endif
 
-        SglEvVariant* slot   = SGL_(acq_event_slot)();
-        slot->tag            = SGL_MEM_TAG;
+        PrismEvVariant* slot   = SGL_(acq_event_slot)();
+        slot->tag            = PRISM_MEM_TAG;
         slot->mem.type       = type;
         slot->mem.begin_addr = data_addr;
         slot->mem.size       = data_size;
@@ -90,11 +90,11 @@ static inline void log_mem(Int type, Addr data_addr, Word data_size)
 }
 void SGL_(log_0I1Dr)(InstrInfo* ii, Addr data_addr, Word data_size)
 {
-    log_mem(SGLPRIM_MEM_LOAD, data_addr, data_size);
+    log_mem(PRISM_MEM_LOAD, data_addr, data_size);
 }
 void SGL_(log_0I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size)
 {
-    log_mem(SGLPRIM_MEM_STORE, data_addr, data_size);
+    log_mem(PRISM_MEM_STORE, data_addr, data_size);
 }
 
 
@@ -111,27 +111,27 @@ void SGL_(log_comp_event)(InstrInfo* ii, IRType op_type, IRExprTag arity)
         ++comp_events;
 #endif
 
-        SglEvVariant* slot = SGL_(acq_event_slot)();
-        slot->tag = SGL_COMP_TAG;
+        PrismEvVariant* slot = SGL_(acq_event_slot)();
+        slot->tag = PRISM_COMP_TAG;
 
         if (op_type < Ity_F16)
-            slot->comp.type = SGLPRIM_COMP_IOP;
+            slot->comp.type = PRISM_COMP_IOP;
         else
-            slot->comp.type = SGLPRIM_COMP_FLOP;
+            slot->comp.type = PRISM_COMP_FLOP;
 
         switch (arity)
         {
         case Iex_Unop:
-            slot->comp.arity = SGLPRIM_COMP_UNARY;
+            slot->comp.arity = PRISM_COMP_UNARY;
             break;
         case Iex_Binop:
-            slot->comp.arity = SGLPRIM_COMP_BINARY;
+            slot->comp.arity = PRISM_COMP_BINARY;
             break;
         case Iex_Triop:
-            slot->comp.arity = SGLPRIM_COMP_TERNARY;
+            slot->comp.arity = PRISM_COMP_TERNARY;
             break;
         case Iex_Qop:
-            slot->comp.arity = SGLPRIM_COMP_QUARTERNARY;
+            slot->comp.arity = PRISM_COMP_QUARTERNARY;
             break;
         default:
             tl_assert(False);
@@ -149,8 +149,8 @@ void SGL_(log_sync)(UChar type, UWord data1, UWord data2)
         ++sync_events;
 #endif
 
-        SglEvVariant* slot  = SGL_(acq_event_slot)();
-        slot->tag           = SGL_SYNC_TAG;
+        PrismEvVariant* slot  = SGL_(acq_event_slot)();
+        slot->tag           = PRISM_SYNC_TAG;
         slot->sync.type     = type;
         slot->sync.data[0]  = data1;
         slot->sync.data[1]  = data2;
@@ -172,7 +172,7 @@ static inline void log_fn(Int type, fn_node* fn)
         EventNameSlotTuple tuple = SGL_(acq_event_name_slot)(len);
 
         VG_(strncpy)(tuple.name_slot, fn->name, len);
-        tuple.event_slot->tag      = SGL_CXT_TAG;
+        tuple.event_slot->tag      = PRISM_CXT_TAG;
         tuple.event_slot->cxt.type = type;
         tuple.event_slot->cxt.len  = len;
         tuple.event_slot->cxt.idx  = tuple.name_idx;
@@ -180,11 +180,11 @@ static inline void log_fn(Int type, fn_node* fn)
 }
 void SGL_(log_fn_entry)(fn_node* fn)
 {
-    log_fn(SGLPRIM_CXT_FUNC_ENTER, fn);
+    log_fn(PRISM_CXT_FUNC_ENTER, fn);
 }
 void SGL_(log_fn_leave)(fn_node* fn)
 {
-    log_fn(SGLPRIM_CXT_FUNC_EXIT, fn);
+    log_fn(PRISM_CXT_FUNC_EXIT, fn);
 }
 
 

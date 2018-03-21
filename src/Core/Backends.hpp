@@ -1,5 +1,5 @@
-#ifndef SIGIL2_BACKEND_H
-#define SIGIL2_BACKEND_H
+#ifndef PRISM_BACKEND_H
+#define PRISM_BACKEND_H
 
 #include "Primitive.h"
 #include <string>
@@ -12,11 +12,11 @@ class BackendIface
 {
   public:
     virtual ~BackendIface() {}
-    virtual auto onMemEv(const sigil2::MemEvent &) -> void {}
-    virtual auto onCompEv(const sigil2::CompEvent &) -> void {}
-    virtual auto onSyncEv(const sigil2::SyncEvent &) -> void {}
-    virtual auto onCxtEv(const sigil2::CxtEvent &) -> void {}
-    virtual auto onCFEv(const SglCFEv &) -> void {}
+    virtual auto onMemEv(const prism::MemEvent &) -> void {}
+    virtual auto onCompEv(const prism::CompEvent &) -> void {}
+    virtual auto onSyncEv(const prism::SyncEvent &) -> void {}
+    virtual auto onCxtEv(const prism::CxtEvent &) -> void {}
+    virtual auto onCFEv(const PrismCFEv &) -> void {}
 };
 
 using ToolName = std::string;
@@ -35,7 +35,7 @@ struct Backend
     BackendIfaceGenerator generator;
     BackendParser parser;
     BackendFinish finish;
-    sigil2::capabilities caps;
+    prism::capabilities caps;
     Args args;
 };
 

@@ -118,7 +118,7 @@ static void function_entered(fn_node* fn)
     SGL_(is_in_event_collect_func) = True;
 
     // let Sigil2 know which thread this function starts in
-    SGL_(log_sync)(SGLPRIM_SYNC_SWAP, SGL_(active_tid), UNUSED_SYNC_DATA);
+    SGL_(log_sync)(PRISM_SYNC_SWAP, SGL_(active_tid), UNUSED_SYNC_DATA);
   }
   else if ( (SGL_(clo).start_collect_func != NULL) && (VG_(strcmp)(fn->name, SGL_(clo).start_collect_func) == 0) )
   {
@@ -128,7 +128,7 @@ static void function_entered(fn_node* fn)
     SGL_(is_in_event_collect_func) = True;
 
     // let Sigil2 know which thread this function starts in
-    SGL_(log_sync)(SGLPRIM_SYNC_SWAP, SGL_(active_tid), UNUSED_SYNC_DATA);
+    SGL_(log_sync)(PRISM_SYNC_SWAP, SGL_(active_tid), UNUSED_SYNC_DATA);
   }
 
   /* send to sigil */

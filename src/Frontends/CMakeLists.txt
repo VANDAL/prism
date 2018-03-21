@@ -2,8 +2,8 @@
 # AvailableFrontends.hpp
 
 # Valgrind frontend
-add_subdirectory(Sigrind)
-set(FRONTEND_TARGETS $<TARGET_OBJECTS:Sigrind>)
+add_subdirectory(Gengrind)
+set(FRONTEND_TARGETS $<TARGET_OBJECTS:Gengrind>)
 
 # DynamoRIO frontend
 add_subdirectory(DrSigil)
@@ -15,7 +15,6 @@ set(FRONTEND_TARGETS ${FRONTEND_TARGETS} $<TARGET_OBJECTS:PerfPT>)
 
 # Static or random event injector
 #add_subdirectory(${SRC_FRONTENDS}/Injector)
-#target_link_libraries(sigil2 Injector)
 
 set(SOURCES CleanupResources.cpp)
 add_library(frontends STATIC ${FRONTEND_TARGETS} ${SOURCES})

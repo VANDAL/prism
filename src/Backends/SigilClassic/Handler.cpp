@@ -3,19 +3,19 @@
 namespace SigilClassic
 {
 
-auto Handler::onSyncEv(const sigil2::SyncEvent &ev) -> void
+auto Handler::onSyncEv(const prism::SyncEvent &ev) -> void
 {
     /* save the current entity so that it can
      * resume when the thread switches back */
     auto syncType = ev.type();
     auto syncID = ev.data();
 
-    if(syncType == SyncTypeEnum::SGLPRIM_SYNC_SWAP)
+    if(syncType == SyncTypeEnum::PRISM_SYNC_SWAP)
         cxt.setThreadContext(syncID);
 }
 
 
-auto Handler::onCompEv(const sigil2::CompEvent &ev) -> void
+auto Handler::onCompEv(const prism::CompEvent &ev) -> void
 {
     /* aggregate compute costs for the current entity */
     if (ev.isIOP())
@@ -25,7 +25,7 @@ auto Handler::onCompEv(const sigil2::CompEvent &ev) -> void
 }
 
 
-auto Handler::onMemEv(const sigil2::MemEvent &ev) -> void
+auto Handler::onMemEv(const prism::MemEvent &ev) -> void
 {
     /* - check shadow memory
      * - update the metadata for the current entity */
@@ -36,15 +36,15 @@ auto Handler::onMemEv(const sigil2::MemEvent &ev) -> void
 }
 
 
-auto Handler::onCxtEv(const sigil2::CxtEvent &ev) -> void
+auto Handler::onCxtEv(const prism::CxtEvent &ev) -> void
 {
     /* Use function contexts as Sigil1 'entities' */
     switch(ev.type())
     {
-      case CxtTypeEnum::SGLPRIM_CXT_FUNC_ENTER:
+      case CxtTypeEnum::PRISM_CXT_FUNC_ENTER:
         cxt.enterEntity(ev.getName());
         break;
-      case CxtTypeEnum::SGLPRIM_CXT_FUNC_EXIT:
+      case CxtTypeEnum::PRISM_CXT_FUNC_EXIT:
         cxt.exitEntity();
         break;
       default:

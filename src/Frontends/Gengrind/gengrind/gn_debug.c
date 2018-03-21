@@ -31,43 +31,43 @@ void GN_(printBBInfo)(BBInfo *bb)
 void GN_(sprint_SyncType)(HChar *str, SyncType type)
 {
     switch(type) {
-    case SGLPRIM_SYNC_UNDEF:
+    case PRISM_SYNC_UNDEF:
         VG_(sprintf)(str, "Undefined");
         break;
-    case SGLPRIM_SYNC_CREATE:
+    case PRISM_SYNC_CREATE:
         VG_(sprintf)(str, "Spawn");
         break;
-    case SGLPRIM_SYNC_JOIN:
+    case PRISM_SYNC_JOIN:
         VG_(sprintf)(str, "Join");
         break;
-    case SGLPRIM_SYNC_BARRIER:
+    case PRISM_SYNC_BARRIER:
         VG_(sprintf)(str, "BarrieR");
         break;
-    case SGLPRIM_SYNC_SYNC:
+    case PRISM_SYNC_SYNC:
         VG_(sprintf)(str, "Sync (generalized)");
         break;
-    case SGLPRIM_SYNC_SWAP:
+    case PRISM_SYNC_SWAP:
         VG_(sprintf)(str, "Swap");
         break;
-    case SGLPRIM_SYNC_LOCK:
+    case PRISM_SYNC_LOCK:
         VG_(sprintf)(str, "Lock");
         break;
-    case SGLPRIM_SYNC_UNLOCK:
+    case PRISM_SYNC_UNLOCK:
         VG_(sprintf)(str, "Unlock");
         break;
-    case SGLPRIM_SYNC_CONDWAIT:
+    case PRISM_SYNC_CONDWAIT:
         VG_(sprintf)(str, "Conditional Wait");
         break;
-    case SGLPRIM_SYNC_CONDSIG:
+    case PRISM_SYNC_CONDSIG:
         VG_(sprintf)(str, "Conditional Signal");
         break;
-    case SGLPRIM_SYNC_CONDBROAD:
+    case PRISM_SYNC_CONDBROAD:
         VG_(sprintf)(str, "Conditional Broadcast");
         break;
-    case SGLPRIM_SYNC_SPINLOCK:
+    case PRISM_SYNC_SPINLOCK:
         VG_(sprintf)(str, "SpinLock");
         break;
-    case SGLPRIM_SYNC_SPINUNLOCK:
+    case PRISM_SYNC_SPINUNLOCK:
         VG_(sprintf)(str, "SpinUnlock");
         break;
     default:

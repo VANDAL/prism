@@ -78,7 +78,7 @@ void GN_(addEvent_Instr)(BBState *bbState, const IRStmt *st)
     GN_ASSERT(bbState->eventsToFlush < GN_MAX_EVENTS_PER_BB);
     GN_(EvVariant) *ev = GN_(EvBuffer) + bbState->eventsToFlush;
     ev->tag = GN_INSTR_EV;
-    ev->instr.type = SGLPRIM_CXT_INSTR;
+    ev->instr.type = PRISM_CXT_INSTR;
     ev->instr.id = cia;
 
     bbState->eventsToFlush++;
@@ -106,9 +106,9 @@ void GN_(addEvent_Compute)(BBState *bbState, const IRStmt *st)
     GN_(EvVariant) *ev = GN_(EvBuffer) + bbState->eventsToFlush;
 
     ev->tag = GN_COMPUTE_EV;
-    ev->comp.type = SGLPRIM_COMP_TYPE_UNDEF;
-    ev->comp.arity = SGLPRIM_COMP_ARITY_UNDEF;
-    ev->comp.op = SGLPRIM_COMP_OP_UNDEF;
+    ev->comp.type = PRISM_COMP_TYPE_UNDEF;
+    ev->comp.arity = PRISM_COMP_ARITY_UNDEF;
+    ev->comp.op = PRISM_COMP_OP_UNDEF;
     ev->comp.size = 0;
 
     IRExpr* data = st->Ist.WrTmp.data;
@@ -117,10 +117,10 @@ void GN_(addEvent_Compute)(BBState *bbState, const IRStmt *st)
 
     if (type > Ity_INVALID) {
         if (type < Ity_F16) {
-            ev->comp.type = SGLPRIM_COMP_IOP;
+            ev->comp.type = PRISM_COMP_IOP;
         }
         else if (type < Ity_V128) {
-            ev->comp.type = SGLPRIM_COMP_FLOP;
+            ev->comp.type = PRISM_COMP_FLOP;
         }
         else {
             //VG_(umsg)("Unsupported SIMD event encountered\n");
@@ -131,16 +131,16 @@ void GN_(addEvent_Compute)(BBState *bbState, const IRStmt *st)
 
     switch (arity) {
     case Iex_Unop:
-        ev->comp.arity = SGLPRIM_COMP_UNARY;
+        ev->comp.arity = PRISM_COMP_UNARY;
         break;
     case Iex_Binop:
-        ev->comp.arity = SGLPRIM_COMP_BINARY;
+        ev->comp.arity = PRISM_COMP_BINARY;
         break;
     case Iex_Triop:
-        ev->comp.arity = SGLPRIM_COMP_TERNARY;
+        ev->comp.arity = PRISM_COMP_TERNARY;
         break;
     case Iex_Qop:
-        ev->comp.arity = SGLPRIM_COMP_QUARTERNARY;
+        ev->comp.arity = PRISM_COMP_QUARTERNARY;
         break;
     default:
         tl_assert(0);
@@ -504,7 +504,7 @@ static void gnReserveEventsInBuffer(IRSB *nbb, IRType tyW, UInt eventsToFlush)
                                            endBufPtr)));
 
     /* tmp3 <- size of events */
-    UInt eventsBytes = eventsToFlush * sizeof(SglEvVariant);
+    UInt eventsBytes = eventsToFlush * sizeof(PrismEvVariant);
     IRTemp eventsTmp = newIRTemp(nbb->tyenv, tyW);
     addStmtToIRSB(nbb,
                   IRStmt_WrTmp(eventsTmp,
@@ -604,13 +604,13 @@ static IRTemp gnInstrumentEvent_Instr(IRSB *bb, GN_(InstrEvent) *ev,
                                       IRTemp slot, IRExpr *slotSize, IRType tyW)
 {
     /* slot.tag <- instr tag */
-    GN_STORE_CONST_TO_OFFSET(bb, slot, SGL_CXT_TAG, SglEvVariant, tag);
+    GN_STORE_CONST_TO_OFFSET(bb, slot, PRISM_CXT_TAG, PrismEvVariant, tag);
 
     /* slot.cxt.type <- instr */
-    GN_STORE_CONST_TO_OFFSET(bb, slot, SGLPRIM_CXT_INSTR, SglEvVariant, cxt.type);
+    GN_STORE_CONST_TO_OFFSET(bb, slot, PRISM_CXT_INSTR, PrismEvVariant, cxt.type);
 
     /* slot.cxt.id <- iaddr */
-    GN_STORE_CONST_TO_OFFSET(bb, slot, ev->id, SglEvVariant, cxt.id);
+    GN_STORE_CONST_TO_OFFSET(bb, slot, ev->id, PrismEvVariant, cxt.id);
 
     return incrSlot(bb, slot, slotSize, tyW);
 }
@@ -620,13 +620,13 @@ static IRTemp gnInstrumentEvent_Compute(IRSB *bb, GN_(ComputeEvent) *ev,
                                         IRTemp slot, IRExpr *slotSize, IRType tyW)
 {
     /* slot.tag <- comp tag */
-    GN_STORE_CONST_TO_OFFSET(bb, slot, SGL_COMP_TAG, SglEvVariant, tag);
+    GN_STORE_CONST_TO_OFFSET(bb, slot, PRISM_COMP_TAG, PrismEvVariant, tag);
 
     /* slot.comp.type <- iop/flop/simd */
-    GN_STORE_CONST_TO_OFFSET(bb, slot, ev->type, SglEvVariant, comp.type);
+    GN_STORE_CONST_TO_OFFSET(bb, slot, ev->type, PrismEvVariant, comp.type);
 
     /* slot.comp.arity <- comp arity */
-    GN_STORE_CONST_TO_OFFSET(bb, slot, ev->arity, SglEvVariant, comp.arity);
+    GN_STORE_CONST_TO_OFFSET(bb, slot, ev->arity, PrismEvVariant, comp.arity);
 
     return incrSlot(bb, slot, slotSize, tyW);
 }
@@ -636,17 +636,17 @@ static IRTemp gnInstrumentEvent_Memory(IRSB *bb, GN_(MemoryEvent) *ev,
                                        IRTemp slot, IRExpr *slotSize, IRType tyW)
 {
     /* slot.tag <- mem tag */
-    GN_STORE_CONST_TO_OFFSET(bb, slot, SGL_MEM_TAG, SglEvVariant, tag);
+    GN_STORE_CONST_TO_OFFSET(bb, slot, PRISM_MEM_TAG, PrismEvVariant, tag);
 
     /* slot.mem.type <- load/store */
-    GN_STORE_CONST_TO_OFFSET(bb, slot, ev->load ? SGLPRIM_MEM_LOAD : SGLPRIM_MEM_STORE,
-                             SglEvVariant, mem.type);
+    GN_STORE_CONST_TO_OFFSET(bb, slot, ev->load ? PRISM_MEM_LOAD : PRISM_MEM_STORE,
+                             PrismEvVariant, mem.type);
 
     /* slot.mem.size <- access size */
-    GN_STORE_CONST_TO_OFFSET(bb, slot, ev->size, SglEvVariant, mem.size);
+    GN_STORE_CONST_TO_OFFSET(bb, slot, ev->size, PrismEvVariant, mem.size);
 
     /* slot.mem.addr <- aexpr */
-    GN_STORE_EXPR_TO_OFFSET(bb, slot, ev->aexpr, SglEvVariant, mem.begin_addr);
+    GN_STORE_EXPR_TO_OFFSET(bb, slot, ev->aexpr, PrismEvVariant, mem.begin_addr);
 
     IRTemp newSlot;
 
@@ -746,7 +746,7 @@ static void gnInstrument_EventCapture(IRSB *nbb, IRType tyW, UInt eventsToFlush)
 
     /* now we have enough event slots in the buffer,
      * load in the buffer pointer and flush events to buffer */
-    IRExpr *slotSize = mkIRExpr_HWord((HWord)sizeof(SglEvVariant));
+    IRExpr *slotSize = mkIRExpr_HWord((HWord)sizeof(PrismEvVariant));
     for (UInt i=0; i<eventsToFlush; ++i) {
         /* fill in event specific attributes and get the next slot
          * ML: We compute the next slot in each event instrumentation
@@ -886,8 +886,8 @@ void GN_(flush_Sync)(SyncType type, SyncID *data, UInt args)
 
     /* add event */
     GN_ASSERT(args <= MAX_SYNC_DATA && args > 0);
-    SglEvVariant *slot = GN_(currEv);
-    slot->tag = SGL_SYNC_TAG;
+    PrismEvVariant *slot = GN_(currEv);
+    slot->tag = PRISM_SYNC_TAG;
     slot->sync.type = type;
 
     UInt i=0;
