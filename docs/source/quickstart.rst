@@ -1,7 +1,7 @@
 Quickstart
 ==========
 
-This document will go through building and running |project|.
+This page will quickly walk you through building and running |project|.
 
 Building Prism
 --------------
@@ -37,8 +37,6 @@ The ``backend`` is the analysis tool that will analyze the requested events
 in ``mybinary``. In this example, ``stgen`` is the backend that processes
 events into a special event trace that is used in SynchroTrace_.
 
-More information on backends are in :ref:`backends`.
-
 .. _SynchroTrace:
    http://vlsi.ece.drexel.edu/index.php/SynchroTrace/
 
@@ -48,8 +46,6 @@ for observing the application. By default, this is Valgrind_: ::
   $ bin/prism --frontend=valgrind --backend=stgen --executable=./mybinary
 
 .. _Valgrind: http://valgrind.org/
-
-Available frontends are discussed in :ref:`frontends`.
 
 Dependencies
 ------------

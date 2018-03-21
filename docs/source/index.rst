@@ -3,20 +3,23 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to |project|
-====================
+Welcome to |project|'s Documentation!
+=====================================
 
-|project| is a framework for observing and analyzing applications.
+|project| is a technology for building platform-agnostic workload analysis tools.
+Tools are built once and are able to run across multiple architectures and environments.
+|project| targets complex analyses that are latency-tolerant, in contrast to real-time analyses.
+
+|project| aims to improve three main components of designing new analysis tools for research: 1) *modularity*, 2) *design flexibility*,
+and 3) *productivity*.
 
 .. toctree::
    :maxdepth: 2
 
-   quickstart
    overview
-   user-docs
+   getting-started
    backends
    frontends
-   dev-docs
    about
 
 Features

@@ -1,18 +1,11 @@
-User Documentation
-==================
-
-.. _backends:
-
-The Analysis Backend
---------------------
-
-
-Getting Started with a Tool
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Building your first Prism tool
+==============================
 
 This example will demonstrate how to get started analyzing a workload.
-Let's do a simple example that **counts each event type**.
-We'll integrate our new tool with |project| later in :ref:`backendregistration`.
+We'll generate a simple tool that counts the number of memory events in a workload.
+
+Writing Your Tool
+~~~~~~~~~~~~~~~~~
 
 First, let's make a new folder for our backend, called ``EventCounter``,
 and begin making the backend.
@@ -102,6 +95,11 @@ We'll also include the two extra functions:
    #include "Core/Backends.hpp"
    #include <atomic>
 
+   // forward function declarations
+   void cleanup(void);
+   sigil2::capabilities requirements(void);
+
+   // global memory event counter
    extern std::atomic<unsigned> global_memory_total;
 
    class EventHandler : public BackendIface
@@ -150,74 +148,77 @@ We'll also include the two extra functions:
 
 .. _backendregistration:
 
-Registering Your Analysis
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Registering Your Tool
+~~~~~~~~~~~~~~~~~~~~~
 
-Let's setup |project| to use the new tool.
+Let's setup our new tool in |project|.
+|project| uses static plugins at the moment.
+This requires altering a bit of |project| source code, but is easier to maintain as a small project.
 
-.. todo:: simplecount example
+.. code-block:: sh
 
-          * registering as a static plugin
-          * running
-          * link to multithreaded event stream explanation
+   $ cd src/Core
+   $ $EDITOR main.cpp
 
-.. _frontends:
+.. code-block:: cpp
 
-The Profiling Frontend
-----------------------
+   // main.cpp
 
-A *frontend* is the component that is generating the event stream.
-By default, this is Valgrind (mostly due to historical reasons).
+   int main(int argc, char* argv[])
+   {
+       auto config = Config()
+           .registerFrontend(/* ... */)
+           // register more frontends
+           .registerBackend(/* ... */)
+           // register more backends
+           .parseCommandLine(argc, argv);
+       return startPrism(config);
+   }
 
-.. include:: <isonum.txt>
+We can see all enabled backends and frontends here in one spot.
+This is clear and efficient when working with a smaller number of tools.
+Let's register our backend.
 
-While it's tempting to assume that the event generation *just works*\ |trade|
-you should be aware of the intrinsic nature of the chosen frontend before
-making any large assumptions.
+.. code-block:: cpp
 
-Valgrind
-~~~~~~~~
-Valgrind is the default frontend. No additional options are required. The
-following two command lines are equivalent.
+   // main.cpp
 
-.. code-block:: none
+   int main(int argc, char* argv[])
+   {
+       auto config = Config()
+           .registerFrontend(/* ... */)
+           // register more frontends
+           .registerBackend(/* ... */)
+           // register more backends
+           .registerBackend("EventCounter",
+                            {[]{return std::make_unique<::EventHandler>();},
+                             {},
+                             ::cleanup,
+                             ::requirements})
+           .parseCommandLine(argc, argv);
+       return startPrism(config);
+   }
 
-   $ bin/sigil2 --backend=simplecount --executable=ls -lah
-   $ bin/sigil2 --frontend=valgrind --backend=simplecount --executable=ls -lah
+The ``registerBackend`` member function takes 5 arguments:
 
-Valgrind is a *copy & annotate* dynamic binary instrumentation tool. This means
-that the dynamic instruction stream is grouped into blocks, disassembled into
-Valgrind's VEX IR, instrumented, and then recompiled just-in-time.
+1. The name of the tool---this is used in the command line option.
+#. A function that returns a new instance of our event handler---we'll use an anonymous function.
+#. A function to take any extra command line options---we aren't using this so it'll stay blank.
+#. An end function that is called after all events have been passed to the tool.
+#. A function that returns the required events.
 
-DynamoRIO
-~~~~~~~~~
-DynamoRIO is not built with |project| by default. To enable DynamoRIO as a frontend,
-build |project| using the following cmake build command:
+Now let's make sure the build system knows about our tool.
+We need
 
-.. code-block:: none
+And now we recompile |project|:
 
-   $ cmake .. -DCMAKE_BUILD_TYPE=release -DENABLE_DRSIGIL:bool=true
+.. code-block:: sh
 
-DynamoRIO can now be invoked as a frontend:
+   $ cd build
+   $ 
 
-.. code-block:: none
+Running Your Tool
+~~~~~~~~~~~~~~~~~
 
-   $ bin/sigil2 --frontend=dynamorio --backend=simplecount --executable=ls -lah
+Todo
 
-DynamoRIO's IR exists closer to the ISA than the IR used by Valgrind.
-|project| converts DynamoRIO IR to event primitives by inspection of each
-opcode.
-
-.. todo:: mmm475 to fill in more details
-
-Future
-~~~~~~
-Additional frontends being explored include:
-
-* LLVM-tracer
-* Contech
-* GPU Ocelot
-
-
-FAQ
----
