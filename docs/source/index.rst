@@ -43,7 +43,7 @@ See the :doc:`Quickstart <quickstart>` for information installation instructions
 Contribute
 ----------
 
-Source Code: https://git.io/prism
+Source Code: https://github.com/vandal/prism
 
 Issue Tracker: https://github.com/vandal/prism/issues
 

@@ -36,7 +36,6 @@ add_library(STGenCore STATIC ${SOURCES})
 set(KJ_LIB ${THIRD_PARTY}/capnproto/${CMAKE_INSTALL_LIBDIR}/libkj.a)
 set(CAPNP_LIB ${THIRD_PARTY}/capnproto/${CMAKE_INSTALL_LIBDIR}/libcapnp.a)
 set(STGEN_LIB ${CMAKE_CURRENT_BINARY_DIR}/libSTGen.a)
-set(STGEN_LIB ${STGEN_LIB} PARENT_SCOPE) 
 add_custom_target(STGen ALL
 	COMMAND ar -x $<TARGET_FILE:STGenCore>
 	COMMAND ar -x ${KJ_LIB}
@@ -47,3 +46,5 @@ add_dependencies(STGen STGenCore)
 
 # tests
 add_subdirectory(tests)
+
+set(PRISM_TOOL_LIBS ${STGEN_LIB};z PARENT_SCOPE)

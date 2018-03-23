@@ -60,6 +60,7 @@ include_directories(src/Utils)
 include_directories(${SRC_FRONTENDS})
 include_directories(${SRC_BACKENDS})
 
+
 ######################
 # Optional Frontends #
 ######################
@@ -95,15 +96,14 @@ set_target_properties(prism
 ###################
 # Plugin Backends #
 ###################
-add_subdirectory(${SRC_BACKENDS}/SynchroTraceGen)
-add_dependencies(prism STGen)
-target_link_libraries(prism ${STGEN_LIB} z)
-
-add_subdirectory(${SRC_BACKENDS}/SimpleCount)
-target_link_libraries(prism SimpleCount)
-
-add_subdirectory(${SRC_BACKENDS}/SigilClassic)
-target_link_libraries(prism SigilClassic)
+file(GLOB subdirs "src/Backends/*")
+foreach(dir ${subdirs})
+	set(PRISM_TOOLS_LIBS "")
+	add_subdirectory(${dir})
+	foreach(lib ${PRISM_TOOL_LIBS})
+		target_link_libraries(prism ${lib})
+	endforeach()
+endforeach()
 
 ##########################
 # Interface to Frontends #
