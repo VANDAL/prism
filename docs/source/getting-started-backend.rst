@@ -205,20 +205,37 @@ The ``registerBackend`` member function takes 5 arguments:
 #. A function that returns a new instance of our event handler---we'll use an anonymous function.
 #. A function to take any extra command line options---we aren't using this so it'll stay blank.
 #. An end function that is called after all events have been passed to the tool.
-#. A function that returns the required events.
+#. A function that returns a set of events required by the |project| tool.
 
 Now let's make sure the build system knows about our tool.
-We need
+We need to add our tool as a static library to |project|.
+
+.. code-block:: sh
+
+   $ cd src/Backend/EventCounter
+   $ cat > CMakeLists.txt <<EOF
+   > set(TOOLNAME EventCounter)
+   > set(SOURCES EventCounter.cpp)
+   >
+   > add_library(${TOOLNAME} STATIC ${SOURCES})
+   > set(PRISM_TOOLS_LIBS ${TOOLNAME} PARENT_SCOPE)
+   > EOF
 
 And now we recompile |project|:
 
 .. code-block:: sh
 
    $ cd build
-   $ 
+   $ cmake ..
+   $ make -j
 
 Running Your Tool
 ~~~~~~~~~~~~~~~~~
 
-Todo
+The new tool can be invoked as:
 
+
+.. code-block:: sh
+
+   $ cd build
+   $ bin/prism --backend=EventCounter --executable=ls

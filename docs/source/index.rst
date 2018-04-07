@@ -18,9 +18,11 @@ and 3) *productivity*.
 
    overview
    getting-started
+   events
    backends
    frontends
    about
+   changelog
 
 Features
 --------

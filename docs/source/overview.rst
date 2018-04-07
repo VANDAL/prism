@@ -1,23 +1,18 @@
 Overview
 ========
 
-|project| is a framework designed to help analyze the dynamic behavior of
-applications. We call this dynamic behavior, with its given inputs and state,
-the **workload**. Having this workload is very useful for debugging,
-performance profiling, and simulation on hardware. |project| was born from
-the need to generate application traces for `trace-driven simulation`_,
-so low-level, detailed traces are the primary use-case.
-
-.. _`trace-driven simulation`: https://en.wikipedia.org/wiki/Microarchitecture_simulation
+|project| is a framework designed to help analyze dynamic behavior in applications.
+This dynamic behavior, or **workload**, is a result of the application
+and its given inputs and state.
 
 Workloads
 ---------
-One of the main goals behind |project| is **providing a straightforward interface**
-to represent and analyze workloads.
-A workload can be represented in many ways, and each way has different
-requirements. 
+One of the main goals behind |project| is providing a straightforward interface
+to intuitively represent and analyze workloads.
+A workload can be represented in many ways.
+Each way has different requirements. 
 
-...you might represent a workload as a simple assembly instruction trace:
+For example, you can represent a workload as a simple assembly instruction trace...:
 
 .. code-block:: gas
 
@@ -38,11 +33,11 @@ requirements.
    pop    %rbp
    retq
 
-...or you might represent a workload as a call graph:
+...or a call graph...:
 
 .. image:: _static/callgraph_simple.svg
 
-...or you might represent a workload as a memory trace:
+...or a memory trace...:
 
 .. code-block:: none
 
@@ -53,14 +48,14 @@ requirements.
    ...
 
 ...or more complex representations.
-Each of these representations are made up of the same event categories,
-albeit at different levels of granularity.
+Fundamentally, all workload representations can be broken down into five
+*event primitives*.
 
 Event Primitives
 ^^^^^^^^^^^^^^^^
 
-Because of the variety of use-cases for analyzing workloads,
-|project| decided to present workloads as a set of extensible primitives.
+Because of the variety of use-cases being supported,
+|project| presents workloads as a set of extensible primitives.
 
 +-----------------+-----------------------------------------+
 | Event Primitive | Description                             |
@@ -76,8 +71,7 @@ Because of the variety of use-cases for analyzing workloads,
 | Context         | grouping of events                      |
 +-----------------+-----------------------------------------+
 
-The format of these events is not defined,
-but you can imagine that events would look like: ::
+E.g., an abstract workload is represented as: ::
 
   ...
   compute     FLOP,   add,   SIMD4
@@ -87,12 +81,18 @@ but you can imagine that events would look like: ::
   sync        create, <TID1>
   ...
 
-.. todo:: More detail is discussed futher in ???
+.. detail a formalized structure
 
 Event Generation
 ----------------
 
-Many tools exist to capture workloads:
+Many tools exist to capture workloads.
+Currently, Valgrind_ is well supported.
+DynamoRIO_ is on its way to good support, and we are experimenting with traces
+captured with hardware features.
+
+Eventually, we aim to support a broad spectrum of tools to support many applications
+and hardware architectures, e.g.:
 
 * static instrumentation tools
 
@@ -128,17 +128,20 @@ Many tools exist to capture workloads:
 .. _SniperSim: http://snipersim.org/
 .. _Multi2Sim: http://www.multi2sim.org/
 
-Each tool has its merits depending on the desired granularity
-and source of the event trace. Execution-driven simulators are great for
-fine-grained, low-level traces, but may be impractical for a large workload.
-Most DBI tools do a good job of obvserving the instruction stream of general
-purpose CPU workloads, but may not be useful when looking at workloads that
-use peripheral devices like GPUs or third-party IP.
+Each framework has its merits depending on the desired granularity and source of the event trace.
+Most binary instrumentation frameworks do a good job of obvserving the instruction stream of general
+purpose CPU workloads, but incur large overheads and may perturb results.
+Hardware support is good for real-time capture, but may have trouble capturing a native sized
+workload.
+Execution-driven simulators are great for fine-grained, low-level traces, but simulation time
+may be intractable for very large workloads, and simulators obviously must support the application.
+Additional capture methodologies exist for applications designed in interpreted or managed languages.
 
-|project| recognizes this and creates an abstraction to the underlying
-tool that observes the workload. Events are *translated* into |project|
-*event primitives* that are then presented to the user for further processing.
-The tool used for event generation is a |project| **frontend**, and the
-user-defined processing on those events is a |project| **backend**.
-Currently, backends are written as C++ static plugins to |project|,
-although there is room for expansion, given enough interest.
+|project| recognizes these trade-offs and creates an abstraction to the underlying
+framework that observes the workload.
+Events are *translated* into |project| *event primitives*, which are then presented to the user
+for further analysis or simple trace-generation.
+The component used in a given framework for event generation is a |project| **frontend**,
+and the user-defined analysis or trace-generation on those events is a |project| **backend**.
+Currently, backends are written as C++ static plugins to |project|.
+We are interested in expanding support to C++ dynamic libraries and additionally python bindings.

@@ -24,6 +24,8 @@ No available options
 
 ----
 
+.. _SynchroTraceGen:
+
 SynchroTraceGen
 ---------------
 
