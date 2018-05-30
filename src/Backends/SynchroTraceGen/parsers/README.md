@@ -1,7 +1,6 @@
 # Parsing SynchroTraceGen CapnProto Traces
 
-The python scripts in this repo demonstrate parsing CapnpProto
-event traces.
+These subprojects demonstrate parsing CapnpProto event traces.
 
 There are **two** different CapnProto trace formats:
 
@@ -20,23 +19,3 @@ schema is used for improved tracing speed and size.
 
 :exclamation: The compression referred to here is a logical compression
 of the trace. Additional zlib compression is used regardless on the traces.
-
-## Requirements
-* The {*STEventTraceCompressed.capnp*,*STEventTraceUncompressed.capnp*}
-file must exist in the user's python sys.path:
-  * Add its directory to the PYTHONPATH environmental variable or
-copy it to the current working directory.
-
-* The pycapnp library is required:
-  * See http://jparyani.github.io/pycapnp/install.html for further details.
-
-* Generate the \*.capnp.bin file with:
-
-   `$ bin/sigil2 --backend=stgen -l capnp --executable=...`
-
-* Run the script as:
-
-   ```
-   $ ./stgen_capnp_parser_compressed.py sigil.events-#.compressed.capnp.bin.gz
-   $ ./stgen_capnp_parser_uncompressed.py sigil.events-#.uncompressed.capnp.bin.gz
-   ```
