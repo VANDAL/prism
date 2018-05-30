@@ -11,7 +11,7 @@ Building Prism
           Devtoolset_ before compiling.
 
 .. _Devtoolset:
-   https://www.softwarecollections.org/en/scls/rhscl/devtoolset-6/
+   https://www.softwarecollections.org/en/scls/rhscl/devtoolset-7/
 
 Clone and build |project| from source::
 
@@ -50,20 +50,20 @@ for observing the application. By default, this is Valgrind_: ::
 Dependencies
 ------------
 
-+-------------+----------+
-| PACKAGE     | VERSION  |
-+=============+==========+
-| gcc/g++     |  5+      |
-+-------------+----------+
-| cmake       |  3.1.3+  |
-+-------------+----------+
-| make        |  3.8+    |
-+-------------+----------+
-| automake    |  1.13+   |
-+-------------+----------+
-| autoconf    |  2.69+   |
-+-------------+----------+
-| zlib        |  1.27+   |
-+-------------+----------+
-| git         |  1.8+    |
-+-------------+----------+
++---------------+----------+
+| PACKAGE       | VERSION  |
++===============+==========+
+| gcc/g++       |  5+      |
++---------------+----------+
+| cmake         |  3.1.3+  |
++---------------+----------+
+| make          |  3.8+    |
++---------------+----------+
+| automake      |  1.13+   |
++---------------+----------+
+| autoconf      |  2.69+   |
++---------------+----------+
+| zlib/zlib-dev |  1.27+   |
++---------------+----------+
+| git           |  1.8+    |
++---------------+----------+
