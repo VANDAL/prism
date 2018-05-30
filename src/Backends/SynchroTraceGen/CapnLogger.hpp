@@ -1,7 +1,7 @@
 #ifndef STGEN_CAPNLOGGER_H
 #define STGEN_CAPNLOGGER_H
 
-#include "Core/PrismLog.hpp"
+#include "Utils/PrismLog.hpp"
 #include "STLogger.hpp"
 #include "STEventTraceCompressed.capnp.h"
 #include "STEventTraceUncompressed.capnp.h"

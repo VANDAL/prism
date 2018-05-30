@@ -1,4 +1,4 @@
-#include "Core/PrismLog.hpp"
+#include "Utils/PrismLog.hpp"
 #include "PerfPTFrontend.hpp"
 #include "FrontendShmemIPC.hpp"
 #include "whereami.h"

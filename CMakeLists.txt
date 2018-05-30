@@ -20,6 +20,7 @@ include(CTest)
 # TODO(cleanup)      #
 ######################
 get_filename_component(SRC_CORE      src/Core      ABSOLUTE)
+get_filename_component(SRC_UTILS     src/Utils     ABSOLUTE)
 get_filename_component(SRC_FRONTENDS src/Frontends ABSOLUTE)
 get_filename_component(SRC_BACKENDS  src/Backends  ABSOLUTE)
 get_filename_component(THIRD_PARTY   third_party   ABSOLUTE)
@@ -82,6 +83,7 @@ endif(NOT PERF_ENABLE)
 ###############
 set(SOURCES
 	${THIRD_PARTY}/whereami/src/whereami.c
+	${SRC_UTILS}/PrismLog.cpp
 	${SRC_CORE}/Backends.cpp
 	${SRC_CORE}/Frontends.cpp
 	${SRC_CORE}/Parser.cpp
@@ -98,9 +100,19 @@ set_target_properties(prism
 ###################
 file(GLOB subdirs "src/Backends/*")
 foreach(dir ${subdirs})
-	set(PRISM_TOOLS_LIBS "")
+	set(PRISM_TOOL_LINK_LIBS "")
+	# In the backend CMakeLists, set this to a list of libraries that need to be linked with prism.
+	# This can be a <target> name created with add_library(),
+	# in which case setting PRISM_TOOL_DEPENDENCIES is not required.
+
+	set(PRISM_TOOL_DEPENDENCIES "")
+	# In the backend CMakeLists, set this to a list of CMake <targets> so prism will build them
+
 	add_subdirectory(${dir})
-	foreach(lib ${PRISM_TOOL_LIBS})
+	foreach(dep ${PRISM_TOOL_DEPENDENCIES})
+		add_dependencies(prism ${dep})
+	endforeach()
+	foreach(lib ${PRISM_TOOL_LINK_LIBS})
 		target_link_libraries(prism ${lib})
 	endforeach()
 endforeach()

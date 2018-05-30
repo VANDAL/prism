@@ -4,7 +4,7 @@
 #include "ShadowMemory.hpp" //Addr
 #include "STStats.hpp"
 #include <set>
-#include <list>
+#include <map>
 
 namespace STGen
 {

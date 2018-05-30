@@ -1,4 +1,4 @@
-#include "Core/PrismLog.hpp"
+#include "Utils/PrismLog.hpp"
 #include "GengrindFrontend.hpp"
 #include "FrontendShmemIPC.hpp"
 #include "elfio/elfio.hpp"

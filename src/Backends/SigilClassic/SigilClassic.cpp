@@ -1,5 +1,5 @@
 #include "SigilClassic.hpp"
-#include "Core/PrismLog.hpp"
+#include "Utils/PrismLog.hpp"
 
 /* XXX overflow builtin not in GCC <5.
  * This overflow check should only be used for

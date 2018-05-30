@@ -32,7 +32,7 @@ set(SOURCES
 	${THIRD_PARTY}/zlib/contrib/iostream3/zfstream.cc)
 add_library(STGenCore STATIC ${SOURCES})
 
-# Link CapnProto w/ SynchroTraceGen
+# Link CapnProto w/ SynchroTraceGen statically
 set(KJ_LIB ${THIRD_PARTY}/capnproto/${CMAKE_INSTALL_LIBDIR}/libkj.a)
 set(CAPNP_LIB ${THIRD_PARTY}/capnproto/${CMAKE_INSTALL_LIBDIR}/libcapnp.a)
 set(STGEN_LIB ${CMAKE_CURRENT_BINARY_DIR}/libSTGen.a)
@@ -47,4 +47,5 @@ add_dependencies(STGen STGenCore)
 # tests
 add_subdirectory(tests)
 
-set(PRISM_TOOL_LIBS ${STGEN_LIB};z PARENT_SCOPE)
+set(PRISM_TOOL_DEPENDENCIES STGen PARENT_SCOPE)
+set(PRISM_TOOL_LINK_LIBS ${STGEN_LIB};z PARENT_SCOPE)

@@ -2,7 +2,7 @@
 #define SHADOWMEMORY_H
 
 #include "Core/Primitive.h" // PtrVal type
-#include "Core/PrismLog.hpp"
+#include "Utils/PrismLog.hpp"
 
 #include <limits>
 #include <vector>

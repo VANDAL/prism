@@ -1,7 +1,7 @@
 #ifndef STGEN_TEXT_LOGGER_H
 #define STGEN_TEXT_LOGGER_H
 
-#include "Core/PrismLog.hpp"
+#include "Utils/PrismLog.hpp"
 #include "Utils/FileLogger.hpp"
 #include "STLogger.hpp"
 #include "BarrierMerge.hpp"

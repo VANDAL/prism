@@ -3,6 +3,8 @@
 #include "CapnLogger.hpp"
 #include "NullLogger.hpp"
 
+using PrismLog::fatal;
+
 namespace STGen
 {
 

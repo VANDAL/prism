@@ -1,13 +1,16 @@
 #ifndef PRISM_FRONTEND_SHMEM_IPC_H
 #define PRISM_FRONTEND_SHMEM_IPC_H
 
-#include "Core/PrismLog.hpp"
+#include "Utils/PrismLog.hpp"
 #include "Core/Frontends.hpp"
 #include "CommonShmemIPC.h"
 #include "Common.hpp"
 #include <thread>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 /**
  * Prism receives events from external tools via an array of

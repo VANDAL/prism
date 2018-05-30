@@ -1,7 +1,6 @@
 #ifndef PRISM_FRONTEND_H
 #define PRISM_FRONTEND_H
 
-#include "PrismLog.hpp"
 #include "EventBuffer.h"
 #include <map>
 #include <functional>

@@ -2,8 +2,8 @@
 #define STGEN_THREAD_CONTEXT_H
 
 #include "STEvent.hpp"
-#include "TextLogger.hpp"
 #include "STTypes.hpp"
+#include "TextLogger.hpp"
 
 /* DynamoRIO sometimes reports very high addresses.
  * For now, allow these addresses until we figure

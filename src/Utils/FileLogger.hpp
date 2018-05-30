@@ -6,7 +6,7 @@
 #include "zfstream.h"
 #include <fstream>
 
-#include "Core/PrismLog.hpp"
+#include "Utils/PrismLog.hpp"
 using PrismLog::info;
 using PrismLog::fatal;
 
