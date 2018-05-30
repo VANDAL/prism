@@ -19,6 +19,7 @@ ExternalProject_Add(capnproto
 # -- Install step -------------
 	)
 include_directories(${THIRD_PARTY}/capnproto/include)
+include_directories(STEventTraceSchemas)
 
 # SynchroTraceGen Backend
 set(SOURCES
@@ -27,8 +28,8 @@ set(SOURCES
 	TextLogger.cpp
 	CapnLogger.cpp
 	STEvent.cpp
-	STEventTraceCompressed.capnp.c++
-	STEventTraceUncompressed.capnp.c++
+	STEventTraceSchemas/STEventTraceCompressed.capnp.c++
+	STEventTraceSchemas/STEventTraceUncompressed.capnp.c++
 	${THIRD_PARTY}/zlib/contrib/iostream3/zfstream.cc)
 add_library(STGenCore STATIC ${SOURCES})
 

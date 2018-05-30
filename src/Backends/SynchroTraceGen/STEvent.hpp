@@ -3,7 +3,7 @@
 
 #include "AddrSet.hpp"
 #include "STTypes.hpp" // Addr, TID, EID
-#include "STEventTraceUncompressed.capnp.h"
+#include "STEventTraceSchemas/STEventTraceUncompressed.capnp.h"
 #include "spdlog/spdlog.h"
 #include <vector>
 
