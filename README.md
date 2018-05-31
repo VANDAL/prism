@@ -1,5 +1,5 @@
 [![BSD licensed](https://img.shields.io/badge/license-BSD-blue.svg)](./COPYING)
-[![Build Status](https://travis-ci.org/vandal/prism.svg?branch=master)](https://travis-ci.org/vandal/prism)
+[![Build Status](https://travis-ci.org/VANDAL/prism.svg?branch=master)](https://travis-ci.org/VANDAL/prism)
 [![Docs Status](https://readthedocs.org/projects/prism/badge)](http://vandal-prism.readthedocs.io/en/latest)
 
 The intuitive, event-driven application profiling and characterization framework.
@@ -55,11 +55,11 @@ A third frontend argument can be supplied
 ```
 sudo yum install epel-release
 sudo yum install centos-release-scl
-sudo yum install cmake3 devtoolset-6
-scl enable devtoolset-6 bash
+sudo yum install cmake3 devtoolset-7
+scl enable devtoolset-7 bash
 # use cmake3 and build and usual
 ```
-See [Software Collections](https://www.softwarecollections.org/en/scls/rhscl/devtoolset-6/) for details.
+See [Software Collections](https://www.softwarecollections.org/en/scls/rhscl/devtoolset-7/) for details.
 
 ## Documentation
 [Read the docs](http://vandal-prism.readthedocs.io/en/latest)
