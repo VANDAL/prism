@@ -1,0 +1,11 @@
+[package]
+name = "parse_stgen_capnp"
+version = "0.1.0"
+authors = ["Mike Lui <mike.d.lui@gmail.com>"]
+
+[build-dependencies]
+capnpc = "0.8.9"
+
+[dependencies]
+capnp = "0.8.17"
+flate2 = { version = "1.0.1", features = ["zlib"], default-features = false }
