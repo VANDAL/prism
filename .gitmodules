@@ -22,9 +22,12 @@
 [submodule "third_party/spdlog"]
 	path = third_party/spdlog
 	url = https://github.com/gabime/spdlog
+	ignore = all
 [submodule "src/Frontends/DrSigil/dynamorio"]
 	path = src/Frontends/DrSigil/dynamorio
 	url = https://github.com/DynamoRIO/dynamorio
+	ignore = all
 [submodule "src/Frontends/Sigrind/valgrind"]
 	path = src/Frontends/Gengrind/valgrind
 	url = git://sourceware.org/git/valgrind.git
+	ignore = all

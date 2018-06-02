@@ -6,6 +6,7 @@
 
 /build/
 /third_party/capnproto
+.ycm_extra_conf.py
 
 # Swap files
 *.sw*
@@ -20,13 +21,6 @@
 
 Makefile
 Makefile.in
-
-# Valgrind build
-**/valgrind-3.11.0-Sigil2/Makefile.vex.in
-**/valgrind-3.11.0-Sigil2/aclocal.m4
-**/valgrind-3.11.0-Sigil2/autom4te.cache/
-**/valgrind-3.11.0-Sigil2/config.h.in
-**/valgrind-3.11.0-Sigil2/configure
 
 
 ####################

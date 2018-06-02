@@ -1,1 +1,5 @@
-src/Frontends/Sigrind/gcc-4.9.2/* linguist-vendored
+src/Frontends/Gengrind/gcc-4.9.2/** linguist-vendored=true
+
+# for some reason these are getting picked up as Objective-C
+src/Core/PrimitiveEnums.h linguist-language=C
+src/Frontends/Gengrind/gengrind/gn_jumps.h linguist-language=C
