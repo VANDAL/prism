@@ -1,8 +1,13 @@
+# Prism
+
 [![BSD licensed](https://img.shields.io/badge/license-BSD-blue.svg)](./COPYING)
 [![Build Status](https://travis-ci.org/VANDAL/prism.svg?branch=master)](https://travis-ci.org/VANDAL/prism)
 [![Docs Status](https://readthedocs.org/projects/prism/badge)](http://vandal-prism.readthedocs.io/)
+[![Experimental](https://img.shields.io/badge/stability-experimental-orange.svg)](#)
 
 The intuitive, event-driven application profiling and characterization framework.
+
+![Prism Overview](/docs/source/_static/prism_overview.svg)
 
 <br>
 

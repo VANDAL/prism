@@ -1,6 +1,8 @@
 # Parsing SynchroTraceGen CapnProto Traces
 
 These subprojects demonstrate parsing CapnpProto event traces.
+CapnProto traces can be generated with the `--backend=stgen -l capnp` option.
+These traces are generally smaller and faster to parse through than the default ASCII text traces.
 
 There are **two** different CapnProto trace formats:
 

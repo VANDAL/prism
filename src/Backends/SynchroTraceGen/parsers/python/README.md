@@ -19,7 +19,7 @@ copy it to the current working directory.
 
 * Generate a SynchroTraceGen trace {\*.capnp.bin,\*.capnp.bin.gz} with:
 
-   `$ bin/sigil2 --backend=stgen -l capnp --executable=...`
+   `$ bin/prism --backend=stgen -l capnp --executable=...`
 
 * Run the script as:
 
