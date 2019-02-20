@@ -270,12 +270,13 @@ static Bool GN_(getDebugInfo)(/*IN*/  Addr instr,
 {
     Bool result = True;
     UInt lineno;
+    DiEpoch ep = VG_(current_DiEpoch)();
 
     if (di)
-        *di = VG_(find_DebugInfo)(instr);
+        *di = VG_(find_DebugInfo)(ep, instr);
 
-    Bool foundFn = VG_(get_fnname)(instr, fnname);
-    Bool foundFileLine = VG_(get_filename_linenum)(instr, filename, dirname, &lineno);
+    Bool foundFn = VG_(get_fnname)(ep, instr, fnname);
+    Bool foundFileLine = VG_(get_filename_linenum)(ep, instr, filename, dirname, &lineno);
 
     if (!foundFn && !foundFileLine) {
         *filename = anonname;
@@ -405,7 +406,8 @@ ObjNode* GN_(getObjNodeByAddr)(Addr addr)
     DebugInfo *di;
     PtrdiffT offset;
 
-    di = VG_(find_DebugInfo)(addr);
+    DiEpoch ep = VG_(current_DiEpoch)();
+    di = VG_(find_DebugInfo)(ep, addr);
     obj = GN_(getObjNode)(di);
 
 	// check if object was remapped
@@ -437,9 +439,10 @@ FnNode* GN_(getFnNode)(BBInfo *bb)
     /* Find debug info for function  */
     GN_(getDebugInfo)(bbAddr(bb), &dirname, &filename, &fnname, &di);
 
+    DiEpoch ep = VG_(current_DiEpoch)();
     if (VG_(strcmp)(fnname, anonname) == 0)
         fnname = getUnknownFnName(bb); // name correction
-    else if (VG_(get_fnname_if_entry)(bbAddr(bb), &fnname))
+    else if (VG_(get_fnname_if_entry)(ep, bbAddr(bb), &fnname))
         bb->isFnEntry = True;
 
     /* HACK for correct _exit:

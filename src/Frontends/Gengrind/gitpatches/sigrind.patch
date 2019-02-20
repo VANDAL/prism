@@ -1,6 +1,6 @@
-From 8ea7ff275567f53409b64b69d5a405c78ea93c8c Mon Sep 17 00:00:00 2001
+From 2a62dc36c0e54469e17a5cd73d7c9f019e0b31c3 Mon Sep 17 00:00:00 2001
 From: Mike Lui <mike.d.lui@gmail.com>
-Date: Wed, 7 Mar 2018 16:54:10 -0500
+Date: Wed, 20 Feb 2019 17:15:50 -0500
 Subject: [PATCH] patch
 
 ---
@@ -9,24 +9,24 @@ Subject: [PATCH] patch
  2 files changed, 6 insertions(+)
 
 diff --git a/Makefile.am b/Makefile.am
-index fdce3cf9f..6859f9611 100644
+index 631c845ab..a46d8a74d 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -10,6 +10,8 @@ TOOLS =		memcheck \
+@@ -11,6 +11,8 @@ TOOLS =		memcheck \
+ 		massif \
+ 		dhat \
  		lackey \
- 		none \
- 		helgrind \
 +		sigrind \
 +		gengrind \
- 		drd
+ 		none
  
  EXP_TOOLS = 	exp-sgcheck \
 diff --git a/configure.ac b/configure.ac
-index 4d4521896..624c52200 100644
+index b885bd91b..59f37ab65 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -4523,6 +4523,10 @@ AC_CONFIG_FILES([
-    exp-dhat/tests/Makefile
+@@ -4671,6 +4671,10 @@ AC_CONFIG_FILES([
+    exp-bbv/tests/arm-linux/Makefile
     shared/Makefile
     solaris/Makefile
 +   sigrind/Makefile
@@ -37,5 +37,5 @@ index 4d4521896..624c52200 100644
  AC_CONFIG_FILES([coregrind/link_tool_exe_linux],
                  [chmod +x coregrind/link_tool_exe_linux])
 -- 
-2.16.2
+2.20.1
 

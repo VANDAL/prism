@@ -6,7 +6,7 @@
 /*
    This file is part of Callgrind, a Valgrind tool for call tracing.
 
-   Copyright (C) 2002-2015, Josef Weidendorfer (Josef.Weidendorfer@gmx.de)
+   Copyright (C) 2002-2017, Josef Weidendorfer (Josef.Weidendorfer@gmx.de)
 
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -199,7 +199,8 @@ obj_node* obj_of_address(Addr addr)
   DebugInfo* di;
   PtrdiffT offset;
 
-  di = VG_(find_DebugInfo)(addr);
+  DiEpoch ep = VG_(current_DiEpoch)();
+  di = VG_(find_DebugInfo)(ep, addr);
   obj = CLG_(get_obj_node)( di );
 
   /* Update symbol offset in object if remapped */

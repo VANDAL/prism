@@ -6,7 +6,7 @@
 /*
    This file is part of Callgrind, a Valgrind tool for call tracing.
 
-   Copyright (C) 2002-2015, Josef Weidendorfer (Josef.Weidendorfer@gmx.de)
+   Copyright (C) 2002-2017, Josef Weidendorfer (Josef.Weidendorfer@gmx.de)
 
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -110,7 +110,7 @@ static Bool check_code(obj_node* obj,
 /* _ld_runtime_resolve, located in ld.so, needs special handling:
  * The jump at end into the resolved function should not be
  * represented as a call (as usually done in callgrind with jumps),
- * but as a return + call. Otherwise, the repeated existance of
+ * but as a return + call. Otherwise, the repeated existence of
  * _ld_runtime_resolve in call chains will lead to huge cycles,
  * making the profile almost worthless.
  *
@@ -434,17 +434,18 @@ Bool CLG_(get_debug_info)(Addr instr_addr,
   
   CLG_DEBUG(6, "  + get_debug_info(%#lx)\n", instr_addr);
 
+  DiEpoch ep = VG_(current_DiEpoch)();
   if (pDebugInfo) {
-      *pDebugInfo = VG_(find_DebugInfo)(instr_addr);
+      *pDebugInfo = VG_(find_DebugInfo)(ep, instr_addr);
 
       // for generated code in anonymous space, pSegInfo is 0
    }
 
-   found_file_line = VG_(get_filename_linenum)(instr_addr,
+   found_file_line = VG_(get_filename_linenum)(ep, instr_addr,
 					       file,
 					       dir,
 					       &line);
-   found_fn = VG_(get_fnname)(instr_addr, fn_name);
+   found_fn = VG_(get_fnname)(ep, instr_addr, fn_name);
 
    if (!found_file_line && !found_fn) {
      CLG_(stat).no_debug_BBs++;
@@ -503,6 +504,7 @@ fn_node* CLG_(get_fn_node)(BB* bb)
     CLG_(get_debug_info)(bb_addr(bb),
                          &dirname, &filename, &fnname, &line_num, &di);
 
+    DiEpoch ep = VG_(current_DiEpoch)();
     if (0 == VG_(strcmp)(fnname, "???")) {
 	int p;
         static HChar buf[32];  // for sure large enough
@@ -521,7 +523,7 @@ fn_node* CLG_(get_fn_node)(BB* bb)
         fnname = buf;
     }
     else {
-      if (VG_(get_fnname_if_entry)(bb_addr(bb), &fnname))
+      if (VG_(get_fnname_if_entry)(ep, bb_addr(bb), &fnname))
 	bb->is_entry = 1;
     }
 

@@ -432,7 +432,7 @@ static void gnAddExit(BBState *bbState, IRJumpKind jk)
 
     GN_DEBUGIF(4) {
         GN_(printTabs)(1);
-        VG_(printf)("Added Event: Exit - %s:%d\n",
+        VG_(printf)("Added Event: Exit - %s:%u\n",
                     GN_(getJumpStr)(jmp, False), bbState->bbInfo->jmpCount);
     }
 }
@@ -905,7 +905,7 @@ void GN_(flush_Sync)(SyncType type, SyncID *data, UInt args)
     GN_DEBUGIF(6) {
         HChar str[16];
         GN_(sprint_SyncType)(str, type);
-        VG_(printf)("SyncEvent: %s; SyncData0: 0x%lu; SyncData1: 0x%lu\n",
+        VG_(printf)("SyncEvent: %s; SyncData0: 0x%ld; SyncData1: 0x%ld\n",
                     str, data[0], data[1]);
     }
 }
