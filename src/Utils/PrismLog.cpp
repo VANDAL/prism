@@ -1,6 +1,9 @@
 #include "PrismLog.hpp"
 
 #include "spdlog/spdlog.h"
+#include "spdlog/sinks/stdout_sinks.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
+#include "spdlog/async.h"
 #include "spdlog/fmt/fmt.h"
 #include <atomic>
 #include <iostream>
@@ -19,12 +22,8 @@ class PrismLogger
         constexpr auto loggerName = "PRISM";
         if ((spdlogger = spdlog::get(loggerName)) == nullptr)
         {
-            spdlog::set_sync_mode();
-            if (isatty(fileno(stdout)))
-                spdlogger = spdlog::stderr_color_mt(loggerName);
-            else
-                spdlogger = spdlog::stderr_logger_mt(loggerName);
-            spdlogger->set_pattern("[%n] [%l] %v");
+            spdlogger = spdlog::stderr_color_mt(loggerName);
+            spdlogger->set_pattern("[%n] [%^%l%$] %v");
         }
     }
 

@@ -1,5 +1,6 @@
 #include "ThreadContext.hpp"
 #include "TextLogger.hpp"
+#include "TextLoggerV2.hpp"
 #include "CapnLogger.hpp"
 #include "NullLogger.hpp"
 
@@ -204,6 +205,8 @@ auto ThreadContextCompressed::getLogger(TID tid, std::string outputPath,
 {
     if (loggerType == "text")
         return std::make_unique<TextLoggerCompressed>(tid, outputPath);
+    else if (loggerType == "textv2")
+        return std::make_unique<TextLoggerV2Compressed>(tid, outputPath);
     else if (loggerType == "capnp")
         return std::make_unique<CapnLoggerCompressed>(tid, outputPath);
     else if (loggerType == "null")
@@ -392,6 +395,8 @@ auto ThreadContextUncompressed::getLogger(TID tid, std::string outputPath,
 {
     if (loggerType == "text")
         return std::make_unique<TextLoggerUncompressed>(tid, outputPath);
+    else if (loggerType == "textv2")
+        return std::make_unique<TextLoggerV2Uncompressed>(tid, outputPath);
     else if (loggerType == "capnp")
         return std::make_unique<CapnLoggerUncompressed>(tid, outputPath);
     else if (loggerType == "null")

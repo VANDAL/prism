@@ -26,6 +26,7 @@ set(SOURCES
 	EventHandlers.cpp
 	ThreadContext.cpp
 	TextLogger.cpp
+	TextLoggerV2.cpp
 	CapnLogger.cpp
 	STEvent.cpp
 	STEventTraceSchemas/STEventTraceCompressed.capnp.c++

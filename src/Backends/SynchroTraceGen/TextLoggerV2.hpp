@@ -1,17 +1,16 @@
-#ifndef STGEN_TEXT_LOGGER_H
-#define STGEN_TEXT_LOGGER_H
+#ifndef STGEN_TEXT_LOGGER_V2_H
+#define STGEN_TEXT_LOGGER_V2_H
 
 #include "Utils/PrismLog.hpp"
 #include "Utils/FileLogger.hpp"
 #include "STLogger.hpp"
-#include "BarrierMerge.hpp"
 #include "spdlog/spdlog.h"
 
 using PrismLog::info;
 namespace STGen
 {
 
-class TextLoggerCompressed : public STLoggerCompressed
+class TextLoggerV2Compressed : public STLoggerCompressed
 {
     /* Uses spdlog logging library to asynchronously log to a text file.
      * The format is a custom format.
@@ -19,9 +18,9 @@ class TextLoggerCompressed : public STLoggerCompressed
 
     using Base = STLoggerCompressed;
   public:
-    TextLoggerCompressed(TID tid, const std::string& outputPath);
-    TextLoggerCompressed(const TextLoggerCompressed& other) = delete;
-    ~TextLoggerCompressed() override final;
+    TextLoggerV2Compressed(TID tid, const std::string& outputPath);
+    TextLoggerV2Compressed(const TextLoggerV2Compressed& other) = delete;
+    ~TextLoggerV2Compressed() override final;
 
     auto flush(const STCompEventCompressed &ev, EID eid, TID tid) -> void override final;
     auto flush(const STCommEventCompressed &ev, EID eid, TID tid) -> void override final;
@@ -36,7 +35,7 @@ class TextLoggerCompressed : public STLoggerCompressed
 };
 
 
-class TextLoggerUncompressed : public STLoggerUncompressed
+class TextLoggerV2Uncompressed : public STLoggerUncompressed
 {
     /* Uses spdlog logging library to asynchronously log to a text file.
      * The format is a custom format.
@@ -44,9 +43,9 @@ class TextLoggerUncompressed : public STLoggerUncompressed
 
     using Base = STLoggerCompressed;
   public:
-    TextLoggerUncompressed(TID tid, const std::string& outputPath);
-    TextLoggerUncompressed(const TextLoggerUncompressed& other) = delete;
-    ~TextLoggerUncompressed() override final;
+    TextLoggerV2Uncompressed(TID tid, const std::string& outputPath);
+    TextLoggerV2Uncompressed(const TextLoggerV2Uncompressed& other) = delete;
+    ~TextLoggerV2Uncompressed() override final;
 
     auto flush(StatCounter iops, StatCounter flops,
                        STCompEventUncompressed::MemType type, Addr start, Addr end,
@@ -62,14 +61,6 @@ class TextLoggerUncompressed : public STLoggerUncompressed
     std::shared_ptr<spdlog::logger> logger;
     std::shared_ptr<gzofstream> gzfile;
 };
-
-
-auto flushPthread(std::string filePath,
-                  ThreadList newThreadsInOrder,
-                  SpawnList threadSpawns,
-                  BarrierList barrierParticipants) -> void;
-
-auto flushStats(std::string filePath, ThreadStatMap allThreadsStats) -> void;
 
 }; //end namespace STGen
 

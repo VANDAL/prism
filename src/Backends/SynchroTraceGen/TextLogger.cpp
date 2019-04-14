@@ -1,4 +1,5 @@
 #include "TextLogger.hpp"
+#include "spdlog/fmt/fmt.h"
 
 namespace STGen
 {
@@ -6,84 +7,38 @@ namespace STGen
 namespace
 {
 
-template <typename I>
-inline auto n2hexstr(char (&hexStr)[sizeof(I)*2+3], const I &w) -> const char*
-{
-    /* For speed, adapted from http://stackoverflow.com/a/33447587
-     * hexStr MUST be at least (sizeof(I) * 2 + 3)
-     * Returns the beginning location of the hex string,
-     * since the supplied char* will be truncated:
-     *     8BADF00D0xDEADBEEF\0
-     *             |
-     *             +----- the hex string starts here at 0x */
-    static constexpr int hexLen = sizeof(I) * 2;
-    static const char *digits = "0123456789abcdef";
-
-    bool hexMSBfound = false;
-    int hexMSB = 2;
-
-    for (size_t i=2, j=(hexLen-1) * 4; i<hexLen+2; ++i, j-=4)
-    {
-        hexStr[i] = digits[(w >> j) & 0x0f];
-
-        if (hexMSBfound == false && hexStr[i] != '0')
-        {
-            hexMSBfound = true;
-            hexMSB = i;
-        }
-    }
-
-    /* TODO MDL20170309
-     * If 'w' is '0' then this returns the full size hex string instead of just "0x0".
-     * We can truncate the string to "0x0" to save space, but afaik this is very rare */
-    hexStr[hexMSB - 2] = '0';
-    hexStr[hexMSB - 1] = 'x';
-    hexStr[hexLen + 2] = '\0';
-    return hexStr + (hexMSB-2);
-}
-
-
 auto flushSyncEvent(unsigned char syncType, unsigned numArgs, Addr *syncArgs,
                     EID eid, TID tid,
                     std::shared_ptr<spdlog::logger> &logger) -> void
 {
     assert(numArgs > 0);
-    char hexStr[sizeof(Addr)*2+3];
-    std::string logMsg;
-    logMsg += std::to_string(eid);
-    logMsg += ",";
-    logMsg += std::to_string(tid);
-    logMsg += ",pth_ty:";
-    logMsg += std::to_string(syncType);
-    logMsg += "^";
-    logMsg += n2hexstr(hexStr, syncArgs[0]);
-    for (unsigned i=1; i<numArgs; ++i)
-    {
-        logMsg += "&";
-        logMsg += n2hexstr(hexStr, syncArgs[i]);
-    }
+
+    std::string logMsg = fmt::format("{:d},{:d},pth_ty:{:d}^{:#x}",
+                                     eid,
+                                     tid,
+                                     syncType,
+                                     syncArgs[0]);
+    for (unsigned i = 1; i < numArgs; ++i)
+        fmt::format_to(std::back_inserter(logMsg), "&{:#x}", syncArgs[i]);
+
     logger->info(logMsg);
 }
 
 
 auto flushInstrMarker(int limit, std::shared_ptr<spdlog::logger> &logger) -> void
 {
-    logger->info("! " + std::to_string(limit));
+    logger->info("! {}", limit);
 }
 
 }; //end namespace
 
 
-TextLoggerCompressed::TextLoggerCompressed(TID tid, std::string outputPath)
+TextLoggerCompressed::TextLoggerCompressed(TID tid, const std::string& outputPath)
 {
     assert(tid >= 1);
 
-    /* XXX PERFORMANCE: modify this to reduce memory in STGen.
-     * Buffers for asynchronous I/O */
-    spdlog::set_async_mode(1 << 14);
-
-    auto filePath = outputPath + "/sigil.events.out-" + std::to_string(tid) + ".gz";
-    std::tie(logger, gzfile) = prism::getGzLogger(filePath);
+    std::string filePath = fmt::format("{}/sigil.events.out-{}.gz", outputPath, tid);
+    std::tie(logger, gzfile) = prism::getFileLogger<spdlog::async_factory, gzofstream>(std::move(filePath));
 }
 
 
@@ -96,36 +51,25 @@ TextLoggerCompressed::~TextLoggerCompressed()
 
 auto TextLoggerCompressed::flush(const STCompEventCompressed& ev, EID eid, TID tid) -> void
 {
-    /* http://stackoverflow.com/a/18892355 */
-    logMsg += std::to_string(eid);
-    logMsg += ",";
-    logMsg += std::to_string(tid);
-    logMsg += ",";
-    logMsg += std::to_string(ev.iops);
-    logMsg += ",";
-    logMsg += std::to_string(ev.flops);
-    logMsg += ",";
-    logMsg += std::to_string(ev.reads);
-    logMsg += ",";
-    logMsg += std::to_string(ev.writes);
+    fmt::format_to(std::back_inserter(logMsg),
+                   "{},{},{},{},{},{}",
+                   eid,
+                   tid,
+                   ev.iops,
+                   ev.flops,
+                   ev.reads,
+                   ev.writes);
 
-    char hexStr[sizeof(Addr)*2+3];
     for (auto &p : ev.uniqueWriteAddrs.get())
     {
         assert(p.first <= p.second);
-        logMsg += " $ ";
-        logMsg += n2hexstr(hexStr, p.first);
-        logMsg += " ";
-        logMsg += n2hexstr(hexStr, p.second);
+        fmt::format_to(std::back_inserter(logMsg), " $ {:#x} {:#x}", p.first, p.second);
     }
 
     for (auto &p : ev.uniqueReadAddrs.get())
     {
         assert(p.first <= p.second);
-        logMsg += " * ";
-        logMsg += n2hexstr(hexStr, p.first);
-        logMsg += " ";
-        logMsg += n2hexstr(hexStr, p.second);
+        fmt::format_to(std::back_inserter(logMsg), " * {:#x} {:#x}", p.first, p.second);
     }
 
     logger->info(logMsg);
@@ -136,26 +80,12 @@ auto TextLoggerCompressed::flush(const STCompEventCompressed& ev, EID eid, TID t
 auto TextLoggerCompressed::flush(const STCommEventCompressed& ev, EID eid, TID tid) -> void
 {
     assert(ev.comms.empty() == false);
-    logMsg += std::to_string(eid);
-    logMsg += ",";
-    logMsg += std::to_string(tid);
 
-    char hexStr[sizeof(Addr)*2+3];
+    fmt::format_to(std::back_inserter(logMsg), "{},{}", eid, tid);
     for (auto &edge : ev.comms)
-    {
         for (auto &p : std::get<2>(edge).get())
-        {
-            assert(p.first <= p.second);
-            logMsg += " # ";
-            logMsg += std::to_string(std::get<0>(edge));
-            logMsg += " ";
-            logMsg += std::to_string(std::get<1>(edge));
-            logMsg += " ";
-            logMsg += n2hexstr(hexStr, p.first);
-            logMsg += " ";
-            logMsg += n2hexstr(hexStr, p.second);
-        }
-    }
+            fmt::format_to(std::back_inserter(logMsg), " # {} {} {:#x} {:#x}",
+                           std::get<0>(edge), std::get<1>(edge), p.first, p.second);
 
     logger->info(logMsg);
     logMsg.clear();
@@ -175,16 +105,12 @@ auto TextLoggerCompressed::instrMarker(int limit) -> void
 }
 
 
-TextLoggerUncompressed::TextLoggerUncompressed(TID tid, std::string outputPath)
+TextLoggerUncompressed::TextLoggerUncompressed(TID tid, const std::string& outputPath)
 {
     assert(tid >= 1);
 
-    /* XXX PERFORMANCE: modify this to reduce memory in STGen.
-     * Buffers for asynchronous I/O */
-    spdlog::set_async_mode(1 << 14);
-
-    auto filePath = outputPath + "/sigil.events.out-" + std::to_string(tid) + ".gz";
-    std::tie(logger, gzfile) = prism::getGzLogger(filePath);
+    std::string filePath = fmt::format("{}/sigil.events.out-{}.gz", outputPath, tid);
+    std::tie(logger, gzfile) = prism::getFileLogger<spdlog::async_factory, gzofstream>(std::move(filePath));
 }
 
 
@@ -199,16 +125,8 @@ auto TextLoggerUncompressed::flush(StatCounter iops, StatCounter flops,
                                    STCompEventUncompressed::MemType type, Addr start, Addr end,
                                    EID eid, TID tid) -> void
 {
-    /* http://stackoverflow.com/a/18892355 */
-    logMsg += std::to_string(eid);
-    logMsg += ",";
-    logMsg += std::to_string(tid);
-    logMsg += ",";
-    logMsg += std::to_string(iops);
-    logMsg += ",";
-    logMsg += std::to_string(flops);
+    fmt::format_to(std::back_inserter(logMsg), "{},{},{},{}", eid, tid, iops, flops);
 
-    char hexStr[sizeof(Addr)*2+3];
     switch (type)
     {
     /* only one of
@@ -217,16 +135,10 @@ auto TextLoggerUncompressed::flush(StatCounter iops, StatCounter flops,
      *  - one write
      * possible in uncompressed mode */
     case STCompEventUncompressed::MemType::READ:
-        logMsg += ",1,0 * ";
-        logMsg += n2hexstr(hexStr, start);
-        logMsg += " ";
-        logMsg += n2hexstr(hexStr, end);
+        fmt::format_to(std::back_inserter(logMsg), ",1,0 * {:#x} {:#x}", start, end);
         break;
     case STCompEventUncompressed::MemType::WRITE:
-        logMsg += ",0,1 $ ";
-        logMsg += n2hexstr(hexStr, start);
-        logMsg += " ";
-        logMsg += n2hexstr(hexStr, end);
+        fmt::format_to(std::back_inserter(logMsg), ",0,1 $ {:#x} {:#x}", start, end);
         break;
     case STCompEventUncompressed::MemType::NONE:
         logMsg += ",0,0";
@@ -243,20 +155,14 @@ auto TextLoggerUncompressed::flush(StatCounter iops, StatCounter flops,
 auto TextLoggerUncompressed::flush(EID producerEID, TID producerTID, Addr start, Addr end,
                                    EID eid, TID tid) -> void
 {
-    logMsg += std::to_string(eid);
-    logMsg += ",";
-    logMsg += std::to_string(tid);
-
-    logMsg += " # ";
-    logMsg += std::to_string(producerTID);
-    logMsg += " ";
-    logMsg += std::to_string(producerEID);
-    logMsg += " ";
-
-    char hexStr[sizeof(Addr)*2+3];
-    logMsg += n2hexstr(hexStr, start);
-    logMsg += " ";
-    logMsg += n2hexstr(hexStr, end);
+    fmt::format_to(std::back_inserter(logMsg),
+                   "{},{} # {} {} {:#x} {:#x}",
+                   eid,
+                   tid,
+                   producerTID,
+                   producerEID,
+                   start,
+                   end);
 
     logger->info(logMsg);
     logMsg.clear();
@@ -301,20 +207,17 @@ auto flushPthread(std::string filePath,
         /* SynchroTraceSim only supports threads
          * that were spawned from the original thread */
         if (p.first == 1)
-            logger->info("##" + std::to_string(p.second) +
-                         "," + std::to_string(newThreadsInOrder[idx]));
+            logger->info("##{},{}", p.second, newThreadsInOrder[idx]);
         ++idx;
     }
 
     for (auto &p: barrierParticipants)
     {
-        std::ostringstream ss;
-        ss << "**" << p.first;
-
+        std::string str = fmt::format("**{}", p.first);
         for (auto tid : p.second)
-            ss << "," << tid;
+            fmt::format_to(std::back_inserter(str), ",{}", tid);
 
-        logger->info(ss.str());
+        logger->info(str);
     }
 
     logger->flush();
@@ -335,11 +238,11 @@ auto flushStats(std::string filePath, ThreadStatMap allThreadsStats) -> void
         TID tid = p.first;
         Stats stats = p.second.getTotalStats();
 
-        logger->info("thread : " + std::to_string(tid));
-        logger->info("\tIOPS  : " + std::to_string(std::get<IOP>(stats)));
-        logger->info("\tFLOPS : " + std::to_string(std::get<FLOP>(stats)));
-        logger->info("\tReads : " + std::to_string(std::get<READ>(stats)));
-        logger->info("\tWrites: " + std::to_string(std::get<WRITE>(stats)));
+        logger->info("thread : {}",  tid);
+        logger->info("\tIOPS  : {}", std::get<IOP>(stats));
+        logger->info("\tFLOPS : {}", std::get<FLOP>(stats));
+        logger->info("\tReads : {}", std::get<READ>(stats));
+        logger->info("\tWrites: {}", std::get<WRITE>(stats));
 
         totalInstrs += std::get<INSTR>(stats);
 
@@ -347,28 +250,28 @@ auto flushStats(std::string filePath, ThreadStatMap allThreadsStats) -> void
         for (auto &p : barrierStatsForThread)
         {
             /* per barrier region */
-            logger->info("\tBarrier: " + std::to_string(p.first));
-            logger->info("\t\tIOPs: " + std::to_string(p.second.iops));
-            logger->info("\t\tFLOPs: " + std::to_string(p.second.flops));
-            logger->info("\t\tInstrs: " + std::to_string(p.second.instrs));
-            logger->info("\t\tMemAccesses: " + std::to_string(p.second.memAccesses));
-            logger->info("\t\tCommunication: " + std::to_string(p.second.communication));
-            logger->info("\t\tlocks: " + std::to_string(p.second.locks));
-            logger->info("\t\tIOPs/Mem: " + std::to_string(p.second.iopsPerMemAccess()));
-            logger->info("\t\tFLOPs/Mem: " + std::to_string(p.second.flopsPerMemAccess()));
-            logger->info("\t\tlocks/OPs: " + std::to_string(p.second.locksPerIopsPlusFlops()));
+            logger->info("\tBarrier: {}",         p.first);
+            logger->info("\t\tIOPs: {}",          p.second.iops);
+            logger->info("\t\tFLOPs: {}",         p.second.flops);
+            logger->info("\t\tInstrs: {}",        p.second.instrs);
+            logger->info("\t\tMemAccesses: {}",   p.second.memAccesses);
+            logger->info("\t\tCommunication: {}", p.second.communication);
+            logger->info("\t\tlocks: {}",         p.second.locks);
+            logger->info("\t\tIOPs/Mem: {}",      p.second.iopsPerMemAccess());
+            logger->info("\t\tFLOPs/Mem: {}",     p.second.flopsPerMemAccess());
+            logger->info("\t\tlocks/OPs: {}",     p.second.locksPerIopsPlusFlops());
         }
 
         AllLocksStats lockStatsForThread = p.second.getLockStats();
         for (auto &p : lockStatsForThread)
         {
             /* per lock region */
-            logger->info("\tLock: " + std::to_string(p.first));
-            logger->info("\t\tIOPs: " + std::to_string(p.second.iops));
-            logger->info("\t\tFLOPs: " + std::to_string(p.second.flops));
-            logger->info("\t\tInstrs: " + std::to_string(p.second.instrs));
-            logger->info("\t\tMemAccesses: " + std::to_string(p.second.memAccesses));
-            logger->info("\t\tCommunication: " + std::to_string(p.second.communication));
+            logger->info("\tLock: {}",            p.first);
+            logger->info("\t\tIOPs: {}",          p.second.iops);
+            logger->info("\t\tFLOPs: {}",         p.second.flops);
+            logger->info("\t\tInstrs: {}",        p.second.instrs);
+            logger->info("\t\tMemAccesses: {}",   p.second.memAccesses);
+            logger->info("\t\tCommunication: {}", p.second.communication);
         }
     }
 
@@ -379,18 +282,18 @@ auto flushStats(std::string filePath, ThreadStatMap allThreadsStats) -> void
     for (auto &p : mergedBarrierStats)
     {
         /* per barrier region, all threads */
-        logger->info("Barrier: " + std::to_string(p.first));
-        logger->info("\tIOPs: " + std::to_string(p.second.iops));
-        logger->info("\tFLOPs: " + std::to_string(p.second.flops));
-        logger->info("\tInstrs: " + std::to_string(p.second.instrs));
-        logger->info("\tMemAccesses: " + std::to_string(p.second.memAccesses));
-        logger->info("\tlocks: " + std::to_string(p.second.locks));
-        logger->info("\tIOPs/Mem: " + std::to_string(p.second.iopsPerMemAccess()));
-        logger->info("\tFLOPs/Mem: " + std::to_string(p.second.flopsPerMemAccess()));
-        logger->info("\tlocks/OPs: " + std::to_string(p.second.locksPerIopsPlusFlops()));
+        logger->info("Barrier: ",       p.first);
+        logger->info("\tIOPs: ",        p.second.iops);
+        logger->info("\tFLOPs: ",       p.second.flops);
+        logger->info("\tInstrs: ",      p.second.instrs);
+        logger->info("\tMemAccesses: ", p.second.memAccesses);
+        logger->info("\tlocks: ",       p.second.locks);
+        logger->info("\tIOPs/Mem: ",    p.second.iopsPerMemAccess());
+        logger->info("\tFLOPs/Mem: ",   p.second.flopsPerMemAccess());
+        logger->info("\tlocks/OPs: ",   p.second.locksPerIopsPlusFlops());
     }
 
-    logger->info("Total instructions for all threads: " + std::to_string(totalInstrs));
+    logger->info("Total instructions for all threads: {}", totalInstrs);
     logger->flush();
     prism::blockingFlushAndDeleteLogger(logger);
 }

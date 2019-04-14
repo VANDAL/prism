@@ -1,5 +1,7 @@
 #include "Handler.hpp"
 #include "spdlog/spdlog.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
+#include "spdlog/sinks/stdout_sinks.h"
 #include <iostream>
 #include <atomic>
 
@@ -130,7 +132,10 @@ Handler::~Handler()
 
 auto cleanup() -> void
 {
-    std::shared_ptr<spdlog::logger> logger = spdlog::stdout_logger_st("simplecount-console");
+    char const* logger_name = "simplecount-console";
+    auto logger = isatty(fileno(stdout)) ? spdlog::stdout_color_st(logger_name) : 
+        spdlog::stderr_logger_st(logger_name);
+
     logger->set_pattern("[SimpleCount] %v");
 
     logger->info("Total Compute   Events: {}", std::to_string(global_comp_cnt));

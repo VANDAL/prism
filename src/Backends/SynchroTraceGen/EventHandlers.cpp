@@ -98,7 +98,6 @@ EventHandlers::~EventHandlers()
 auto onExit() -> void
 {
     std::lock_guard<std::mutex> lock(gMtx);
-    spdlog::set_sync_mode();
     flushPthread(outputPath + "/sigil.pthread.out", newThreadsInOrder,
                  threadSpawns, barrierParticipants);
     flushStats(outputPath + "/sigil.stats.out", allThreadsStats);
@@ -291,6 +290,7 @@ auto parseLogger(std::string loggerArg) -> std::string
 
     std::transform(loggerArg.begin(), loggerArg.end(), loggerArg.begin(), ::tolower);
     if (loggerArg != "text" &&
+        loggerArg != "textv2" &&
         loggerArg != "capnp" &&
         loggerArg != "null")
         fatal("unexpected synchrotracegen options: -l " + loggerArg);
