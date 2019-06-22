@@ -10,6 +10,14 @@ using PrismLog::info;
 namespace STGen
 {
 
+/**
+ * XXX The spacing in the format is MANDATORY.
+ * Parsers expect the spacing to be exact. This includes any trailing spaces.
+ * This is to ensure efficiency in parsing, which becomes important in large
+ * trace files. Any modifications will require additional modifications in
+ * supporting parsers.
+ */
+
 class TextLoggerV2Compressed : public STLoggerCompressed
 {
     /* Uses spdlog logging library to asynchronously log to a text file.

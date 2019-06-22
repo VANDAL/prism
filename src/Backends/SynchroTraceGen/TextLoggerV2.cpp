@@ -14,6 +14,9 @@ auto flushSyncEvent(unsigned char syncType,
                     TID tid,
                     std::shared_ptr<spdlog::logger> &logger) -> void
 {
+    (void)eid;
+    (void)tid;
+
     assert(numArgs > 0);
 
     std::string logMsg = fmt::format("^ {:d}^{:#x}", syncType, syncArgs[0]);
@@ -37,7 +40,8 @@ TextLoggerV2Compressed::TextLoggerV2Compressed(TID tid, const std::string& outpu
     assert(tid >= 1);
 
     std::string filePath = fmt::format("{}/sigil.events.out-{}.gz", outputPath, tid);
-    std::tie(logger, gzfile) = prism::getFileLogger<spdlog::async_factory, gzofstream>(std::move(filePath));
+    std::tie(logger, gzfile) =
+        prism::getFileLogger<spdlog::async_factory, gzofstream>(std::move(filePath));
 }
 
 
@@ -50,19 +54,22 @@ TextLoggerV2Compressed::~TextLoggerV2Compressed()
 
 auto TextLoggerV2Compressed::flush(const STCompEventCompressed& ev, EID eid, TID tid) -> void
 {
-    fmt::format_to(std::back_inserter(logMsg), "@ {},{},{},{}",
+    (void)eid;
+    (void)tid;
+
+    fmt::format_to(std::back_inserter(logMsg), "@ {},{},{},{} ",
                    ev.iops, ev.flops, ev.reads, ev.writes);
 
     for (auto &p : ev.uniqueWriteAddrs.get())
     {
         assert(p.first <= p.second);
-        fmt::format_to(std::back_inserter(logMsg), " $ {:#x} {:#x}", p.first, p.second);
+        fmt::format_to(std::back_inserter(logMsg), "$ {:#x} {:#x} ", p.first, p.second);
     }
 
     for (auto &p : ev.uniqueReadAddrs.get())
     {
         assert(p.first <= p.second);
-        fmt::format_to(std::back_inserter(logMsg), " * {:#x} {:#x}", p.first, p.second);
+        fmt::format_to(std::back_inserter(logMsg), "* {:#x} {:#x} ", p.first, p.second);
     }
 
     logger->info(logMsg);
@@ -72,6 +79,9 @@ auto TextLoggerV2Compressed::flush(const STCompEventCompressed& ev, EID eid, TID
 
 auto TextLoggerV2Compressed::flush(const STCommEventCompressed& ev, EID eid, TID tid) -> void
 {
+    (void)eid;
+    (void)tid;
+
     assert(ev.comms.empty() == false);
 
     for (auto &edge : ev.comms)
@@ -105,7 +115,8 @@ TextLoggerV2Uncompressed::TextLoggerV2Uncompressed(TID tid, const std::string& o
     assert(tid >= 1);
 
     std::string filePath = fmt::format("{}/sigil.events.out-{}.gz", outputPath, tid);
-    std::tie(logger, gzfile) = prism::getFileLogger<spdlog::async_factory, gzofstream>(std::move(filePath));
+    std::tie(logger, gzfile) =
+        prism::getFileLogger<spdlog::async_factory, gzofstream>(std::move(filePath));
 }
 
 
@@ -124,6 +135,9 @@ auto TextLoggerV2Uncompressed::flush(StatCounter iops,
                                      EID eid,
                                      TID tid) -> void
 {
+    (void)eid;
+    (void)tid;
+
     fmt::format_to(std::back_inserter(logMsg), "@ {},{}", iops, flops);
 
     switch (type)
@@ -134,10 +148,10 @@ auto TextLoggerV2Uncompressed::flush(StatCounter iops,
      *  - one write
      * possible in uncompressed mode */
     case STCompEventUncompressed::MemType::READ:
-        fmt::format_to(std::back_inserter(logMsg), ",1,0 * {:#x} {:#x}", start, end);
+        fmt::format_to(std::back_inserter(logMsg), ",1,0 * {:#x} {:#x} ", start, end);
         break;
     case STCompEventUncompressed::MemType::WRITE:
-        fmt::format_to(std::back_inserter(logMsg), ",0,1 $ {:#x} {:#x}", start, end);
+        fmt::format_to(std::back_inserter(logMsg), ",0,1 $ {:#x} {:#x} ", start, end);
         break;
     case STCompEventUncompressed::MemType::NONE:
         logMsg += ",0,0";
@@ -158,8 +172,15 @@ auto TextLoggerV2Uncompressed::flush(EID producerEID,
                                      EID eid,
                                      TID tid) -> void
 {
-    fmt::format_to(std::back_inserter(logMsg), "# {} {} {:#x} {:#x}",
-                   producerTID, producerEID, start, end);
+    (void)eid;
+    (void)tid;
+
+    fmt::format_to(std::back_inserter(logMsg),
+                   "# {} {} {:#x} {:#x} ",
+                   producerTID,
+                   producerEID,
+                   start,
+                   end);
 
     logger->info(logMsg);
     logMsg.clear();
