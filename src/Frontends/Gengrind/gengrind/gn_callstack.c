@@ -100,7 +100,7 @@ static GnCallstackJumpKind determineJumpKind(BBInfo *bb, Addr sp)
         GN_DEBUGIF(4) {
             if (GN_(lastBB)->jmpCount < GN_(lastJmpsPassed)) {
                 GN_(printBBno)();
-                VG_(printf)("%d %d\n", GN_(lastBB)->jmpCount, GN_(lastJmpsPassed));
+                VG_(printf)("%u %u\n", GN_(lastBB)->jmpCount, GN_(lastJmpsPassed));
             }
         }
 
@@ -118,7 +118,7 @@ static GnCallstackJumpKind determineJumpKind(BBInfo *bb, Addr sp)
                 UInt fromId = lastbb->uid;
                 UInt toId = bb->uid;
                 GN_(printTabs)(1);
-                VG_(printf)("JmpKind: %s; From BB/Fn: %d/%s to To BB/Fn: %d/%s\n",
+                VG_(printf)("JmpKind: %s; From BB/Fn: %u/%s to To BB/Fn: %u/%s\n",
                             GN_(getJumpStr)(jmpkind, wasConditionalJmp),
                             fromId, from,
                             toId, to);

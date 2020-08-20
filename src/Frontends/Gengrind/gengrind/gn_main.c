@@ -115,7 +115,7 @@ IRSB* gn_instrument ( VgCallbackClosure* closure,
     BBState bbState;
     Int i = GN_(initBBState)(&bbState, obb, hWordTy);
 
-    GN_DEBUG(3, "+ instrument(BB %#lx)(%d)\n", (Addr)closure->readdr, bbState.bbInfo->uid);
+    GN_DEBUG(3, "+ instrument(BB %#lx)(%u)\n", (Addr)closure->readdr, bbState.bbInfo->uid);
 
     // pre-BB instrumentation
     {
@@ -228,7 +228,7 @@ static void gn_pre_clo_init(void)
 
     /* Following example set by Callgrind, to make analysis easier */
     VG_(clo_vex_control).iropt_unroll_thresh = 0;   // cannot be overriden.
-    VG_(clo_vex_control).guest_chase_thresh = 0;    // cannot be overriden.
+    VG_(clo_vex_control).guest_chase = 0;    // cannot be overriden.
 
     VG_(basic_tool_funcs)        (gn_post_clo_init,
                                   gn_instrument,

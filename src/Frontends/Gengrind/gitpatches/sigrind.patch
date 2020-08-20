@@ -1,12 +1,14 @@
-From bea3479c1fbe1c78a13ac2a4986427580d5a7cfb Mon Sep 17 00:00:00 2001
+From 8f6b63efeed5e1ace69a5bc396c69cab0da0dfea Mon Sep 17 00:00:00 2001
 From: Mike Lui <mike.d.lui@gmail.com>
-Date: Wed, 19 Aug 2020 13:27:42 -0400
-Subject: [PATCH] Sigrind/Gengrind build
+Date: Fri, 21 Aug 2020 13:30:17 -0400
+Subject: [PATCH] Prism: sigrind/gengrind tools
 
+Extra MPI wrapper hack to compile on newer OMPI versions
 ---
- Makefile.am  | 2 ++
- configure.ac | 4 ++++
- 2 files changed, 6 insertions(+)
+ Makefile.am      |  2 ++
+ configure.ac     |  4 ++++
+ mpi/libmpiwrap.c | 15 +++++++++++++++
+ 3 files changed, 21 insertions(+)
 
 diff --git a/Makefile.am b/Makefile.am
 index 08db83401..fd5047bca 100644
@@ -36,6 +38,70 @@ index b86e80220..075f64775 100755
  ])
  AC_CONFIG_FILES([coregrind/link_tool_exe_linux],
                  [chmod +x coregrind/link_tool_exe_linux])
+diff --git a/mpi/libmpiwrap.c b/mpi/libmpiwrap.c
+index 488bb13fd..4203dfeb2 100644
+--- a/mpi/libmpiwrap.c
++++ b/mpi/libmpiwrap.c
+@@ -278,8 +278,12 @@ static void showTy ( FILE* f, MPI_Datatype ty )
+    else if (ty == MPI_LONG_INT)       fprintf(f,"LONG_INT");
+    else if (ty == MPI_SHORT_INT)      fprintf(f,"SHORT_INT");
+    else if (ty == MPI_2INT)           fprintf(f,"2INT");
++#  if defined(OPEN_MPI)
++#  if ((OMPI_MAJOR_VERSION < 4) || OMPI_ENABLE_MPI1_COMPAT)      
+    else if (ty == MPI_UB)             fprintf(f,"UB");
+    else if (ty == MPI_LB)             fprintf(f,"LB");
++#  endif
++#  endif
+ #  if defined(MPI_WCHAR)
+    else if (ty == MPI_WCHAR)          fprintf(f,"WCHAR");
+ #  endif
+@@ -351,19 +355,25 @@ static void showCombiner ( FILE* f, int combiner )
+       case MPI_COMBINER_CONTIGUOUS:  fprintf(f, "CONTIGUOUS"); break;
+       case MPI_COMBINER_VECTOR:      fprintf(f, "VECTOR"); break;
+ #if   defined(MPI_COMBINER_HVECTOR_INTEGER)
++#if   !defined(OPEN_MPI) || ((OMPI_MAJOR_VERSION < 4) || OMPI_ENABLE_MPI1_COMPAT)
+       case MPI_COMBINER_HVECTOR_INTEGER: fprintf(f, "HVECTOR_INTEGER"); break;
++#     endif
+ #     endif
+       case MPI_COMBINER_HVECTOR:     fprintf(f, "HVECTOR"); break;
+       case MPI_COMBINER_INDEXED:     fprintf(f, "INDEXED"); break;
+ #if   defined(MPI_COMBINER_HINDEXED_INTEGER)
++#if   !defined(OPEN_MPI) || ((OMPI_MAJOR_VERSION < 4) || OMPI_ENABLE_MPI1_COMPAT)
+       case MPI_COMBINER_HINDEXED_INTEGER: fprintf(f, "HINDEXED_INTEGER"); break;
++#     endif
+ #     endif
+       case MPI_COMBINER_HINDEXED:    fprintf(f, "HINDEXED"); break;
+ #if   defined(MPI_COMBINER_INDEXED_BLOCK)
+       case MPI_COMBINER_INDEXED_BLOCK: fprintf(f, "INDEXED_BLOCK"); break;
+ #     endif
+ #if   defined(MPI_COMBINER_STRUCT_INTEGER)
++#if   !defined(OPEN_MPI) || ((OMPI_MAJOR_VERSION < 4) || OMPI_ENABLE_MPI1_COMPAT)
+       case MPI_COMBINER_STRUCT_INTEGER: fprintf(f, "STRUCT_INTEGER"); break;
++#     endif
+ #     endif
+       case MPI_COMBINER_STRUCT:      fprintf(f, "STRUCT"); break;
+ #if   defined(MPI_COMBINER_SUBARRAY)
+@@ -459,6 +469,7 @@ static long extentOfTy ( MPI_Datatype ty )
+ {
+    int      r;
+    MPI_Aint n;
++   // XXX This is deprecated
+    r = PMPI_Type_extent(ty, &n);
+    assert(r == MPI_SUCCESS);
+    return (long)n;
+@@ -733,8 +744,12 @@ void walk_type ( void(*f)(void*,long), char* base, MPI_Datatype ty )
+          f(base + offsetof(Ty,loc), sizeof(int));
+          return;
+       }
++#if defined(OPEN_MPI)
++#if ((OMPI_MAJOR_VERSION < 4) || OMPI_ENABLE_MPI1_COMPAT)      
+       if (ty == MPI_LB || ty == MPI_UB)
+          return; /* have zero size, so nothing needs to be done */
++#endif
++#endif
+       goto unhandled;
+       /*NOTREACHED*/
+    }
 -- 
 2.28.0
 
