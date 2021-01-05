@@ -1,18 +1,18 @@
-From 19959f2fb8c4775f387740345eac2883ba71eb09 Mon Sep 17 00:00:00 2001
+From 3e31c60a101d29dfe02469932d5fb14485fcf6e2 Mon Sep 17 00:00:00 2001
 From: Mike Lui <mike.d.lui@gmail.com>
-Date: Tue, 1 Aug 2017 13:29:28 -0400
-Subject: [PATCH] patch
+Date: Tue, 5 Jan 2021 14:14:01 -0500
+Subject: [PATCH] add drsigil
 
 ---
- clients/drsigil/CMakeLists.txt         |  28 ++
- clients/drsigil/drsigil.c              | 370 ++++++++++++++++++
- clients/drsigil/drsigil.h              | 328 ++++++++++++++++
- clients/drsigil/instrument.c           | 687 +++++++++++++++++++++++++++++++++
- clients/drsigil/ipc.c                  | 376 ++++++++++++++++++
- clients/drsigil/parser.c               |  90 +++++
- clients/drsigil/pthread_defines.h      | 283 ++++++++++++++
+ clients/drsigil/CMakeLists.txt         |  31 ++
+ clients/drsigil/drsigil.c              | 372 +++++++++++++
+ clients/drsigil/drsigil.h              | 329 ++++++++++++
+ clients/drsigil/instrument.c           | 687 +++++++++++++++++++++++++
+ clients/drsigil/ipc.c                  | 376 ++++++++++++++
+ clients/drsigil/parser.c               |  90 ++++
+ clients/drsigil/pthread_defines.h      | 283 ++++++++++
  clients/drsigil/start_stop_functions.h |  62 +++
- 8 files changed, 2224 insertions(+)
+ 8 files changed, 2230 insertions(+)
  create mode 100644 clients/drsigil/CMakeLists.txt
  create mode 100644 clients/drsigil/drsigil.c
  create mode 100644 clients/drsigil/drsigil.h
@@ -24,15 +24,18 @@ Subject: [PATCH] patch
 
 diff --git a/clients/drsigil/CMakeLists.txt b/clients/drsigil/CMakeLists.txt
 new file mode 100644
-index 0000000..97ebc8e
+index 00000000..d6949be4
 --- /dev/null
 +++ b/clients/drsigil/CMakeLists.txt
-@@ -0,0 +1,28 @@
+@@ -0,0 +1,31 @@
 +# from Deployment example
 +
 +# Removes relocation bug, occuring in glibc 2.25,
 +# also simplifies relocation in DR
 +# set(DynamoRIO_USE_LIBC OFF)
++
++cmake_minimum_required(VERSION 3.7)
++include(../../make/policies.cmake NO_POLICY_SCOPE)
 +
 +add_library(drsigil SHARED drsigil.c instrument.c ipc.c parser.c)
 +find_package(DynamoRIO)
@@ -58,10 +61,10 @@ index 0000000..97ebc8e
 +	DESTINATION ${INSTALL_CLIENTS_LIB})
 diff --git a/clients/drsigil/drsigil.c b/clients/drsigil/drsigil.c
 new file mode 100644
-index 0000000..1a10986
+index 00000000..b9e40842
 --- /dev/null
 +++ b/clients/drsigil/drsigil.c
-@@ -0,0 +1,370 @@
+@@ -0,0 +1,372 @@
 +#include "drsigil.h"
 +#include "pthread_defines.h"
 +#include "start_stop_functions.h"
@@ -86,6 +89,8 @@ index 0000000..1a10986
 +int      tls_idx;
 +reg_id_t raw_tls_seg;
 +uint     raw_tls_memref_offs;
++
++command_line_options clo;
 +
 +///////////////////////////////////////////////////////
 +// DynamoRIO event callbacks
@@ -161,7 +166,7 @@ index 0000000..1a10986
 +    /* XXX
 +     * We run into reachability problems,
 +     * as-per the documentation on 'drutil_expand_rep_string',
-+     * due to extra instrumentation added by Sigil2.
++     * due to extra instrumentation added by Prism.
 +     *
 +     * We don't expect string loops to be significant in benchmarks,
 +     * so this should be OK.
@@ -185,7 +190,7 @@ index 0000000..1a10986
 +    init->mems         = dr_thread_alloc(drcontext, MEM_BUF_SIZE);
 +    init->comps        = dr_thread_alloc(drcontext, COMP_BUF_SIZE);
 +    init->iblocks      = dr_thread_alloc(drcontext, IBLOCK_BUF_SIZE);
-+    init->sync_ev      = dr_thread_alloc(drcontext, sizeof(SglSyncEv));
++    init->sync_ev      = dr_thread_alloc(drcontext, sizeof(PrismSyncEv));
 +
 +    if (init          == NULL ||
 +        init->memrefs == NULL ||
@@ -231,7 +236,7 @@ index 0000000..1a10986
 +    dr_thread_free(drcontext, tcxt->mems, MEM_BUF_SIZE);
 +    dr_thread_free(drcontext, tcxt->comps, COMP_BUF_SIZE);
 +    dr_thread_free(drcontext, tcxt->iblocks, IBLOCK_BUF_SIZE);
-+    dr_thread_free(drcontext, tcxt->sync_ev, sizeof(SglSyncEv));
++    dr_thread_free(drcontext, tcxt->sync_ev, sizeof(PrismSyncEv));
 +    dr_thread_free(drcontext, tcxt, sizeof(per_thread_t));
 +}
 +
@@ -434,10 +439,10 @@ index 0000000..1a10986
 +}
 diff --git a/clients/drsigil/drsigil.h b/clients/drsigil/drsigil.h
 new file mode 100644
-index 0000000..b261b92
+index 00000000..dbb8d105
 --- /dev/null
 +++ b/clients/drsigil/drsigil.h
-@@ -0,0 +1,328 @@
+@@ -0,0 +1,329 @@
 +#ifndef DRSIGIL_H
 +#define DRSIGIL_H
 +
@@ -493,10 +498,10 @@ index 0000000..b261b92
 +typedef struct _ipc_channel_t
 +{
 +    /* The shared memory channel between this DynamoRIO client application and
-+     * Sigil2. Multiple channels can exist to reduce contention on the channels;
-+     * the number of channels is determined by Sigil2 when DynamoRIO is invoked,
++     * Prism. Multiple channels can exist to reduce contention on the channels;
++     * the number of channels is determined by Prism when DynamoRIO is invoked,
 +     * via command line. Additionally, the number of channels will match the
-+     * number of frontend Sigil2 threads, so that each thread will process one
++     * number of frontend Prism threads, so that each thread will process one
 +     * buffer. The buffer an application thread writes to depends on its thread
 +     * id (thread id % number of channels). That is, if there is one channel,
 +     * then all threads vie over that channel. */
@@ -506,32 +511,32 @@ index 0000000..b261b92
 +    /* Multiple threads can write via this IPC channel.
 +     * Only allow one at a time. */
 +
-+    Sigil2DBISharedData *shared_mem;
++    PrismDBISharedData *shared_mem;
 +    /* Produce data to this buffer */
 +
 +    file_t full_fifo;
-+    /* Update Sigil2 via this fifo which buffers
++    /* Update Prism via this fifo which buffers
 +     * are full and ready to be consumed */
 +
 +    file_t empty_fifo;
-+    /* Sigil2 updates DynamoRIO with the last
++    /* Prism updates DynamoRIO with the last
 +     * buffer consumed(empty) via this fifo */
 +
 +    uint shmem_buf_idx;
 +    /* The current buffer being filled in shared memory
-+     * Must wrap around back to 0 at 'SIGIL2_DBI_BUFFERS' */
++     * Must wrap around back to 0 at 'PRISM_DBI_BUFFERS' */
 +
-+    bool empty_buf_idx[SIGIL2_IPC_BUFFERS];
++    bool empty_buf_idx[PRISM_IPC_BUFFERS];
 +    /* Corresponds to each buffer that is available for writing */
 +
 +    uint last_active_tid;
-+    /* Required to let Sigil2 know when the TID of the current thread has changed */
++    /* Required to let Prism know when the TID of the current thread has changed */
 +
 +    bool initialized;
 +    /* If this is a valid channel */
 +
 +    bool standalone;
-+    /* Will be TRUE if this channel was not initialized with Sigil2 IPC;
++    /* Will be TRUE if this channel was not initialized with Prism IPC;
 +     * will 'fake' any IPC. */
 +} ipc_channel_t;
 +
@@ -549,7 +554,7 @@ index 0000000..b261b92
 +#define MAX_NUM_MEM_REFS 2048
 +#define MAX_NUM_MEMS MAX_NUM_MEM_REFS/2
 +#define MEM_REF_BUF_SIZE (sizeof(mem_ref_t) * MAX_NUM_MEM_REFS)
-+#define MEM_BUF_SIZE (sizeof(SglMemEv) * MAX_NUM_MEMS)
++#define MEM_BUF_SIZE (sizeof(PrismMemEv) * MAX_NUM_MEMS)
 +/* we should not have more than this many memory references per basic block */
 +
 +typedef struct _instr_block_t
@@ -560,7 +565,7 @@ index 0000000..b261b92
 +} instr_block_t;
 +
 +#define MAX_NUM_COMPS 1024
-+#define COMP_BUF_SIZE (sizeof(SglCompEv) * MAX_NUM_COMPS)
++#define COMP_BUF_SIZE (sizeof(PrismCompEv) * MAX_NUM_COMPS)
 +
 +#define MAX_NUM_IBLOCKS 1024
 +#define IBLOCK_BUF_SIZE (sizeof(instr_block_t) * MAX_NUM_IBLOCKS)
@@ -570,7 +575,7 @@ index 0000000..b261b92
 +{
 +    /* per-application-thread data
 +     *
-+     * This data tracks Sigil2 events for a given thread.
++     * This data tracks Prism events for a given thread.
 +     * The events are buffered from buf_base to buf_end,
 +     * and flushed when either the buffer is full, or the thread exits.
 +     *
@@ -580,7 +585,7 @@ index 0000000..b261b92
 +
 +    uint thread_id;
 +    /* Unique ID
-+     * Sigil2 expects threads to start from '1' */
++     * Prism expects threads to start from '1' */
 +
 +    bool has_channel_lock;
 +    /* Is allowed to use the ipc channel */
@@ -593,20 +598,20 @@ index 0000000..b261b92
 +     * we end up with an application-side deadlock */
 +
 +    mem_ref_t *memrefs;
-+    SglMemEv *mems;
-+    SglMemEv *current_iblock_mem;
++    PrismMemEv *mems;
++    PrismMemEv *current_iblock_mem;
 +    /* Track memory references per event block.
 +     * Memory addresses are recorded at execution time in a buffer,
 +     * since they can't be analyzed at instrumentation time.
 +     * All other memory info is stored per basic block in a small cache of
-+     * direct Sigil2 memory event primitives */
++     * direct Prism memory event primitives */
 +
-+    SglCompEv *comps;
-+    SglCompEv *current_iblock_comp;
++    PrismCompEv *comps;
++    PrismCompEv *current_iblock_comp;
 +    /* Keep a local buffer of compute per event block.
 +     * This just simplifies instrumentation */
 +
-+    SglSyncEv *sync_ev;
++    PrismSyncEv *sync_ev;
 +    /* The latest sync event */
 +
 +    instr_block_t *iblocks;
@@ -663,7 +668,7 @@ index 0000000..b261b92
 +    /* the mem cache where addresses are stored */
 +
 +    MEMREF_TLS_OFFS_SGLSYNCEV_PTR,
-+    /* holds NULL if no event, otherwise holds a SglSyncEv */
++    /* holds NULL if no event, otherwise holds a PrismSyncEv */
 +
 +    MEMREF_TLS_OFFS_ACTIVE,
 +    /* whether the thread is under active instrumentation,
@@ -678,14 +683,14 @@ index 0000000..b261b92
 +#define TLS_SLOT(tls_base, enum_val) (void **)((byte *)(tls_base)+raw_tls_memref_offs+(sizeof(void*)*enum_val))
 +
 +#define PERTHR_PTR(tls_base) *(per_thread_t **)TLS_SLOT(tls_base, MEMREF_TLS_OFFS_PERTHR_PTR)
-+#define SGLEV_PTR(tls_base) *(SglEvVariant **)TLS_SLOT(tls_base, MEMREF_TLS_OFFS_SGLEV_PTR)
-+#define SGLEND_PTR(tls_base) *(SglEvVariant **)TLS_SLOT(tls_base, MEMREF_TLS_OFFS_SGLEND_PTR)
++#define SGLEV_PTR(tls_base) *(PrismEvVariant **)TLS_SLOT(tls_base, MEMREF_TLS_OFFS_SGLEV_PTR)
++#define SGLEND_PTR(tls_base) *(PrismEvVariant **)TLS_SLOT(tls_base, MEMREF_TLS_OFFS_SGLEND_PTR)
 +#define SGLUSED_PTR(tls_base) *(size_t **)TLS_SLOT(tls_base, MEMREF_TLS_OFFS_SGLUSED_PTR)
 +#define IBLOCKS_PTR(tls_base) *(instr_block_t **)TLS_SLOT(tls_base, MEMREF_TLS_OFFS_IBLOCKS_PTR)
 +#define MEMREFBASE_PTR(tls_base) *(mem_ref_t **)TLS_SLOT(tls_base, MEMREF_TLS_OFFS_MEMREFBASE_PTR)
 +#define MEMREFCURR_PTR(tls_base) *(mem_ref_t **)TLS_SLOT(tls_base, MEMREF_TLS_OFFS_MEMREFCURR_PTR)
 +#define ACTIVE(tls_base) *(bool *)TLS_SLOT(tls_base, MEMREF_TLS_OFFS_ACTIVE)
-+#define SGLSYNCEV_PTR(tls_base) *(SglSyncEv **)TLS_SLOT(tls_base, MEMREF_TLS_OFFS_SGLSYNCEV_PTR)
++#define SGLSYNCEV_PTR(tls_base) *(PrismSyncEv **)TLS_SLOT(tls_base, MEMREF_TLS_OFFS_SGLSYNCEV_PTR)
 +
 +#define PERTHR_OFFS (raw_tls_memref_offs + MEMREF_TLS_OFFS_PERTHR_PTR*sizeof(void*))
 +#define SGLEV_OFFS (raw_tls_memref_offs + MEMREF_TLS_OFFS_SGLEV_PTR*sizeof(void*))
@@ -705,7 +710,7 @@ index 0000000..b261b92
 +{
 +    const char *ipc_dir;
 +    /* Directory where shared memory and named fifos
-+     * are located; generated by Sigil2 core */
++     * are located; generated by Prism core */
 +
 +    const char *start_func;
 +    const char *stop_func;
@@ -717,9 +722,9 @@ index 0000000..b261b92
 +
 +    bool standalone;
 +    /* In some cases (mainly testing), it is desirable
-+     * to run this tool without Sigil2.
++     * to run this tool without Prism.
 +     * This flag instructs the tool to ignore IPC with the
-+     * Sigil2 core */
++     * Prism core */
 +
 +    int enable_mem;
 +    int enable_mem_type;
@@ -735,7 +740,8 @@ index 0000000..b261b92
 +
 +    bool memref_needed;
 +    /* if extra memory instrumentation features required */
-+} clo;
++};
++extern command_line_options clo;
 +
 +
 +/////////////////////////////////////////////////////////////////////
@@ -752,7 +758,7 @@ index 0000000..b261b92
 +void instrument_mem_cache_no_memref(void *drcontext, instrlist_t *ilist, instr_t *where,
 +                                    uint *mem_ref_count);
 +
-+void instrument_comp_cache(instr_t *instr, uint *comp_count, SglCompEv *cache);
++void instrument_comp_cache(instr_t *instr, uint *comp_count, PrismCompEv *cache);
 +
 +void instrument_sigil_events(void *drcontext, instrlist_t *ilist, instr_t *where,
 +                             per_thread_t *tcxt);
@@ -768,7 +774,7 @@ index 0000000..b261b92
 +#endif
 diff --git a/clients/drsigil/instrument.c b/clients/drsigil/instrument.c
 new file mode 100644
-index 0000000..decee76
+index 00000000..3aa41b10
 --- /dev/null
 +++ b/clients/drsigil/instrument.c
 @@ -0,0 +1,687 @@
@@ -779,7 +785,7 @@ index 0000000..decee76
 +#include <stddef.h> /* for offsetof */
 +#include <limits.h> /* for INT_MAX */
 +
-+#define SIZEOF_EVENT_SLOT sizeof(SglEvVariant)
++#define SIZEOF_EVENT_SLOT sizeof(PrismEvVariant)
 +
 +void
 +instrument_reset(void *drcontext, instrlist_t *ilist, instr_t *where,
@@ -865,7 +871,7 @@ index 0000000..decee76
 +                instrument_mem_cache_helper(drcontext, ilist, where,
 +                                            buf_ptr, scratch1, scratch2,
 +                                            drutil_opnd_mem_size_in_bytes(ref, where),
-+                                            SGLPRIM_MEM_LOAD, ref);
++                                            PRISM_MEM_LOAD, ref);
 +
 +                /* update count and buffer */
 +                ++*mem_ref_count;
@@ -888,7 +894,7 @@ index 0000000..decee76
 +                instrument_mem_cache_helper(drcontext, ilist, where,
 +                                            buf_ptr, scratch1, scratch2,
 +                                            drutil_opnd_mem_size_in_bytes(ref, where),
-+                                            SGLPRIM_MEM_STORE, ref);
++                                            PRISM_MEM_STORE, ref);
 +
 +                /* update count and buffer */
 +                ++*mem_ref_count;
@@ -946,13 +952,13 @@ index 0000000..decee76
 +
 +
 +void
-+instrument_comp_cache(instr_t *instr, uint *comp_count, SglCompEv *cache)
++instrument_comp_cache(instr_t *instr, uint *comp_count, PrismCompEv *cache)
 +{
 +    /* TODO(soon) review these conditions */
 +    dr_fp_type_t fp_t;
 +    if(instr_is_floating_ex(instr, &fp_t) && (fp_t == DR_FP_MATH))
 +    {
-+        cache->type = SGLPRIM_COMP_FLOP;
++        cache->type = PRISM_COMP_FLOP;
 +        ++*comp_count;
 +    }
 +    else
@@ -980,7 +986,7 @@ index 0000000..decee76
 +        case OP_bts:
 +        case OP_btr:
 +        case OP_aas:
-+            cache->type = SGLPRIM_COMP_IOP;
++            cache->type = PRISM_COMP_IOP;
 +            ++*comp_count;
 +        default:
 +            break;
@@ -1053,12 +1059,12 @@ index 0000000..decee76
 +    {
 +        /* Fill in event slots */
 +        /* Set the tag
-+         * ev->tag = SGL_MEM_TAG */
++         * ev->tag = PRISM_MEM_TAG */
 +        MINSERT(ilist, where,
 +                XINST_CREATE_store_1byte(drcontext,
 +                                         OPND_CREATE_MEM8(evptr_reg,
-+                                                          offsetof(SglEvVariant, tag)),
-+                                         OPND_CREATE_INT8(SGL_MEM_TAG)));
++                                                          offsetof(PrismEvVariant, tag)),
++                                         OPND_CREATE_INT8(PRISM_MEM_TAG)));
 +
 +        if (clo.enable_mem_type)
 +        {
@@ -1072,8 +1078,8 @@ index 0000000..decee76
 +            MINSERT(ilist, where,
 +                    XINST_CREATE_store_1byte(drcontext,
 +                                             OPND_CREATE_MEM8(evptr_reg,
-+                                                              offsetof(SglEvVariant, mem) +
-+                                                              offsetof(SglMemEv, type)),
++                                                              offsetof(PrismEvVariant, mem) +
++                                                              offsetof(PrismMemEv, type)),
 +                                             opnd_create_reg(l_scratch_reg)));
 +        }
 +
@@ -1089,8 +1095,8 @@ index 0000000..decee76
 +            MINSERT(ilist, where,
 +                    XINST_CREATE_store_2bytes(drcontext,
 +                                              OPND_CREATE_MEM16(evptr_reg,
-+                                                                offsetof(SglEvVariant, mem) +
-+                                                                offsetof(SglMemEv, size)),
++                                                                offsetof(PrismEvVariant, mem) +
++                                                                offsetof(PrismMemEv, size)),
 +                                              opnd_create_reg(h_scratch_reg)));
 +        }
 +
@@ -1106,8 +1112,8 @@ index 0000000..decee76
 +            MINSERT(ilist, where,
 +                    XINST_CREATE_store(drcontext,
 +                                       OPND_CREATE_MEMPTR(evptr_reg,
-+                                                          offsetof(SglEvVariant, mem) +
-+                                                          offsetof(SglMemEv, begin_addr)),
++                                                          offsetof(PrismEvVariant, mem) +
++                                                          offsetof(PrismMemEv, begin_addr)),
 +                                       opnd_create_reg(scratch_reg)));
 +        }
 +
@@ -1146,21 +1152,21 @@ index 0000000..decee76
 +        instr_set_meta(second);
 +
 +    /* set the event slot attributes */
-+    /* ev->tag = SGL_CXT_TAG */
++    /* ev->tag = PRISM_CXT_TAG */
 +    MINSERT(ilist, where,
 +            XINST_CREATE_store_1byte(drcontext,
-+                                     OPND_CREATE_MEM8(evptr_reg, offsetof(SglEvVariant, tag)),
-+                                     OPND_CREATE_INT8(SGL_CXT_TAG)));
++                                     OPND_CREATE_MEM8(evptr_reg, offsetof(PrismEvVariant, tag)),
++                                     OPND_CREATE_INT8(PRISM_CXT_TAG)));
 +
 +    /* CXT.TYPE
-+     * ev->cxt.type = SGLPRIM_CXT_INSTR */
++     * ev->cxt.type = PRISM_CXT_INSTR */
 +    DR_ASSERT(sizeof(CxtType) == 1);
 +    MINSERT(ilist, where,
 +            XINST_CREATE_store(drcontext,
 +                               OPND_CREATE_MEM8(evptr_reg,
-+                                                (offsetof(SglEvVariant, cxt) +
-+                                                 offsetof(SglCxtEv, type))),
-+                               OPND_CREATE_INT8(SGLPRIM_CXT_INSTR)));
++                                                (offsetof(PrismEvVariant, cxt) +
++                                                 offsetof(PrismCxtEv, type))),
++                               OPND_CREATE_INT8(PRISM_CXT_INSTR)));
 +
 +    /* CXT.ID (instruction addr)
 +     * ev->cxt.id = pc */
@@ -1168,8 +1174,8 @@ index 0000000..decee76
 +    MINSERT(ilist, where,
 +            XINST_CREATE_store(drcontext,
 +                               OPND_CREATE_MEMPTR(evptr_reg,
-+                                                  (offsetof(SglEvVariant, cxt) +
-+                                                   offsetof(SglCxtEv, id))),
++                                                  (offsetof(PrismEvVariant, cxt) +
++                                                   offsetof(PrismCxtEv, id))),
 +                               pc_opnd));
 +
 +    /* increment the sigil event slot
@@ -1183,17 +1189,17 @@ index 0000000..decee76
 +
 +static void
 +instrument_comp(void *drcontext, instrlist_t *ilist, instr_t *where,
-+                reg_id_t evptr_reg, uint comp_used, SglCompEv **ev)
++                reg_id_t evptr_reg, uint comp_used, PrismCompEv **ev)
 +{
 +    for (uint i=0; i<comp_used; ++i)
 +    {
 +        /* Set the tag */
 +        /* TAG
-+         * ev->tag = SGL_COMP_TAG */
++         * ev->tag = PRISM_COMP_TAG */
 +        MINSERT(ilist, where,
 +                XINST_CREATE_store_1byte(drcontext,
-+                                         OPND_CREATE_MEM8(evptr_reg, offsetof(SglEvVariant, tag)),
-+                                         OPND_CREATE_INT8(SGL_COMP_TAG)));
++                                         OPND_CREATE_MEM8(evptr_reg, offsetof(PrismEvVariant, tag)),
++                                         OPND_CREATE_INT8(PRISM_COMP_TAG)));
 +
 +        if (clo.enable_comp_type)
 +        {
@@ -1203,8 +1209,8 @@ index 0000000..decee76
 +            MINSERT(ilist, where,
 +                    XINST_CREATE_store_1byte(drcontext,
 +                                             OPND_CREATE_MEM8(evptr_reg,
-+                                                              (offsetof(SglEvVariant, comp) +
-+                                                               offsetof(SglCompEv, type))),
++                                                              (offsetof(PrismEvVariant, comp) +
++                                                               offsetof(PrismCompEv, type))),
 +                                             OPND_CREATE_INT8((*ev)->type)));
 +        }
 +
@@ -1226,11 +1232,11 @@ index 0000000..decee76
 +                reg_id_t scratch_reg, reg_id_t l_scratch_reg)
 +{
 +    /* TAG
-+     * ev->tag = SGL_SYNC_TAG */
++     * ev->tag = PRISM_SYNC_TAG */
 +    MINSERT(ilist, where,
 +            XINST_CREATE_store_1byte(drcontext,
-+                                     OPND_CREATE_MEM8(evptr_reg, offsetof(SglEvVariant, tag)),
-+                                     OPND_CREATE_INT8(SGL_SYNC_TAG)));
++                                     OPND_CREATE_MEM8(evptr_reg, offsetof(PrismEvVariant, tag)),
++                                     OPND_CREATE_INT8(PRISM_SYNC_TAG)));
 +
 +    if (clo.enable_sync_type)
 +    {
@@ -1241,12 +1247,12 @@ index 0000000..decee76
 +                XINST_CREATE_load_1byte_zext4(drcontext,
 +                                              opnd_create_reg(scratch_reg),
 +                                              OPND_CREATE_MEM8(sglsyncptr_reg,
-+                                                               offsetof(SglSyncEv, type))));
++                                                               offsetof(PrismSyncEv, type))));
 +        MINSERT(ilist, where,
 +                XINST_CREATE_store_1byte(drcontext,
 +                                         OPND_CREATE_MEM8(evptr_reg,
-+                                                          (offsetof(SglEvVariant, sync) +
-+                                                           offsetof(SglSyncEv, type))),
++                                                          (offsetof(PrismEvVariant, sync) +
++                                                           offsetof(PrismSyncEv, type))),
 +                                         opnd_create_reg(l_scratch_reg)));
 +    }
 +
@@ -1259,12 +1265,12 @@ index 0000000..decee76
 +                XINST_CREATE_load(drcontext,
 +                                  opnd_create_reg(scratch_reg),
 +                                  OPND_CREATE_MEMPTR(sglsyncptr_reg,
-+                                                     offsetof(SglSyncEv, data))));
++                                                     offsetof(PrismSyncEv, data))));
 +        MINSERT(ilist, where,
 +                XINST_CREATE_store(drcontext,
 +                                   OPND_CREATE_MEMPTR(evptr_reg,
-+                                                      (offsetof(SglEvVariant, sync) +
-+                                                       offsetof(SglSyncEv, data))),
++                                                      (offsetof(PrismEvVariant, sync) +
++                                                       offsetof(PrismSyncEv, data))),
 +                                   opnd_create_reg(scratch_reg)));
 +        /* SYNC.SYNCID[1]
 +         * ev->sync.data[1] = TLS syncev->data[1] */
@@ -1272,19 +1278,19 @@ index 0000000..decee76
 +                XINST_CREATE_load(drcontext,
 +                                  opnd_create_reg(scratch_reg),
 +                                  OPND_CREATE_MEMPTR(sglsyncptr_reg,
-+                                                     offsetof(SglSyncEv, data) +
++                                                     offsetof(PrismSyncEv, data) +
 +                                                     1*sizeof(SyncID))));
 +        MINSERT(ilist, where,
 +                XINST_CREATE_store(drcontext,
 +                                   OPND_CREATE_MEMPTR(evptr_reg,
-+                                                      (offsetof(SglEvVariant, sync) +
-+                                                       offsetof(SglSyncEv, data) +
++                                                      (offsetof(PrismEvVariant, sync) +
++                                                       offsetof(PrismSyncEv, data) +
 +                                                       1*sizeof(SyncID))),
 +                                   opnd_create_reg(scratch_reg)));
 +    }
 +
 +    /* reset the sync event
-+     * TLS syncev = (SglSyncEv*)0 */
++     * TLS syncev = (PrismSyncEv*)0 */
 +    MINSERT(ilist, where,
 +            XINST_CREATE_load_int(drcontext,
 +                                  opnd_create_reg(scratch_reg),
@@ -1414,8 +1420,8 @@ index 0000000..decee76
 +    }
 +
 +    /* sigil mem/compute events are filled in from buffer[0] to buffer[N] */
-+    SglCompEv *comp_ev = tcxt->comps;
-+    SglMemEv *mem_ev = tcxt->mems;
++    PrismCompEv *comp_ev = tcxt->comps;
++    PrismMemEv *mem_ev = tcxt->mems;
 +
 +    if (clo.memref_needed)
 +    {
@@ -1461,7 +1467,7 @@ index 0000000..decee76
 +}
 diff --git a/clients/drsigil/ipc.c b/clients/drsigil/ipc.c
 new file mode 100644
-index 0000000..ca9a8a5
+index 00000000..17c31771
 --- /dev/null
 +++ b/clients/drsigil/ipc.c
 @@ -0,0 +1,376 @@
@@ -1482,14 +1488,14 @@ index 0000000..ca9a8a5
 +static inline void
 +notify_full_buffer(ipc_channel_t *channel)
 +{
-+    /* Tell Sigil2 that the active buffer, on the given IPC channel,
++    /* Tell Prism that the active buffer, on the given IPC channel,
 +     * is full and ready to be consumed */
 +
 +    if (channel->standalone == false)
 +        dr_write_file(channel->full_fifo,
 +                      &channel->shmem_buf_idx, sizeof(channel->shmem_buf_idx));
 +
-+    /* Flag the shared memory buffer as used (by Sigil2) */
++    /* Flag the shared memory buffer as used (by Prism) */
 +    channel->empty_buf_idx[channel->shmem_buf_idx] = false;
 +}
 +
@@ -1500,9 +1506,9 @@ index 0000000..ca9a8a5
 +    /* Increment to the next buffer and try to acquire it for writing */
 +
 +    /* Circular buffer, must be power of 2 */
-+    channel->shmem_buf_idx = (channel->shmem_buf_idx+1) & (SIGIL2_IPC_BUFFERS-1);
++    channel->shmem_buf_idx = (channel->shmem_buf_idx+1) & (PRISM_IPC_BUFFERS-1);
 +
-+    /* Sigil2 tells us when it's finished with a shared memory buffer */
++    /* Prism tells us when it's finished with a shared memory buffer */
 +    if(channel->empty_buf_idx[channel->shmem_buf_idx] == false)
 +    {
 +        if (channel->standalone == false)
@@ -1523,11 +1529,11 @@ index 0000000..ca9a8a5
 +    /* Check if enough space is available in the current buffer */
 +    EventBuffer *current_shmem_buffer = channel->shared_mem->eventBuffers +
 +                                        channel->shmem_buf_idx;
-+    uint available = SIGIL2_EVENTS_BUFFER_SIZE - current_shmem_buffer->used;
++    uint available = PRISM_EVENTS_BUFFER_SIZE - current_shmem_buffer->used;
 +
 +    if(available < required)
 +    {
-+        /* First inform Sigil2 the current buffer can be read */
++        /* First inform Prism the current buffer can be read */
 +        notify_full_buffer(channel);
 +
 +        /* Then get a new buffer for writing */
@@ -1615,9 +1621,9 @@ index 0000000..ca9a8a5
 +    /* Calculate the channel index.
 +     * Each native dynamoRIO thread will write to a runtime-determined
 +     * shared memory buffer, in order to reduce the amount of contention
-+     * for sending data to Sigil2. However, more buffers from dynamoRIO
-+     * means more load (threads) on Sigil2. Therefore, the total number
-+     * of buffers from DynamoRIO -> Sigil2 is a command line variable. */
++     * for sending data to Prism. However, more buffers from dynamoRIO
++     * means more load (threads) on Prism. Therefore, the total number
++     * of buffers from DynamoRIO -> Prism is a command line variable. */
 +    uint channel_idx = tcxt->thread_id % clo.frontend_threads;
 +    ipc_channel_t *channel = &IPC[channel_idx];
 +
@@ -1638,7 +1644,7 @@ index 0000000..ca9a8a5
 +set_shared_memory_buffer_helper(per_thread_t *tcxt, ipc_channel_t *channel)
 +{
 +    EventBuffer *current_shmem_buffer = get_buffer(channel, MIN_DR_PER_THREAD_BUFFER_EVENTS);
-+    SglEvVariant *current_event = current_shmem_buffer->events + current_shmem_buffer->used;
++    PrismEvVariant *current_event = current_shmem_buffer->events + current_shmem_buffer->used;
 +    SGLEV_PTR(tcxt->seg_base) = current_event;
 +    SGLEND_PTR(tcxt->seg_base) = current_event + MIN_DR_PER_THREAD_BUFFER_EVENTS;
 +    SGLUSED_PTR(tcxt->seg_base) = &(current_shmem_buffer->used);
@@ -1656,12 +1662,12 @@ index 0000000..ca9a8a5
 +    if(channel->last_active_tid != tcxt->thread_id)
 +    {
 +        /* Write thread swap event */
-+        SglSyncEv ev = {
-+            .type    = SGLPRIM_SYNC_SWAP,
++        PrismSyncEv ev = {
++            .type    = PRISM_SYNC_SWAP,
 +            .data[0] = tcxt->thread_id
 +        };
-+        SglEvVariant *slot = SGLEV_PTR(tcxt->seg_base);
-+        slot->tag = SGL_SYNC_TAG;
++        PrismEvVariant *slot = SGLEV_PTR(tcxt->seg_base);
++        slot->tag = PRISM_SYNC_TAG;
 +        slot->sync = ev;
 +        ++(SGLEV_PTR(tcxt->seg_base));
 +        ++*(SGLUSED_PTR(tcxt->seg_base));
@@ -1689,7 +1695,7 @@ index 0000000..ca9a8a5
 +static file_t
 +open_sigil2_fifo(const char *path, int flags)
 +{
-+    /* Wait for Sigil2 to create pipes
++    /* Wait for Prism to create pipes
 +     * Timeout is empirical */
 +    uint max_tests = 10;
 +    for(uint i=0; i<max_tests+1; ++i)
@@ -1753,38 +1759,38 @@ index 0000000..ca9a8a5
 +    if (standalone)
 +    {
 +        /* mimic shared memory writes */
-+        channel->shared_mem = dr_raw_mem_alloc(sizeof(Sigil2DBISharedData),
++        channel->shared_mem = dr_raw_mem_alloc(sizeof(PrismDBISharedData),
 +                                               DR_MEMPROT_READ | DR_MEMPROT_WRITE,
 +                                               NULL);
 +        if (channel->shared_mem == NULL)
 +            DR_ABORT_MSG("Failed to allocate pseudo shared memory buffer\n");
-+        for (int i=0; i<SIGIL2_IPC_BUFFERS; ++i)
++        for (int i=0; i<PRISM_IPC_BUFFERS; ++i)
 +            channel->shared_mem->eventBuffers[i].used = 0;
 +    }
 +    else
 +    {
-+        /* Connect to Sigil2 */
++        /* Connect to Prism */
 +        path_len = strlen(path);
 +        pad_len = 4; /* extra space for '/', 2x'-', '\0' */
 +        shmem_len     = (path_len + pad_len +
-+                         sizeof(SIGIL2_IPC_SHMEM_BASENAME) +
++                         sizeof(PRISM_IPC_SHMEM_BASENAME) +
 +                         sizeof(STRINGIFY(MAX_IPC_CHANNELS)));
 +        fullfifo_len  = (path_len + pad_len +
-+                         sizeof(SIGIL2_IPC_FULLFIFO_BASENAME) +
++                         sizeof(PRISM_IPC_FULLFIFO_BASENAME) +
 +                         sizeof(STRINGIFY(MAX_IPC_CHANNELS)));
 +        emptyfifo_len = (path_len + pad_len +
-+                         sizeof(SIGIL2_IPC_EMPTYFIFO_BASENAME) +
++                         sizeof(PRISM_IPC_EMPTYFIFO_BASENAME) +
 +                         sizeof(STRINGIFY(MAX_IPC_CHANNELS)));
 +
 +        /* set up names of IPC files */
 +        char shmem_name[shmem_len];
-+        sprintf(shmem_name, "%s/%s-%d", path, SIGIL2_IPC_SHMEM_BASENAME, idx);
++        sprintf(shmem_name, "%s/%s-%d", path, PRISM_IPC_SHMEM_BASENAME, idx);
 +
 +        char fullfifo_name[fullfifo_len];
-+        sprintf(fullfifo_name, "%s/%s-%d", path, SIGIL2_IPC_FULLFIFO_BASENAME, idx);
++        sprintf(fullfifo_name, "%s/%s-%d", path, PRISM_IPC_FULLFIFO_BASENAME, idx);
 +
 +        char emptyfifo_name[emptyfifo_len];
-+        sprintf(emptyfifo_name, "%s/%s-%d", path, SIGIL2_IPC_EMPTYFIFO_BASENAME, idx);
++        sprintf(emptyfifo_name, "%s/%s-%d", path, PRISM_IPC_EMPTYFIFO_BASENAME, idx);
 +
 +
 +        /* initialize read/write pipes */
@@ -1792,17 +1798,17 @@ index 0000000..ca9a8a5
 +        channel->full_fifo = open_sigil2_fifo(fullfifo_name, DR_FILE_WRITE_ONLY);
 +
 +        /* no need to timeout on file because shared memory MUST be initialized
-+         * by Sigil2 before the fifos are created */
++         * by Prism before the fifos are created */
 +        file_t map_file = dr_open_file(shmem_name, DR_FILE_READ|DR_FILE_WRITE_APPEND);
 +        if(map_file == INVALID_FILE)
 +            DR_ABORT_MSG("error opening shared memory file");
 +
-+        size_t mapped_size = sizeof(Sigil2DBISharedData);
++        size_t mapped_size = sizeof(PrismDBISharedData);
 +        channel->shared_mem = dr_map_file(map_file, &mapped_size,
 +                                          0, 0, /* assume this is not honored */
 +                                          DR_MEMPROT_READ|DR_MEMPROT_WRITE, 0);
 +
-+        if(mapped_size != sizeof(Sigil2DBISharedData) || channel->shared_mem == NULL)
++        if(mapped_size != sizeof(PrismDBISharedData) || channel->shared_mem == NULL)
 +            DR_ABORT_MSG("error mapping shared memory");
 +
 +        dr_close_file(map_file);
@@ -1819,12 +1825,12 @@ index 0000000..ca9a8a5
 +
 +    if (channel->standalone)
 +    {
-+        dr_raw_mem_free(channel->shared_mem, sizeof(Sigil2DBISharedData));
++        dr_raw_mem_free(channel->shared_mem, sizeof(PrismDBISharedData));
 +    }
 +    else
 +    {
 +        /* send terminate sequence */
-+        uint finished = SIGIL2_IPC_FINISHED;
++        uint finished = PRISM_IPC_FINISHED;
 +        uint last_buffer = channel->shmem_buf_idx;
 +        if(dr_write_file(channel->full_fifo, &last_buffer, sizeof(last_buffer)) != sizeof(last_buffer) ||
 +           dr_write_file(channel->full_fifo, &finished,    sizeof(finished))    != sizeof(finished))
@@ -1835,7 +1841,7 @@ index 0000000..ca9a8a5
 +
 +        dr_close_file(channel->empty_fifo);
 +        dr_close_file(channel->full_fifo);
-+        dr_unmap_file(channel->shared_mem, sizeof(Sigil2DBISharedData));
++        dr_unmap_file(channel->shared_mem, sizeof(PrismDBISharedData));
 +    }
 +
 +    dr_global_free((void*)channel->ticket_queue.head, sizeof(ticket_queue_t));
@@ -1843,7 +1849,7 @@ index 0000000..ca9a8a5
 +}
 diff --git a/clients/drsigil/parser.c b/clients/drsigil/parser.c
 new file mode 100644
-index 0000000..0ccad94
+index 00000000..0ccad94e
 --- /dev/null
 +++ b/clients/drsigil/parser.c
 @@ -0,0 +1,90 @@
@@ -1939,7 +1945,7 @@ index 0000000..0ccad94
 +}
 diff --git a/clients/drsigil/pthread_defines.h b/clients/drsigil/pthread_defines.h
 new file mode 100644
-index 0000000..dc69823
+index 00000000..cae49202
 --- /dev/null
 +++ b/clients/drsigil/pthread_defines.h
 @@ -0,0 +1,283 @@
@@ -2024,7 +2030,7 @@ index 0000000..dc69823
 +
 +    /* TODO dereference the pthread_t? */
 +    SyncID data[2] = {(uintptr_t)(pthread_t*)drwrap_get_arg(wrapcxt, 0), 0};
-+    set_sync_event(tcxt, SGLPRIM_SYNC_CREATE, data);
++    set_sync_event(tcxt, PRISM_SYNC_CREATE, data);
 +}
 +static void
 +wrap_post_pthread_create(void *wrapcxt, void *user_data)
@@ -2048,7 +2054,7 @@ index 0000000..dc69823
 +    set_blocked_and_deactivate(tcxt);
 +
 +    SyncID data[2] = {(uintptr_t)(pthread_t*)drwrap_get_arg(wrapcxt, 0), 0};
-+    set_sync_event(tcxt, SGLPRIM_SYNC_JOIN, data);
++    set_sync_event(tcxt, PRISM_SYNC_JOIN, data);
 +}
 +static void
 +wrap_post_pthread_join(void *wrapcxt, void *user_data)
@@ -2072,7 +2078,7 @@ index 0000000..dc69823
 +    set_blocked_and_deactivate(tcxt);
 +
 +    SyncID data[2] = {(uintptr_t)(pthread_mutex_t*)drwrap_get_arg(wrapcxt, 0), 0};
-+    set_sync_event(tcxt, SGLPRIM_SYNC_LOCK, data);
++    set_sync_event(tcxt, PRISM_SYNC_LOCK, data);
 +}
 +static void
 +wrap_post_pthread_mutex_lock(void *wrapcxt, void *user_data)
@@ -2096,7 +2102,7 @@ index 0000000..dc69823
 +    deactivate(tcxt);
 +
 +    SyncID data[2] = {(uintptr_t)(pthread_mutex_t*)drwrap_get_arg(wrapcxt, 0), 0};
-+    set_sync_event(tcxt, SGLPRIM_SYNC_UNLOCK, data);
++    set_sync_event(tcxt, PRISM_SYNC_UNLOCK, data);
 +}
 +static void
 +wrap_post_pthread_mutex_unlock(void *wrapcxt, void *user_data)
@@ -2120,7 +2126,7 @@ index 0000000..dc69823
 +    set_blocked_and_deactivate(tcxt);
 +
 +    SyncID data[2] = {(uintptr_t)(pthread_barrier_t*)drwrap_get_arg(wrapcxt, 0), 0};
-+    set_sync_event(tcxt, SGLPRIM_SYNC_BARRIER, data);
++    set_sync_event(tcxt, PRISM_SYNC_BARRIER, data);
 +}
 +static void
 +wrap_post_pthread_barrier(void *wrapcxt, void *user_data)
@@ -2145,7 +2151,7 @@ index 0000000..dc69823
 +
 +    SyncID data[2] = {(uintptr_t)(pthread_cond_t*)drwrap_get_arg(wrapcxt, 0),
 +                      (uintptr_t)(pthread_mutex_t*)drwrap_get_arg(wrapcxt, 1)};
-+    set_sync_event(tcxt, SGLPRIM_SYNC_CONDWAIT, data);
++    set_sync_event(tcxt, PRISM_SYNC_CONDWAIT, data);
 +}
 +static void
 +wrap_post_pthread_cond_wait(void *wrapcxt, void *user_data)
@@ -2169,7 +2175,7 @@ index 0000000..dc69823
 +    deactivate(tcxt);
 +
 +    SyncID data[2] = {(uintptr_t)(pthread_cond_t*)drwrap_get_arg(wrapcxt, 0), 0};
-+    set_sync_event(tcxt, SGLPRIM_SYNC_CONDSIG, data);
++    set_sync_event(tcxt, PRISM_SYNC_CONDSIG, data);
 +}
 +static void
 +wrap_post_pthread_cond_sig(void *wrapcxt, void *user_data)
@@ -2192,7 +2198,7 @@ index 0000000..dc69823
 +    LOG_SYNC_ENTER(pthread_spin_lock, tcxt->thread_id);
 +
 +    SyncID data[2] = {(uintptr_t)(pthread_spinlock_t*)drwrap_get_arg(wrapcxt, 0), 0};
-+    set_sync_event(tcxt, SGLPRIM_SYNC_SPINLOCK, data);
++    set_sync_event(tcxt, PRISM_SYNC_SPINLOCK, data);
 +}
 +static void
 +wrap_post_pthread_spin_lock(void *wrapcxt, void *user_data)
@@ -2214,7 +2220,7 @@ index 0000000..dc69823
 +    LOG_SYNC_ENTER(pthread_spin_unlock, tcxt->thread_id);
 +
 +    SyncID data[2] = {(uintptr_t)(pthread_spinlock_t*)drwrap_get_arg(wrapcxt, 0), 0};
-+    set_sync_event(tcxt, SGLPRIM_SYNC_SPINUNLOCK, data);
++    set_sync_event(tcxt, PRISM_SYNC_SPINUNLOCK, data);
 +}
 +static void
 +wrap_post_pthread_spin_unlock(void *wrapcxt, void *user_data)
@@ -2228,7 +2234,7 @@ index 0000000..dc69823
 +#endif
 diff --git a/clients/drsigil/start_stop_functions.h b/clients/drsigil/start_stop_functions.h
 new file mode 100644
-index 0000000..32d6b8e
+index 00000000..32d6b8ee
 --- /dev/null
 +++ b/clients/drsigil/start_stop_functions.h
 @@ -0,0 +1,62 @@
@@ -2295,5 +2301,5 @@ index 0000000..32d6b8e
 +
 +#endif
 -- 
-1.8.3.1
+2.29.2
 

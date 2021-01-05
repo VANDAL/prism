@@ -49,7 +49,7 @@ ExternalProject_Add(dynamorio
 	INSTALL_DIR ${DR_INSTALLDIR}
 	# Required: https://stackoverflow.com/a/32473121
 	CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${DR_INSTALLDIR}
-	-DCMAKE_CXX_STANDARD=98
+	-DCMAKE_CXX_STANDARD=17
 	-DDISABLE_WARNINGS=ON # WErrors with gcc-6+
 	-DDEBUG=OFF
 	-DBUILD_DOCS=OFF
@@ -65,7 +65,7 @@ ExternalProject_Add(dynamorio
 
 # HACK to silence 32+64-bit install check warnings:
 #   https://github.com/DynamoRIO/dynamorio/issues/1758
-# We assume Sigil2 is being run for the native platform,
+# We assume Prism is being run for the native platform,
 # otherwise unsupported
 ExternalProject_Add_Step(dynamorio post_install
 	COMMAND touch CMakeCache.txt

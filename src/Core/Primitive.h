@@ -20,26 +20,33 @@
  *              e.g. create, join, sync, barrier, ...
  *
  * These primitives are created in the event generation front end,
- * and passed to Prism's event manager for further processing
+ * and passed to Prism's event manager for further processing.
  *
- * XXX MDL20170414
+ * They are EFFECTIVELY the raw data formats. Because a frontend (e.g.
+ * instrumentation framework)
+ * 1 may not support complex serialization libraries,
+ * 2 and may have differing IPC capabilities,
+ * this is as far as we define the events, and leave the rest of the
+ * implementation up to the implementor to decide.
+ *
  * These primitives are used for IPC between event generation frontends.
  * Due to the pure amount and variety of events transferred,
  * each struct is packed to save memory space.
  * Aligned structs do not have much performance benefit anyway, on x86,
  * due to the way events are serially written to and read in shared memory.
- * Otherwise, there is an overhead of up to 8x in memory space
- * (using unions and padding structs for alignment in arrays).
+ * Otherwise, without packing, there is an overhead of up to 8x in memory
+ * footprint (using unions and padding structs for alignment in arrays).
  */
 
 #include <stdint.h>
 #include "PrimitiveEnums.h"
 
 #ifdef __cplusplus
-#include <functional>
 #include <algorithm>
-#include <vector>
 #include <cassert>
+#include <functional>
+#include <stdexcept>
+#include <vector>
 extern "C" {
 #else
 typedef struct PrismMemEv PrismMemEv;
