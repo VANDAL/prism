@@ -16,7 +16,7 @@ class Config
                          BackendIfaceGenerator beGenerator,
                          BackendParser beParser,
                          BackendFinish beFinish,
-                         prism::capabilities beRequirements) -> Config&;
+                         prism::capability::EvGenCaps beRequirements) -> Config&;
     auto registerFrontend(ToolName name, Frontend fe) -> Config&;
     auto parseCommandLine(int argc, char* argv[]) -> Config&;
     /* configuration */

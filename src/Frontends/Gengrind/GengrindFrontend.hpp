@@ -2,9 +2,12 @@
 #define GENGRIND_H
 
 #include "Core/Frontends.hpp"
+#include "Core/EventCapability.hpp"
 
-auto startGengrind(Args execArgs, Args feArgs, unsigned threads, prism::capabilities reqs)
-    -> FrontendIfaceGenerator;
-auto gengrindCapabilities() -> prism::capabilities;
+auto startGengrind(Args execArgs,
+                   Args feArgs,
+                   unsigned threads,
+                   prism::capability::EvGenCaps reqs) -> FrontendIfaceGenerator;
+auto gengrindCapabilities() -> prism::capability::EvGenCaps;
 
 #endif

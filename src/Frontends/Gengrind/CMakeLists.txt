@@ -15,15 +15,22 @@ execute_process(
 	COMMAND git submodule update --init ${VGSRC_DIR}
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
-# Copy Prism-specific tools to valgrind
-execute_process(
-	COMMAND cp -rf gengrind valgrind
-	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-	OUTPUT_QUIET)
-execute_process(
-	COMMAND cp -rf sigrind valgrind
-	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-	OUTPUT_QUIET)
+## Copy Prism-specific tools to valgrind
+if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/valgrind/gengrind)
+	message("Copying gengrind to valgrind dir")
+	execute_process(
+		COMMAND cp -rf gengrind valgrind
+		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+		OUTPUT_QUIET)
+endif()
+
+if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/valgrind/sigrind)
+	message("Copying sigrind to valgrind dir")
+	execute_process(
+		COMMAND cp -rf sigrind valgrind
+		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+		OUTPUT_QUIET)
+endif()
 
 # Apply patch, or check if already applied
 execute_process(
@@ -41,9 +48,9 @@ else()
 		COMMAND git apply --check -R ${PATCH}
 		WORKING_DIRECTORY ${VGSRC_DIR}
 		RESULT_VARIABLE PATCH_RESULT)
-	if (NOT ${PATCH_RESULT} EQUAL 0)
-		message(FATAL_ERROR "could not git patch valgrind")
-	endif()
+	#if (NOT ${PATCH_RESULT} EQUAL 0)
+	#	message(FATAL_ERROR "could not git patch valgrind")
+	#endif()
 endif()
 
 ###############################################################################
@@ -63,10 +70,10 @@ ExternalProject_Add(${VG_PROJECT}
 	CONFIGURE_COMMAND CC=${CMAKE_C_COMPILER} ${VGSRC_DIR}/configure --prefix=${VGINST_DIR} --silent
 	
 	# BUILD STEP
-	BUILD_COMMAND $(MAKE)
+	BUILD_COMMAND make
 
 	# INSTALL STEP
-	INSTALL_COMMAND $(MAKE) install > ${PROJECT_BINARY_DIR}/make_install_valgrind.log)
+	INSTALL_COMMAND make install > ${PROJECT_BINARY_DIR}/make_install_valgrind.log)
 
 # need this when building the wrapper
 set(VGBUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/${VG_PREFIX}/src/${VG_PROJECT}-build)

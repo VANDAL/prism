@@ -78,9 +78,6 @@ class ShmemFrontend : public FrontendIface
 
         /* asynchronously manage communications with the external tool */
         eventLoop = std::thread{&ShmemFrontend::receiveEventsLoop, this};
-
-        FrontendIface::nameBase = [&]{ assert(lastBufferIdx < decltype(lastBufferIdx){PRISM_IPC_BUFFERS});
-                                       return shmem->nameBuffers[lastBufferIdx].names; };
     }
 
     ~ShmemFrontend() override

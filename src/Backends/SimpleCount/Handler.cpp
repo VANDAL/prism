@@ -1,9 +1,11 @@
 #include "Handler.hpp"
+
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/sinks/stdout_sinks.h"
-#include <iostream>
+
 #include <atomic>
+#include <iostream>
 
 namespace
 {
@@ -92,12 +94,6 @@ auto Handler::onMemEv(const prism::MemEvent &ev) -> void
 }
 
 
-auto Handler::onCFEv(const PrismCFEv &ev) -> void
-{
-    ++cf_cnt;
-}
-
-
 auto Handler::onCxtEv(const prism::CxtEvent &ev) -> void
 {
     ++cxt_cnt;
@@ -160,34 +156,34 @@ auto cleanup() -> void
 }
 
 
-auto requirements() -> prism::capabilities
+auto requirements() -> prism::capability::EvGenCaps
 {
     using namespace prism;
     using namespace prism::capability;
 
-    auto caps = initCaps();
+    auto caps = initEvGenCaps();
 
-    caps[MEMORY]         = availability::enabled;
-    caps[MEMORY_LDST]    = availability::enabled;
-    caps[MEMORY_SIZE]    = availability::disabled;
-    caps[MEMORY_ADDRESS] = availability::disabled;
+    caps[PRISMCAP_MEMORY]              = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_MEMORY_LDST_TYPE]    = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_MEMORY_ACCESS_BYTES] = availability::PRISMCAP_DISABLED;
+    caps[PRISMCAP_MEMORY_ADDRESS]      = availability::PRISMCAP_DISABLED;
 
-    caps[COMPUTE]              = availability::enabled;
-    caps[COMPUTE_INT_OR_FLOAT] = availability::enabled;
-    caps[COMPUTE_ARITY]        = availability::disabled;
-    caps[COMPUTE_OP]           = availability::disabled;
-    caps[COMPUTE_SIZE]         = availability::disabled;
+    caps[PRISMCAP_COMPUTE]             = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_COMPUTE_INT_OR_FLT]  = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_COMPUTE_ARITY]       = availability::PRISMCAP_DISABLED;
+    caps[PRISMCAP_COMPUTE_OP_TYPE]     = availability::PRISMCAP_DISABLED;
+    caps[PRISMCAP_COMPUTE_WIDTH_BYTES] = availability::PRISMCAP_DISABLED;
 
-    caps[CONTROL_FLOW] = availability::disabled;
+    caps[PRISMCAP_CONTROL_FLOW] = availability::PRISMCAP_DISABLED;
 
-    caps[SYNC]      = availability::enabled;
-    caps[SYNC_TYPE] = availability::enabled;
-    caps[SYNC_ARGS] = availability::disabled;
+    caps[PRISMCAP_SYNC]      = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_SYNC_TYPE] = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_SYNC_ARGS] = availability::PRISMCAP_DISABLED;
 
-    caps[CONTEXT_INSTRUCTION] = availability::enabled;
-    caps[CONTEXT_BASIC_BLOCK] = availability::disabled;
-    caps[CONTEXT_FUNCTION]    = availability::disabled;
-    caps[CONTEXT_THREAD]      = availability::enabled;
+    caps[PRISMCAP_CONTEXT_INSTRUCTION] = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_CONTEXT_BASIC_BLOCK] = availability::PRISMCAP_DISABLED;
+    caps[PRISMCAP_CONTEXT_FUNCTION]    = availability::PRISMCAP_DISABLED;
+    caps[PRISMCAP_CONTEXT_THREAD]      = availability::PRISMCAP_ENABLED;
 
     return caps;
 }

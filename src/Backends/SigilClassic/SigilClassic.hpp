@@ -74,8 +74,8 @@ struct SigilContext
     auto enterEntity(std::string name) -> void;
     auto exitEntity() -> void;
 
-    auto monitorWrite(Addr addr, ByteCount bytes) -> void;
-    auto monitorRead(Addr addr, ByteCount bytes) -> void;
+    auto monitorWrite(Addr addr, uint32_t bytes) -> void;
+    auto monitorRead(Addr addr, uint32_t bytes) -> void;
     auto incrIOPCost() -> void;
     auto incrFLOPCost() -> void;
 

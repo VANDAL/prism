@@ -2,18 +2,19 @@
 #define PRISM_FRONTEND_H
 
 #include "EventBuffer.h"
-#include <map>
-#include <functional>
-#include <string>
-#include <vector>
-#include <memory>
+#include "EventIface.hpp"
+
 #include <atomic>
 #include <cstdint>
+#include <functional>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
 
 using ToolName = std::string;
 using Args = std::vector<std::string>;
 
-using GetNameBase = std::function<const char*(void)>;
 class FrontendIface
 {
     /* The Prism core asynchronously requests an event buffer
@@ -30,11 +31,6 @@ class FrontendIface
      * That is, for every acquire, there shall be one and only one release.
      * When the frontend runs out of events, a null pointer is returned. */
 
-    GetNameBase nameBase;
-    /* If a frontend supports names for context events, e.g. function names,
-     * it must implement this function to return the memory arena where
-     * name strings are stored. XXX MDL20170412 See DbiFrontend.hpp */
-
   protected:
     const unsigned uid;
   private:
@@ -43,10 +39,10 @@ class FrontendIface
 
 
 using FrontendPtr = std::unique_ptr<FrontendIface>;
-using FrontendIfaceGenerator = std::function<FrontendPtr(void)>;
+using FrontendIfaceGenerator = std::function<FrontendPtr()>;
 using FrontendStarter = std::function<FrontendIfaceGenerator(Args, Args, unsigned,
-                                                             const prism::capabilities&)>;
-using FrontendStarterWrapper = std::function<FrontendIfaceGenerator()>;
+                                                             const prism::capability::EvGenCaps&)>;
+using FrontendStarterWrapper = std::pair<prism::EventStreamParserConfig, std::function<FrontendIfaceGenerator()>>;
 /* The actual frontend must provide a 'starter' function that returns
  * a function to generate interfaces to the frontend as defined above.
  * In a multi-threaded frontend, each thread gets a separate interface instance
@@ -63,7 +59,7 @@ using FrontendStarterWrapper = std::function<FrontendIfaceGenerator()>;
 struct Frontend
 {
     FrontendStarter starter;
-    prism::capabilities caps;
+    prism::capability::EvGenCaps caps;
 };
 
 
@@ -73,8 +69,13 @@ class FrontendFactory
     FrontendFactory()  = default;
     ~FrontendFactory() = default;
 
-    auto create(ToolName name, Args exec, Args fe, unsigned threads,
-                const prism::capabilities &beReqs) const -> FrontendStarterWrapper;
+    auto create(
+        ToolName name,
+        Args exec,
+        Args fe,
+        unsigned threads,
+        const prism::capability::EvGenCaps &beReqs) const -> FrontendStarterWrapper;
+
     auto add(ToolName name, Frontend fe) -> void;
     auto exists(ToolName name) const -> bool;
     auto available() const -> std::vector<std::string>;

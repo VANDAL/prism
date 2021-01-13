@@ -22,12 +22,10 @@ typedef struct PrismPerfSharedData PrismPerfSharedData;
 struct PrismDBISharedData
 {
     EventBuffer eventBuffers[PRISM_IPC_BUFFERS];
-    NameBuffer nameBuffers[PRISM_IPC_BUFFERS];
-    /* Each EventBuffer has a corresponding NameBuffer
-     * as an arena to allocate entity name strings */
 };
 
 
+// XXX MDL20210113 unused right now. TBD if still needed
 struct PrismPerfSharedData
 {
     /* Shared event buffer for a modified linux perf tool
@@ -53,14 +51,6 @@ struct PrismPerfSharedData
      * in parallel from perf to Prism. */
 
     EventBuffer eventBuffers[PRISM_IPC_BUFFERS];
-
-    TimestampBuffer timeBuffers[PRISM_IPC_BUFFERS];
-    /* Each EventBuffer has a corresponding TimestampBuffer
-     * to order events between threads */
-
-    NameBuffer nameBuffers[PRISM_IPC_BUFFERS];
-    /* Each EventBuffer has a corresponding NameBuffer
-     * as an arena to allocate entity name strings */
 };
 
 #endif

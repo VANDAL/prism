@@ -17,8 +17,8 @@ constexpr FID SO_UNDEF{-1};
 class SCShadowMemory
 {
   public:
-    auto updateWriter(Addr addr, ByteCount bytes, FID fid) -> void;
-    auto updateReader(Addr addr, ByteCount bytes, FID fid) -> void;
+    auto updateWriter(Addr addr, uint32_t bytes, FID fid) -> void;
+    auto updateReader(Addr addr, uint32_t bytes, FID fid) -> void;
     auto isReaderFID(Addr addr, FID fid) -> bool;
     auto getWriterFID(Addr addr) -> FID;
 
@@ -31,9 +31,9 @@ class SCShadowMemory
     ShadowMemory<ShadowObject, 45, 28> sm;
 };
 
-inline auto SCShadowMemory::updateWriter(Addr addr, ByteCount bytes, FID fid) -> void
+inline auto SCShadowMemory::updateWriter(Addr addr, uint32_t bytes, FID fid) -> void
 {
-    for (ByteCount i = 0; i < bytes; ++i)
+    for (uint32_t i = 0; i < bytes; ++i)
     {
         ShadowObject &so = sm[addr + i];
         so.last_writer = fid;
@@ -42,9 +42,9 @@ inline auto SCShadowMemory::updateWriter(Addr addr, ByteCount bytes, FID fid) ->
 }
 
 
-inline auto SCShadowMemory::updateReader(Addr addr, ByteCount bytes, FID fid) -> void
+inline auto SCShadowMemory::updateReader(Addr addr, uint32_t bytes, FID fid) -> void
 {
-    for (ByteCount i = 0; i < bytes; ++i)
+    for (uint32_t i = 0; i < bytes; ++i)
     {
         ShadowObject &so = sm[addr + i];
         so.last_reader = fid;

@@ -5,34 +5,34 @@
 #include "whereami.h"
 #include "glob.h"
 
-auto gengrindCapabilities() -> prism::capabilities 
+auto gengrindCapabilities() -> prism::capability::EvGenCaps
 {
     using namespace prism;
     using namespace prism::capability;
 
-    auto caps = initCaps();
+    auto caps = initEvGenCaps();
 
-    caps[MEMORY]         = availability::enabled;
-    caps[MEMORY_LDST]    = availability::enabled;
-    caps[MEMORY_SIZE]    = availability::enabled;
-    caps[MEMORY_ADDRESS] = availability::enabled;
+    caps[PRISMCAP_MEMORY]              = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_MEMORY_LDST_TYPE]    = availability::PRISMCAP_ALWAYS;
+    caps[PRISMCAP_MEMORY_ACCESS_BYTES] = availability::PRISMCAP_ALWAYS;
+    caps[PRISMCAP_MEMORY_ADDRESS]      = availability::PRISMCAP_ALWAYS;
 
-    caps[COMPUTE]              = availability::enabled;
-    caps[COMPUTE_INT_OR_FLOAT] = availability::enabled;
-    caps[COMPUTE_ARITY]        = availability::nil;
-    caps[COMPUTE_OP]           = availability::nil;
-    caps[COMPUTE_SIZE]         = availability::nil;
+    caps[PRISMCAP_COMPUTE]              = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_COMPUTE_INT_OR_FLT]   = availability::PRISMCAP_ALWAYS;
+    caps[PRISMCAP_COMPUTE_ARITY]        = availability::PRISMCAP_UNAVAILABLE;
+    caps[PRISMCAP_COMPUTE_OP_TYPE]      = availability::PRISMCAP_UNAVAILABLE;
+    caps[PRISMCAP_COMPUTE_WIDTH_BYTES]  = availability::PRISMCAP_UNAVAILABLE;
 
-    caps[CONTROL_FLOW] = availability::nil;
+    caps[PRISMCAP_CONTROL_FLOW] = availability::PRISMCAP_UNAVAILABLE;
 
-    caps[SYNC]      = availability::enabled;
-    caps[SYNC_TYPE] = availability::enabled;
-    caps[SYNC_ARGS] = availability::enabled;
+    caps[PRISMCAP_SYNC]      = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_SYNC_TYPE] = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_SYNC_ARGS] = availability::PRISMCAP_ENABLED;
 
-    caps[CONTEXT_INSTRUCTION] = availability::enabled;
-    caps[CONTEXT_BASIC_BLOCK] = availability::disabled;
-    caps[CONTEXT_FUNCTION]    = availability::disabled;
-    caps[CONTEXT_THREAD]      = availability::enabled;
+    caps[PRISMCAP_CONTEXT_INSTRUCTION] = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_CONTEXT_BASIC_BLOCK] = availability::PRISMCAP_UNAVAILABLE;
+    caps[PRISMCAP_CONTEXT_FUNCTION]    = availability::PRISMCAP_DISABLED;
+    caps[PRISMCAP_CONTEXT_THREAD]      = availability::PRISMCAP_ENABLED;
 
     return caps;
 };
@@ -147,9 +147,9 @@ auto configureWrapperEnv(const std::string &prism_path) -> void
 
 
 auto vgOpts(const std::vector<std::string> &userExec,
-                  const std::vector<std::string> &args,
-                  const std::string &ipcDir,
-                  const prism::capabilities &reqs) -> std::string
+            const std::vector<std::string> &args,
+            const std::string &ipcDir,
+            const prism::capability::EvGenCaps &reqs) -> std::string
 {
     using namespace prism::capability;
     assert(!userExec.empty() && !ipcDir.empty());
@@ -164,23 +164,28 @@ auto vgOpts(const std::vector<std::string> &userExec,
     opts += " --ipc-dir=" + ipcDir;
 
     /* MDL20170720
-     * TODO the Valgrind frontend only has macro granularity support */
-    reqs[MEMORY] == availability::enabled ?
+     * TODO(someday)
+     * The Valgrind frontend only has granularity support at launch,
+     * but not during execution. Would need to establish some type of
+     * gdbserver connection to valgrind to poke it to change granularity
+     * on-the-fly, or have discrete points to change granularities
+     * (like at UDST or specific function) */
+    reqs[PRISMCAP_MEMORY] == availability::PRISMCAP_ENABLED ?
         opts += " --gen-mem=yes" :
         opts += " --gen-mem=no";
-    reqs[COMPUTE] == availability::enabled ?
+    reqs[PRISMCAP_COMPUTE] == availability::PRISMCAP_ENABLED ?
         opts += " --gen-comp=yes" :
         opts += " --gen-comp=no";
-    reqs[SYNC] == availability::enabled ?
+    reqs[PRISMCAP_SYNC] == availability::PRISMCAP_ENABLED ?
         opts += " --gen-sync=yes" :
         opts += " --gen-sync=no";
-    reqs[CONTEXT_INSTRUCTION] == availability::enabled ?
+    reqs[PRISMCAP_CONTEXT_INSTRUCTION] == availability::PRISMCAP_ENABLED ?
         opts += " --gen-instr=yes" :
         opts += " --gen-instr=no";
-    reqs[CONTEXT_BASIC_BLOCK] == availability::enabled ?
+    reqs[PRISMCAP_CONTEXT_BASIC_BLOCK] == availability::PRISMCAP_ENABLED ?
         opts += " --gen-bb=yes" :
         opts += " --gen-bb=no";
-    reqs[CONTEXT_FUNCTION] == availability::enabled ?
+    reqs[PRISMCAP_CONTEXT_FUNCTION] == availability::PRISMCAP_ENABLED ?
         opts += " --gen-fn=yes" :
         opts += " --gen-fn=no";
     opts += " --gen-cf=no";
@@ -199,7 +204,7 @@ auto vgOpts(const std::vector<std::string> &userExec,
 auto configureValgrind(const std::vector<std::string> &userExec,
                        const std::vector<std::string> &args,
                        const std::string &ipcDir,
-                       const prism::capabilities &reqs) -> std::string
+                       const prism::capability::EvGenCaps &reqs) -> std::string
 {
     int len, dirname_len;
     len = wai_getExecutablePath(NULL, 0, &dirname_len);
@@ -255,8 +260,10 @@ auto configureIpcDir() -> std::string
 ////////////////////////////////////////////////////////////
 // Interface to Prism core
 ////////////////////////////////////////////////////////////
-auto startGengrind(Args execArgs, Args feArgs, unsigned threads, prism::capabilities reqs)
-    -> FrontendIfaceGenerator
+auto startGengrind(Args execArgs,
+                   Args feArgs,
+                   unsigned threads,
+                   prism::capability::EvGenCaps reqs) -> FrontendIfaceGenerator
 {
     if (threads != 1)
         fatal("Valgrind frontend attempted with other than 1 thread");
@@ -281,6 +288,9 @@ auto startGengrind(Args execArgs, Args feArgs, unsigned threads, prism::capabili
             bashOpts[i++] = strdup(valgrindArgs.c_str());
             bashOpts[i++] = nullptr;
 
+            // Bash is preferable because it does all the expected
+            // command line string parsing and i/o redirection.
+            // Less surprises.
             int res = execvp(bash, bashOpts);
             if (res == -1)
                 fatal(std::string("starting valgrind failed -- ") + strerror(errno));

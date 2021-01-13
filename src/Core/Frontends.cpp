@@ -4,11 +4,14 @@
 
 decltype(FrontendIface::uidCount) FrontendIface::uidCount{0};
 
-auto FrontendFactory::create(ToolName name, Args exec, Args fe, unsigned threads,
-                             const prism::capabilities &beReqs) const -> FrontendStarterWrapper
+auto FrontendFactory::create(
+    ToolName name,
+    Args exec,
+    Args fe,
+    unsigned threads,
+    const prism::capability::EvGenCaps &beReqs
+) const -> FrontendStarterWrapper
 {
-    using namespace std::placeholders;
-
     /* default */
     if (name.empty() == true)
         name = "valgrind";
@@ -22,8 +25,10 @@ auto FrontendFactory::create(ToolName name, Args exec, Args fe, unsigned threads
 
         /* Resolve difference between requested capabilities (granularity)
          * from the backend, and the available capabilities in the frontend */
-        auto caps = prism::resolveCaps(feCaps, beReqs);;
-        return [=]{ return start(exec, fe, threads, caps); };
+        auto caps = resolveCaps(feCaps, beReqs);
+        prism::EventStreamParserConfig evStreamParserCfg{caps};
+
+        return {evStreamParserCfg, [=]{ return start(exec, fe, threads, caps); }};
     }
     else
     {

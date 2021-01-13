@@ -1,12 +1,14 @@
 #ifndef PRISM_BACKEND_H
 #define PRISM_BACKEND_H
 
-#include "Primitive.h"
+#include "EventCapability.hpp"
+#include "EventIface.hpp"
+
+#include <functional>
+#include <map>
+#include <memory>
 #include <string>
 #include <vector>
-#include <functional>
-#include <memory>
-#include <map>
 
 class BackendIface
 {
@@ -16,7 +18,7 @@ class BackendIface
     virtual auto onCompEv(const prism::CompEvent &) -> void {}
     virtual auto onSyncEv(const prism::SyncEvent &) -> void {}
     virtual auto onCxtEv(const prism::CxtEvent &) -> void {}
-    virtual auto onCFEv(const PrismCFEv &) -> void {}
+    // virtual auto onCFEv(const PrismCFEv &) -> void {}
 };
 
 using ToolName = std::string;
@@ -35,7 +37,7 @@ struct Backend
     BackendIfaceGenerator generator;
     BackendParser parser;
     BackendFinish finish;
-    prism::capabilities caps;
+    prism::capability::EvGenCaps caps;
     Args args;
 };
 

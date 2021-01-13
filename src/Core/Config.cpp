@@ -8,7 +8,7 @@ auto Config::registerBackend(ToolName name,
                              BackendIfaceGenerator beGenerator,
                              BackendParser beParser,
                              BackendFinish beFinish,
-                             prism::capabilities beRequirements) -> Config&
+                             prism::capability::EvGenCaps beRequirements) -> Config&
 {
     std::transform(name.begin(), name.end(), name.begin(), ::tolower);
     Backend be = {beGenerator, beParser, beFinish, beRequirements, {}};

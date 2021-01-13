@@ -9,7 +9,7 @@ typedef enum MemTypeEnum MemTypeEnum;
 typedef enum CFTypeEnum CFTypeEnum;
 typedef enum CxtTypeEnum CxtTypeEnum;
 typedef enum SyncTypeEnum SyncTypeEnum;
-typedef enum EvTagEnum EvTagEnum;
+typedef enum EventTypeEnum EventTypeEnum;
 #endif
 
 //-----------------------------------------------------------------------------
@@ -19,6 +19,21 @@ enum MemTypeEnum
     PRISM_MEM_TYPE_UNDEF = 0,
     PRISM_MEM_LOAD,
     PRISM_MEM_STORE
+};
+enum MemSizeEnum
+{
+    // in bits
+    PRISM_MEM_8,
+    PRISM_MEM_16,
+    PRISM_MEM_32,
+    PRISM_MEM_64,
+    PRISM_MEM_128,
+    PRISM_MEM_256,
+    PRISM_MEM_512,
+    PRISM_MEM_1024,
+    // IMPORTANT: DO NOT ADD MORE w/o substantial changes
+    // The bit-layout of events only has 3-bits dedicated to size (8 options)
+    PRISM_MEM_SIZES, 
 };
 
 
@@ -33,9 +48,7 @@ enum CompCostTypeEnum
 
 enum CompArityEnum
 {
-    PRISM_COMP_ARITY_UNDEF = 0,
-    PRISM_COMP_NULLARY,
-    PRISM_COMP_UNARY,
+    PRISM_COMP_UNARY = 0,
     PRISM_COMP_BINARY,
     PRISM_COMP_TERNARY,
     PRISM_COMP_QUARTERNARY
@@ -51,6 +64,7 @@ enum CompCostOpEnum
     PRISM_COMP_SHFT,
     PRISM_COMP_MOV
 };
+
 
 
 //-----------------------------------------------------------------------------
@@ -73,6 +87,10 @@ enum CxtTypeEnum
     PRISM_CXT_FUNC_ENTER,
     PRISM_CXT_FUNC_EXIT,
     PRISM_CXT_THREAD,
+    PRISM_CXT_ML_NET_ENTER,
+    PRISM_CXT_ML_NET_EXIT,
+    PRISM_CXT_ML_OP_ENTER,
+    PRISM_CXT_ML_OP_EXIT,
 };
 
 
@@ -103,14 +121,14 @@ enum SyncTypeEnum
 
 
 //-----------------------------------------------------------------------------
-enum EvTagEnum
-{
-    PRISM_EV_UNDEF = 0,
-    PRISM_MEM_TAG,
-    PRISM_COMP_TAG,
-    PRISM_CF_TAG,
-    PRISM_CXT_TAG,
-    PRISM_SYNC_TAG,
+enum EventTypeEnum {
+    PRISM_EVENTTYPE_MEM = 0,
+    PRISM_EVENTTYPE_COMP,
+    PRISM_EVENTTYPE_SYNC,
+    PRISM_EVENTTYPE_CXT,
+    PRISM_EVENTTYPE_CF,
+    PRISM_EVENTTYPE_CFG,
+    PRISM_EVENTTYPE_END,
 };
 
 #endif //PRISM_PRIM_ENUM_H

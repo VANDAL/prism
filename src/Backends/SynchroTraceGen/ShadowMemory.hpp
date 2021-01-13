@@ -16,7 +16,7 @@
  * by Nicholas Nethercote and Julian Seward
  */
 
-using Addr = PtrVal;
+using Addr = addr_prism_type;
 using PrismLog::fatal;
 using PrismLog::warn;
 

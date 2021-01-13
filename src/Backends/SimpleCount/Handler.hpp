@@ -7,7 +7,7 @@ namespace SimpleCount
 {
 
 auto cleanup() -> void;
-auto requirements() -> prism::capabilities;
+auto requirements() -> prism::capability::EvGenCaps;
 /* Prism hooks */
 
 class Handler : public BackendIface
@@ -17,7 +17,6 @@ class Handler : public BackendIface
     virtual auto onSyncEv(const prism::SyncEvent &ev) -> void override;
     virtual auto onCompEv(const prism::CompEvent &ev) -> void override;
     virtual auto onMemEv(const prism::MemEvent &ev) -> void override;
-    virtual auto onCFEv(const PrismCFEv &ev) -> void override;
     virtual auto onCxtEv(const prism::CxtEvent &ev) -> void override;
 
     unsigned long read_cnt{0};

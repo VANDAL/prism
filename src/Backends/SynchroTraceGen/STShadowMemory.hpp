@@ -21,8 +21,8 @@ class STShadowMemory
     /* In SynchroTraceGen, 'shadow state' takes the form of
      * the most recent thread to {read from, write to} an address.  */
   public:
-    auto updateWriter(Addr addr, ByteCount bytes, TID tid, EID eid) -> void;
-    auto updateReader(Addr addr, ByteCount bytes, TID tid) -> void;
+    auto updateWriter(Addr addr, uint32_t bytes, TID tid, EID eid) -> void;
+    auto updateReader(Addr addr, uint32_t bytes, TID tid) -> void;
     auto getWriterTID(Addr addr) -> TID;
     auto getWriterEID(Addr addr) -> EID;
     auto isReaderTID(Addr addr, TID tid) -> bool;
@@ -43,10 +43,10 @@ class STShadowMemory
 };
 
 
-inline auto STShadowMemory::updateWriter(Addr addr, ByteCount bytes, TID tid, EID eid) -> void
+inline auto STShadowMemory::updateWriter(Addr addr, uint32_t bytes, TID tid, EID eid) -> void
 {
     assert(tid < MAX_THREADS);
-    for (ByteCount i = 0; i < bytes; ++i)
+    for (uint32_t i = 0; i < bytes; ++i)
     {
         ShadowObject &so = sm[addr + i];
         so.last_writer = tid;
@@ -56,10 +56,10 @@ inline auto STShadowMemory::updateWriter(Addr addr, ByteCount bytes, TID tid, EI
 }
 
 
-inline auto STShadowMemory::updateReader(Addr addr, ByteCount bytes, TID tid) -> void
+inline auto STShadowMemory::updateReader(Addr addr, uint32_t bytes, TID tid) -> void
 {
     assert(tid < MAX_THREADS);
-    for (ByteCount i = 0; i < bytes; ++i)
+    for (uint32_t i = 0; i < bytes; ++i)
     {
         ShadowObject &so = sm[addr + i];
         so.last_readers.set(tid);

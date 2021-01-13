@@ -9,7 +9,7 @@ namespace STGen
 
 auto onParse(Args args) -> void;
 auto onExit() -> void;
-auto requirements() -> prism::capabilities;
+auto requirements() -> prism::capability::EvGenCaps;
 /* Prism hooks */
 
 class EventHandlers : public BackendIface

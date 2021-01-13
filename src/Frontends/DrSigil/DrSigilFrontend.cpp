@@ -4,41 +4,43 @@
 #include "whereami.h"
 #include "glob.h"
 
-auto drSigilCapabilities() -> prism::capabilities
+auto drSigilCapabilities() -> prism::capability::EvGenCaps
 {
     using namespace prism;
     using namespace prism::capability;
 
-    auto caps = initCaps();
+    auto caps = initEvGenCaps();
 
-    caps[MEMORY]         = availability::enabled;
-    caps[MEMORY_LDST]    = availability::enabled;
-    caps[MEMORY_SIZE]    = availability::enabled;
-    caps[MEMORY_ADDRESS] = availability::enabled;
+    caps[PRISMCAP_MEMORY]              = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_MEMORY_LDST_TYPE]    = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_MEMORY_ACCESS_BYTES] = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_MEMORY_ADDRESS]      = availability::PRISMCAP_ENABLED;
 
-    caps[COMPUTE]              = availability::enabled;
-    caps[COMPUTE_INT_OR_FLOAT] = availability::enabled;
-    caps[COMPUTE_ARITY]        = availability::nil;
-    caps[COMPUTE_OP]           = availability::nil;
-    caps[COMPUTE_SIZE]         = availability::nil;
+    caps[PRISMCAP_COMPUTE]             = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_COMPUTE_INT_OR_FLT]  = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_COMPUTE_ARITY]       = availability::PRISMCAP_UNAVAILABLE;
+    caps[PRISMCAP_COMPUTE_OP_TYPE]     = availability::PRISMCAP_UNAVAILABLE;
+    caps[PRISMCAP_COMPUTE_WIDTH_BYTES] = availability::PRISMCAP_UNAVAILABLE;
 
-    caps[CONTROL_FLOW] = availability::nil;
+    caps[PRISMCAP_CONTROL_FLOW] = availability::PRISMCAP_UNAVAILABLE;
 
-    caps[SYNC]      = availability::enabled;
-    caps[SYNC_TYPE] = availability::enabled;
-    caps[SYNC_ARGS] = availability::enabled;
+    caps[PRISMCAP_SYNC]      = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_SYNC_TYPE] = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_SYNC_ARGS] = availability::PRISMCAP_ENABLED;
 
-    caps[CONTEXT_INSTRUCTION] = availability::enabled;
-    caps[CONTEXT_BASIC_BLOCK] = availability::nil;
-    caps[CONTEXT_FUNCTION]    = availability::nil;
-    caps[CONTEXT_THREAD]      = availability::enabled;
+    caps[PRISMCAP_CONTEXT_INSTRUCTION] = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_CONTEXT_BASIC_BLOCK] = availability::PRISMCAP_UNAVAILABLE;
+    caps[PRISMCAP_CONTEXT_FUNCTION]    = availability::PRISMCAP_UNAVAILABLE;
+    caps[PRISMCAP_CONTEXT_THREAD]      = availability::PRISMCAP_ENABLED;
 
     return caps;
 };
 
 #ifndef DYNAMORIO_ENABLE
-auto startDrSigil(Args execArgs, Args feArgs, unsigned threads, prism::capabilities reqs)
-    -> FrontendIfaceGenerator
+auto startDrSigil(Args execArgs,
+                  Args feArgs,
+                  unsigned threads,
+                  prism::capability::EvGenCaps reqs) -> FrontendIfaceGenerator
 {
     (void)execArgs;
     (void)feArgs;
@@ -64,7 +66,7 @@ using Exec = std::pair<std::string, ExecArgs>;
 auto getDynamoRIOArgs(const std::string &sigilBinDir,
                       const std::string &ipcDir,
                       uint16_t threads,
-                      const prism::capabilities &reqs) -> Args
+                      const prism::EvGenCaps &reqs) -> Args
 {
     using namespace prism;
     using namespace prism::capability;

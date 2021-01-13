@@ -19,11 +19,12 @@ include(CTest)
 # Include everything #
 # TODO(cleanup)      #
 ######################
-get_filename_component(SRC_CORE      src/Core      ABSOLUTE)
-get_filename_component(SRC_UTILS     src/Utils     ABSOLUTE)
-get_filename_component(SRC_FRONTENDS src/Frontends ABSOLUTE)
-get_filename_component(SRC_BACKENDS  src/Backends  ABSOLUTE)
-get_filename_component(THIRD_PARTY   third_party   ABSOLUTE)
+get_filename_component(SRC_CORE      src/Core       ABSOLUTE)
+get_filename_component(SRC_UTILS     src/Utils      ABSOLUTE)
+get_filename_component(SRC_FRONTENDS src/Frontends  ABSOLUTE)
+get_filename_component(SRC_BACKENDS  src/Backends   ABSOLUTE)
+get_filename_component(THIRD_PARTY   third_party    ABSOLUTE)
+get_filename_component(CORE_TESTS    src/Core/tests ABSOLUTE)
 
 execute_process(
 	COMMAND git submodule update --init ${THIRD_PARTY}
@@ -57,7 +58,8 @@ include_directories(${THIRD_PARTY}/elfio-3.1)
 include_directories(${THIRD_PARTY}/zlib/contrib/iostream3)
 include_directories(${THIRD_PARTY}/capnproto/include)
 include_directories(src)
-include_directories(src/Utils)
+include_directories(${SRC_CORE})
+include_directories(${SRC_UTILS})
 include_directories(${SRC_FRONTENDS})
 include_directories(${SRC_BACKENDS})
 
@@ -83,12 +85,15 @@ endif(NOT PERF_ENABLE)
 ###############
 set(SOURCES
 	${THIRD_PARTY}/whereami/src/whereami.c
-	${SRC_UTILS}/PrismLog.cpp
 	${SRC_CORE}/Backends.cpp
+	${SRC_CORE}/Config.cpp
+	${SRC_CORE}/CoreEventLoop.cpp
+	${SRC_CORE}/EventCapability.cpp
+	${SRC_CORE}/EventIface.cpp
 	${SRC_CORE}/Frontends.cpp
 	${SRC_CORE}/Parser.cpp
-	${SRC_CORE}/Config.cpp
-	${SRC_CORE}/main.cpp)
+	${SRC_CORE}/main.cpp
+	${SRC_UTILS}/PrismLog.cpp)
 add_executable(prism ${SOURCES})
 target_link_libraries(prism pthread rt)
 set_target_properties(prism
@@ -122,3 +127,8 @@ endforeach()
 ##########################
 add_subdirectory(${SRC_FRONTENDS})
 target_link_libraries(prism frontends)
+
+###############
+# Core Tests  #
+###############
+add_subdirectory(${CORE_TESTS})

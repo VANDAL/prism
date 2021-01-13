@@ -1,6 +1,7 @@
 #include "EventHandlers.hpp"
 #include "STTypes.hpp"
 #include "TextLogger.hpp"
+
 #include <cassert>
 
 using namespace PrismLog; // console logging
@@ -70,9 +71,9 @@ auto EventHandlers::onCompEv(const prism::CompEvent &ev) -> void
 auto EventHandlers::onMemEv(const prism::MemEvent &ev) -> void
 {
     if (ev.isLoad())
-        cachedTCxt->onRead(ev.addr(), ev.bytes());
+        cachedTCxt->onRead(ev.addr(), ev.accessed_bytes());
     else if (ev.isStore())
-        cachedTCxt->onWrite(ev.addr(), ev.bytes());
+        cachedTCxt->onWrite(ev.addr(), ev.accessed_bytes());
 }
 
 
@@ -132,7 +133,7 @@ auto EventHandlers::onSwapTCxt(TID newTID) -> void
         cachedTCxt = tcxts.at(currentTID).get();
     }
 
-    assert(currentTID = newTID);
+    assert(currentTID == newTID);
     assert(cachedTCxt != nullptr);
 }
 
@@ -190,42 +191,42 @@ auto EventHandlers::convertAndFlush(const prism::SyncEvent &ev) -> void
     args[0] = ev.data();
     /* default to common case; 1 argument to sync call */
 
-    SyncType stSyncType = 0;
+    uint8_t stSyncType = {0};
 
     switch (ev.type())
     {
     case ::PRISM_SYNC_LOCK:
-        stSyncType = 1;
+        stSyncType = {1};
         break;
     case ::PRISM_SYNC_UNLOCK:
-        stSyncType = 2;
+        stSyncType = {2};
         break;
     case ::PRISM_SYNC_CREATE:
-        stSyncType = 3;
+        stSyncType = {3};
         break;
     case ::PRISM_SYNC_JOIN:
-        stSyncType = 4;
+        stSyncType = {4};
         break;
     case ::PRISM_SYNC_BARRIER:
-        stSyncType = 5;
+        stSyncType = {5};
         break;
     case ::PRISM_SYNC_CONDWAIT:
-        stSyncType = 6;
+        stSyncType = {6};
         numArgs = 2;
         args[1] = ev.dataExtra();
         /* uncommon case, condwaits have condition variable and mutex */
         break;
     case ::PRISM_SYNC_CONDSIG:
-        stSyncType = 7;
+        stSyncType = {7};
         break;
     case ::PRISM_SYNC_CONDBROAD:
-        stSyncType = 8;
+        stSyncType = {8};
         break;
     case ::PRISM_SYNC_SPINLOCK:
-        stSyncType = 9;
+        stSyncType = {9};
         break;
     case ::PRISM_SYNC_SPINUNLOCK:
-        stSyncType = 10;
+        stSyncType = {10};
         break;
     default:
         break;
@@ -357,34 +358,33 @@ auto onParse(Args args) -> void
 }
 
 
-auto requirements() -> prism::capabilities
+auto requirements() -> prism::capability::EvGenCaps
 {
-    using namespace prism;
     using namespace prism::capability;
 
-    auto caps = initCaps();
+    auto caps = initEvGenCaps();
 
-    caps[MEMORY]         = availability::enabled;
-    caps[MEMORY_LDST]    = availability::enabled;
-    caps[MEMORY_SIZE]    = availability::enabled;
-    caps[MEMORY_ADDRESS] = availability::enabled;
+    caps[PRISMCAP_MEMORY]              = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_MEMORY_LDST_TYPE]    = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_MEMORY_ACCESS_BYTES] = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_MEMORY_ADDRESS]      = availability::PRISMCAP_ENABLED;
 
-    caps[COMPUTE]              = availability::enabled;
-    caps[COMPUTE_INT_OR_FLOAT] = availability::enabled;
-    caps[COMPUTE_ARITY]        = availability::disabled;
-    caps[COMPUTE_OP]           = availability::disabled;
-    caps[COMPUTE_SIZE]         = availability::disabled;
+    caps[PRISMCAP_COMPUTE]             = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_COMPUTE_INT_OR_FLT]  = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_COMPUTE_ARITY]       = availability::PRISMCAP_DISABLED;
+    caps[PRISMCAP_COMPUTE_OP_TYPE]     = availability::PRISMCAP_DISABLED;
+    caps[PRISMCAP_COMPUTE_WIDTH_BYTES] = availability::PRISMCAP_DISABLED;
 
-    caps[CONTROL_FLOW] = availability::disabled;
+    caps[PRISMCAP_CONTROL_FLOW] = availability::PRISMCAP_DISABLED;
 
-    caps[SYNC]      = availability::enabled;
-    caps[SYNC_TYPE] = availability::enabled;
-    caps[SYNC_ARGS] = availability::enabled;
+    caps[PRISMCAP_SYNC]      = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_SYNC_TYPE] = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_SYNC_ARGS] = availability::PRISMCAP_ENABLED;
 
-    caps[CONTEXT_INSTRUCTION] = availability::enabled;
-    caps[CONTEXT_BASIC_BLOCK] = availability::disabled;
-    caps[CONTEXT_FUNCTION]    = availability::disabled;
-    caps[CONTEXT_THREAD]      = availability::enabled;
+    caps[PRISMCAP_CONTEXT_INSTRUCTION] = availability::PRISMCAP_ENABLED;
+    caps[PRISMCAP_CONTEXT_BASIC_BLOCK] = availability::PRISMCAP_DISABLED;
+    caps[PRISMCAP_CONTEXT_FUNCTION]    = availability::PRISMCAP_DISABLED;
+    caps[PRISMCAP_CONTEXT_THREAD]      = availability::PRISMCAP_ENABLED;
 
     return caps;
 }
