@@ -61,11 +61,9 @@ void SGL_(log_1I0D)(InstrInfo* ii)
 #ifdef COUNT_EVENT_CHECK
         cxt_events++;
 #endif
-
-        PrismEvVariant* slot = SGL_(acq_event_slot)();
-        slot->tag          = PRISM_CXT_TAG;
-        slot->cxt.type     = PRISM_CXT_INSTR;
-        slot->cxt.id       = ii->instr_addr;
+        unsigned char* buf = SGL_(reserve_ev_buf)(PRISM_BYTES_CXT + PRISM_BYTES_ADDR);
+        *((uintptr_t*)buf) = 0;
+        SET_EV_CXT_W_ID(buf, ii->instr_addr, PRISM_CXT_INSTR);
     }
 }
 
@@ -81,20 +79,21 @@ static inline void log_mem(Int type, Addr data_addr, Word data_size)
         ++mem_events;
 #endif
 
-        PrismEvVariant* slot   = SGL_(acq_event_slot)();
-        slot->tag            = PRISM_MEM_TAG;
-        slot->mem.type       = type;
-        slot->mem.begin_addr = data_addr;
-        slot->mem.size       = data_size;
+        unsigned char* buf = SGL_(reserve_ev_buf)(PRISM_BYTES_MEM + PRISM_BYTES_ADDR);
+        *((uintptr_t*)buf) = 0;
+        SET_EV_TYPE(buf, PRISM_EVENTTYPE_MEM);
+        SET_EV_MEM_TYPE(buf, type);
+        SET_EV_MEM_SIZE(buf, data_size);
+        SET_EV_MEM_ADDR(buf, data_addr);
     }
 }
-void SGL_(log_0I1Dr)(InstrInfo* ii, Addr data_addr, Word data_size)
+void SGL_(log_0I1Dr)(InstrInfo* ii, Addr data_addr, Word data_size_bytes)
 {
-    log_mem(PRISM_MEM_LOAD, data_addr, data_size);
+    log_mem(PRISM_MEM_LOAD, data_addr, data_size_bytes >> 1);
 }
-void SGL_(log_0I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size)
+void SGL_(log_0I1Dw)(InstrInfo* ii, Addr data_addr, Word data_size_bytes)
 {
-    log_mem(PRISM_MEM_STORE, data_addr, data_size);
+    log_mem(PRISM_MEM_STORE, data_addr, data_size_bytes >> 1);
 }
 
 
@@ -110,33 +109,36 @@ void SGL_(log_comp_event)(InstrInfo* ii, IRType op_type, IRExprTag arity)
 #ifdef COUNT_EVENT_CHECK
         ++comp_events;
 #endif
-
-        PrismEvVariant* slot = SGL_(acq_event_slot)();
-        slot->tag = PRISM_COMP_TAG;
+        unsigned char* buf = SGL_(reserve_ev_buf)(1);
+        SET_EV_TYPE(buf, PRISM_EVENTTYPE_COMP);
 
         if (op_type < Ity_F16)
-            slot->comp.type = PRISM_COMP_IOP;
-        else
-            slot->comp.type = PRISM_COMP_FLOP;
-
-        switch (arity)
         {
-        case Iex_Unop:
-            slot->comp.arity = PRISM_COMP_UNARY;
-            break;
-        case Iex_Binop:
-            slot->comp.arity = PRISM_COMP_BINARY;
-            break;
-        case Iex_Triop:
-            slot->comp.arity = PRISM_COMP_TERNARY;
-            break;
-        case Iex_Qop:
-            slot->comp.arity = PRISM_COMP_QUARTERNARY;
-            break;
-        default:
-            tl_assert(False);
-            break;
+            SET_EV_COMP_FMT(buf, PRISM_COMP_IOP);
         }
+        else
+        {
+            SET_EV_COMP_FMT(buf, PRISM_COMP_FLOP);
+        }
+
+        //switch (arity)
+        //{
+        //case Iex_Unop:
+        //    slot->comp.arity = PRISM_COMP_UNARY;
+        //    break;
+        //case Iex_Binop:
+        //    slot->comp.arity = PRISM_COMP_BINARY;
+        //    break;
+        //case Iex_Triop:
+        //    slot->comp.arity = PRISM_COMP_TERNARY;
+        //    break;
+        //case Iex_Qop:
+        //    slot->comp.arity = PRISM_COMP_QUARTERNARY;
+        //    break;
+        //default:
+        //    tl_assert(False);
+        //    break;
+        //}
     }
 }
 
@@ -148,12 +150,22 @@ void SGL_(log_sync)(UChar type, UWord data1, UWord data2)
 #ifdef COUNT_EVENT_CHECK
         ++sync_events;
 #endif
-
-        PrismEvVariant* slot  = SGL_(acq_event_slot)();
-        slot->tag           = PRISM_SYNC_TAG;
-        slot->sync.type     = type;
-        slot->sync.data[0]  = data1;
-        slot->sync.data[1]  = data2;
+        unsigned char* buf;
+        if (data2 == UNUSED_SYNC_DATA)
+        {
+            buf = SGL_(reserve_ev_buf)(1 + sizeof(uintptr_t));
+            SET_EV_TYPE(buf, PRISM_EVENTTYPE_SYNC);
+            SET_EV_SYNC_TY(buf, type);
+            *(uintptr_t*)(buf+1) = data1;
+        }
+        else
+        {
+            buf = SGL_(reserve_ev_buf)(1 + 2*sizeof(uintptr_t));
+            SET_EV_TYPE(buf, PRISM_EVENTTYPE_SYNC);
+            SET_EV_SYNC_TY(buf, type);
+            *(uintptr_t*)(buf+1) = data1;
+            *(uintptr_t*)(buf+1+sizeof(uintptr_t)) = data2;
+        }
     }
 }
 
@@ -165,17 +177,15 @@ static inline void log_fn(Int type, fn_node* fn)
 #ifdef COUNT_EVENT_CHECK
         cxt_events++;
 #endif
+        Int actual_len = VG_(strlen)(fn->name);
+        Int len = actual_len < 256 ? actual_len : 256;
+        unsigned char* buf = SGL_(reserve_ev_buf)(2 + len);
 
-        /* request both slots simultaneously to allow proper flushing */
-        /* TODO set max size for name length? */
-        Int len = VG_(strlen)(fn->name) + 1;
-        EventNameSlotTuple tuple = SGL_(acq_event_name_slot)(len);
-
-        VG_(strncpy)(tuple.name_slot, fn->name, len);
-        tuple.event_slot->tag      = PRISM_CXT_TAG;
-        tuple.event_slot->cxt.type = type;
-        tuple.event_slot->cxt.len  = len;
-        tuple.event_slot->cxt.idx  = tuple.name_idx;
+        *buf = 0;
+        SET_EV_TYPE(buf, PRISM_EVENTTYPE_CXT);
+        SET_EV_CXT_TY(buf, type);
+        ((unsigned char*)buf)[1] = (uint8_t)len - 1;
+        VG_(memcpy)((unsigned char*)buf+2, fn->name, len);
     }
 }
 void SGL_(log_fn_entry)(fn_node* fn)

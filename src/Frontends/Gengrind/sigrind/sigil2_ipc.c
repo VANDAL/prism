@@ -13,27 +13,22 @@ static PrismDBISharedData* shmem;
 /* IPC channel */
 
 
-static UInt            curr_idx;
-static EventBuffer*    curr_ev_buf;
-static PrismEvVariant* curr_ev_slot;
-static NameBuffer*     curr_name_buf;
-static char*           curr_name_slot;
+static uint32_t        curr_ev_buf_offset;
+static unsigned char*  curr_ev_buf_baseptr;
+static UInt            ipc_ev_buf_idx;
+static EventBuffer*    ipc_ev_buf;
 /* cached IPC state */
 
 
-static Bool is_full[PRISM_IPC_BUFFERS];
+static Bool ipc_buf_is_full[PRISM_IPC_BUFFERS];
 /* track available buffers */
 
 
 static inline void set_and_init_buffer(UInt buf_idx)
 {
-    curr_ev_buf = shmem->eventBuffers + buf_idx;
-    curr_ev_buf->used = 0;
-    curr_ev_slot = curr_ev_buf->events + curr_ev_buf->used;
-
-    curr_name_buf = shmem->nameBuffers + buf_idx;
-    curr_name_buf->used = 0;
-    curr_name_slot = curr_name_buf->names + curr_name_buf->used;
+    ipc_ev_buf = shmem->eventBuffers + buf_idx;
+    curr_ev_buf_baseptr = ipc_ev_buf->events;
+    curr_ev_buf_offset = 0;
 }
 
 
@@ -41,9 +36,12 @@ static inline void flush_to_prism(void)
 {
     /* Mark that the buffer is being flushed,
      * and tell Prism the buffer is ready to consume */
-    is_full[curr_idx] = True;
-    Int res = VG_(write)(fullfd, &curr_idx, sizeof(curr_idx));
-    if (res != sizeof(curr_idx))
+    unsigned char* buf = curr_ev_buf_baseptr + curr_ev_buf_offset;
+    SET_EV_END(buf);
+
+    ipc_buf_is_full[ipc_ev_buf_idx] = True;
+    Int res = VG_(write)(fullfd, &ipc_ev_buf_idx, sizeof(ipc_ev_buf_idx));
+    if (res != sizeof(ipc_ev_buf_idx))
     {
         VG_(umsg)("error VG_(write)\n");
         VG_(umsg)("error writing to Sigrind fifo\n");
@@ -56,13 +54,13 @@ static inline void flush_to_prism(void)
 static inline void set_next_buffer(void)
 {
     /* try the next buffer, circular */
-    ++curr_idx;
-    if (curr_idx == PRISM_IPC_BUFFERS)
-        curr_idx = 0;
+    ++ipc_ev_buf_idx;
+    if (ipc_ev_buf_idx == PRISM_IPC_BUFFERS)
+        ipc_ev_buf_idx = 0;
 
     /* if the next buffer is full,
      * wait until Prism communicates that it's free */
-    if (is_full[curr_idx])
+    if (ipc_buf_is_full[ipc_ev_buf_idx])
     {
         UInt buf_idx;
         Int res = VG_(read)(emptyfd, &buf_idx, sizeof(buf_idx));
@@ -75,59 +73,28 @@ static inline void set_next_buffer(void)
         }
 
         tl_assert(buf_idx < PRISM_IPC_BUFFERS);
-        tl_assert(buf_idx == curr_idx);
-        curr_idx = buf_idx;
-        is_full[curr_idx] = False;
+        tl_assert(buf_idx == ipc_ev_buf_idx);
+        ipc_ev_buf_idx = buf_idx;
+        ipc_buf_is_full[ipc_ev_buf_idx] = False;
     }
 
-    set_and_init_buffer(curr_idx);
+    set_and_init_buffer(ipc_ev_buf_idx);
 }
 
 
-static inline Bool is_events_full(void)
-{
-    return curr_ev_buf->used == PRISM_EVENTS_BUFFER_SIZE;
-}
-
-
-static inline Bool is_names_full(UInt size)
-{
-    return (curr_name_buf->used + size) > PRISM_EVENTS_BUFFER_SIZE;
-}
-
-
-PrismEvVariant* SGL_(acq_event_slot)()
+unsigned char* SGL_(reserve_ev_buf)(uint32_t bytes_requested)
 {
     tl_assert(initialized == True);
 
-    if (is_events_full())
+    if ((curr_ev_buf_offset + bytes_requested) >= PRISM_EVENTS_BUFFER_SIZE)
     {
         flush_to_prism();
         set_next_buffer();
     }
 
-    curr_ev_buf->used++;
-    return curr_ev_slot++;
-}
-
-
-EventNameSlotTuple SGL_(acq_event_name_slot)(UInt size)
-{
-    tl_assert(initialized == True);
-
-    if (is_events_full() || is_names_full(size))
-    {
-        flush_to_prism();
-        set_next_buffer();
-    }
-
-    EventNameSlotTuple tuple = {curr_ev_slot, curr_name_slot, curr_name_buf->used};
-    curr_ev_buf->used   += 1;
-    curr_ev_slot        += 1;
-    curr_name_buf->used += size;
-    curr_name_slot      += size;
-
-    return tuple;
+    unsigned char* temp = curr_ev_buf_baseptr + curr_ev_buf_offset;
+    curr_ev_buf_offset += bytes_requested;
+    return temp;
 }
 
 
@@ -234,10 +201,10 @@ void SGL_(init_IPC)()
     shmem   = open_shmem(shmem_path, VKI_O_RDWR);
 
     /* initialize cached IPC state */
-    curr_idx = 0;
-    set_and_init_buffer(curr_idx);
+    ipc_ev_buf_idx = 0;
+    set_and_init_buffer(ipc_ev_buf_idx);
     for (UInt i=0; i<PRISM_IPC_BUFFERS; ++i)
-        is_full[i] = False;
+        ipc_buf_is_full[i] = False;
 
     initialized = True;
 }
@@ -248,8 +215,10 @@ void SGL_(term_IPC)(void)
     tl_assert(initialized == True);
 
     /* send finish sequence */
+    unsigned char* buf = curr_ev_buf_baseptr + curr_ev_buf_offset;
+    SET_EV_END(buf);
     UInt finished = PRISM_IPC_FINISHED;
-    if (VG_(write)(fullfd, &curr_idx, sizeof(curr_idx)) != sizeof(curr_idx) ||
+    if (VG_(write)(fullfd, &ipc_ev_buf_idx, sizeof(ipc_ev_buf_idx)) != sizeof(ipc_ev_buf_idx) ||
         VG_(write)(fullfd, &finished, sizeof(finished)) != sizeof(finished))
     {
         VG_(umsg)("error VG_(write)\n");

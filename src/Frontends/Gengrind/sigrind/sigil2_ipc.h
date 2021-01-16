@@ -8,21 +8,8 @@
  * IPC includes initialization, termination, shared memory buffer writes, and
  * synchronization via named pipes */
 
-typedef struct EventNameSlotTuple
-{
-    PrismEvVariant*  event_slot;
-    char*          name_slot;
-    UInt           name_idx;
-} EventNameSlotTuple;
-
 void SGL_(init_IPC)(void);
 void SGL_(term_IPC)(void);
-
-PrismEvVariant* SGL_(acq_event_slot)(void);
-/* Get a buffer slot to add an event */
-
-EventNameSlotTuple SGL_(acq_event_name_slot)(UInt size);
-/* Get a buffer slot to add an event (probably a context event)
- * and a name slot to add a name with it (like a function name) */
+unsigned char* SGL_(reserve_ev_buf)(uint32_t bytes_requested);
 
 #endif
