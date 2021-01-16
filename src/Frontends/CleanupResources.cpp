@@ -27,18 +27,31 @@ auto cleanupHandler()
         DIR *d = opendir(cleanupDir.c_str());
         if (d != nullptr)
         {
-            dirent *dir = readdir(d);
             char fullPath[256];
-            while (dir != nullptr)
+            const char* rootdir_str = cleanupDir.c_str();
+            size_t rootdir_len = strlen(rootdir_str);
+            for(dirent *dir = readdir(d); dir != nullptr; dir = readdir(d))
             {
-                /* TODO check path length */
-                sprintf(fullPath, "%s/%s", cleanupDir.c_str(), dir->d_name);
-                remove(fullPath);
-                dir = readdir(d);
+                const char* dir_str = dir->d_name;
+                size_t dir_len = strlen(dir_str);
+
+                if ( (strcmp(dir->d_name, ".") == 0) || (strcmp(dir->d_name, "..") == 0) || ((rootdir_len + dir_len + 2) > 256) )
+                {
+                    // Don't delete relative paths.
+                    // Not much to do if our buffer is too small...
+                    // ...but that should be an improbably rare event
+                    continue;
+                }
+
+                memset(fullPath, 0, 256);
+                strncpy(fullPath, rootdir_str, rootdir_len);
+                fullPath[rootdir_len] = '/';
+                strncat(fullPath, dir_str, dir_len);
+                if (int ret = remove(fullPath); ret < 0)
+                    std::cerr << "error removing " << rootdir_str << " -- " << strerror(errno) << std::endl;
             }
-            int ret = remove(cleanupDir.c_str());
-            if (ret < 0)
-                std::cerr << "error removing " + cleanupDir + " -- " + strerror(errno) << std::endl;
+            if (int ret = remove(rootdir_str); ret < 0)
+                std::cerr << "error removing " << rootdir_str << " -- " << strerror(errno) << std::endl;
         }
     }
 }
