@@ -79,6 +79,12 @@ if(NOT PERF_ENABLE)
 		FORCE)
 endif(NOT PERF_ENABLE)
 
+if(NOT PYTORCH_ENABLE)
+	set(PYTORCH_ENABLE FALSE CACHE BOOL
+		"Enable pytorch/caffe2 frontend"
+		FORCE)
+endif(NOT PYTORCH_ENABLE)
+
 
 ###############
 # Build Prism #

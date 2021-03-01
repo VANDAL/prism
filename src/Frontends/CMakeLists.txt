@@ -13,6 +13,10 @@ set(FRONTEND_TARGETS ${FRONTEND_TARGETS} $<TARGET_OBJECTS:DrSigil>)
 add_subdirectory(PerfPT)
 set(FRONTEND_TARGETS ${FRONTEND_TARGETS} $<TARGET_OBJECTS:PerfPT>)
 
+# PyTorch/Caffe2 support (caffe2 only exist for now)
+add_subdirectory(PyTorchObserver)
+set(FRONTEND_TARGETS ${FRONTEND_TARGETS} $<TARGET_OBJECTS:PyTorchObserver>)
+
 # Static or random event injector
 #add_subdirectory(${SRC_FRONTENDS}/Injector)
 

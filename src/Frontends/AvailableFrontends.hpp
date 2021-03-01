@@ -4,5 +4,6 @@
 #include "Gengrind/GengrindFrontend.hpp"
 #include "DrSigil/DrSigilFrontend.hpp"
 #include "PerfPT/PerfPTFrontend.hpp"
+#include "PyTorchObserver/PyTorchFrontend.hpp"
 
 #endif

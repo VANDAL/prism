@@ -1,4 +1,5 @@
 #include "EventCapability.hpp"
+#include "PrismLog.hpp"
 #include <cassert>
 #include <stdexcept>
 
@@ -46,9 +47,13 @@ auto resolveCaps(const EvGenCaps &caps_gen, const EvGenCaps &caps_req) -> EvGenC
            caps.size() == options::PRISMCAP_NUM_CAPABILITIES);
 
     auto rc = caps.begin();
-    for (auto fc = caps_gen.cbegin(), bc = caps_req.cbegin(), end = caps_gen.cend(); fc != end; ++fc, ++bc, ++rc)
-    {
-        *rc = resolveCaps_(*fc, *bc);
+    try {
+        for (auto fc = caps_gen.cbegin(), bc = caps_req.cbegin(), end = caps_gen.cend(); fc != end; ++fc, ++bc, ++rc)
+        {
+            *rc = resolveCaps_(*fc, *bc);
+        }
+    } catch (const std::exception& e) {
+        PrismLog::fatal("Caught exception: {}", e.what());
     }
     return caps;
 }

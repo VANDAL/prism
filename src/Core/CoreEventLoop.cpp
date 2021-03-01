@@ -49,6 +49,10 @@ auto flushToBackend(BackendIface &be,
                 break;
             case CxtTypeEnum::PRISM_CXT_FUNC_ENTER:
             case CxtTypeEnum::PRISM_CXT_FUNC_EXIT:
+            case CxtTypeEnum::PRISM_CXT_ML_NET_ENTER:
+            case CxtTypeEnum::PRISM_CXT_ML_NET_EXIT:
+            case CxtTypeEnum::PRISM_CXT_ML_OP_ENTER:
+            case CxtTypeEnum::PRISM_CXT_ML_OP_EXIT:
                 // Each string starts with a 1-byte length, and is at least 1-char after (1-256).
                 // So incrememnt for the length, and offset the length value (0->1, 255->256).
                 buf += 1 + (*(buf+1) + 1);

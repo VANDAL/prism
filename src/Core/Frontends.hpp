@@ -22,6 +22,8 @@ class FrontendIface
 
   public:
     FrontendIface() : uid(uidCount++) {}
+    FrontendIface(const FrontendIface&) = delete;
+    FrontendIface& operator=(const FrontendIface&) = delete;
     virtual ~FrontendIface() {}
 
     virtual auto acquireBuffer() -> EventBufferPtr = 0;

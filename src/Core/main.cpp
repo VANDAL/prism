@@ -20,6 +20,9 @@ int main(int argc, char* argv[])
         .registerFrontend("perf",
                           {startPerfPT,
                           perfPTCapabilities()})
+        .registerFrontend("c2",
+                          {startPyTorchCaffe2,
+                          PyTorchCapabilities()})
         .registerBackend("stgen",
                          []{return std::make_unique<::STGen::EventHandlers>();},
                          ::STGen::onParse,

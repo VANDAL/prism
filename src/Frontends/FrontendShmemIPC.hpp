@@ -51,10 +51,10 @@ class ShmemFrontend : public FrontendIface
     const std::string emptyFifoName;
     const std::string fullFifoName;
     const std::string shmemName;
-    int emptyfd;
-    int fullfd;
-    FILE *shmemfp;
-    SharedData *shmem;
+    int emptyfd = -1;
+    int fullfd = -1;
+    FILE *shmemfp = nullptr;
+    SharedData *shmem = nullptr;
 
     /* IPC configuration */
     CircularQueue<int, PRISM_IPC_BUFFERS> q;
@@ -66,18 +66,23 @@ class ShmemFrontend : public FrontendIface
     /* Asynchronously manage external events */
 
   public:
-    ShmemFrontend(const std::string &ipcDir)
+    ShmemFrontend(const std::string &ipcDir, bool open_on_create=true)
         : ipcDir       (ipcDir)
         , emptyFifoName(ipcDir + "/" + PRISM_IPC_EMPTYFIFO_BASENAME + "-" + std::to_string(uid))
         , fullFifoName (ipcDir + "/" + PRISM_IPC_FULLFIFO_BASENAME  + "-" + std::to_string(uid))
         , shmemName    (ipcDir + "/" + PRISM_IPC_SHMEM_BASENAME     + "-" + std::to_string(uid))
     {
         initShMem();
-        emptyfd = createAndOpenNewFifo(emptyFifoName.c_str(), O_WRONLY);
-        fullfd = createAndOpenNewFifo(fullFifoName.c_str(), O_RDONLY);
 
-        /* asynchronously manage communications with the external tool */
-        eventLoop = std::thread{&ShmemFrontend::receiveEventsLoop, this};
+        if (open_on_create) {
+            emptyfd = createAndOpenNewFifo(emptyFifoName.c_str(), O_WRONLY | O_CLOEXEC);
+            fullfd = createAndOpenNewFifo(fullFifoName.c_str(), O_RDONLY | O_CLOEXEC);
+            /* asynchronously manage communications with the external tool */
+            eventLoop = std::thread{&ShmemFrontend::receiveEventsLoop, this};
+        } else {
+            createNewFifo(emptyFifoName.c_str());
+            createNewFifo(fullFifoName.c_str());
+        }
     }
 
     ~ShmemFrontend() override
@@ -86,6 +91,19 @@ class ShmemFrontend : public FrontendIface
          * should be completed by destruction */
         eventLoop.join();
         disconnect();
+    }
+
+    auto openFifos() -> void {
+        if (emptyfd >= 0 || fullfd >= 0 || eventLoop.joinable()) {
+            fatal("Trying to open fifos that are already initialized and opened.");
+        }
+        emptyfd = open(emptyFifoName.c_str(), O_WRONLY | O_CLOEXEC);
+        if (emptyfd < 0)
+            fatal(std::string("prism failed to open fifo: ") + emptyFifoName.c_str() + " -- " + strerror(errno));
+        fullfd = open(fullFifoName.c_str(), O_RDONLY | O_CLOEXEC);
+        if (fullfd < 0)
+            fatal(std::string("prism failed to open fifo: ") + fullFifoName.c_str() + " -- " + strerror(errno));
+        eventLoop = std::thread{&ShmemFrontend::receiveEventsLoop, this};
     }
 
     virtual auto acquireBuffer() -> EventBufferPtr override final
@@ -118,7 +136,7 @@ class ShmemFrontend : public FrontendIface
     {
         /* Initialize IPC between Prism and the external tool */
 
-        shmemfp = fopen(shmemName.c_str(), "wb+");
+        shmemfp = fopen(shmemName.c_str(), "wb+e");
         if (shmemfp == nullptr)
             fatal(std::string("prism shared memory file open failed -- ") + strerror(errno));
 
@@ -148,8 +166,7 @@ class ShmemFrontend : public FrontendIface
         }
     }
 
-    auto createAndOpenNewFifo(const char *path, int flags) const -> int
-    {
+    auto createNewFifo(const char *path) const -> void {
         if (mkfifo(path, 0600) < 0)
         {
             if (errno == EEXIST)
@@ -163,11 +180,14 @@ class ShmemFrontend : public FrontendIface
             else
                 fatal(std::string("prism failed to create fifos -- ") + strerror(errno));
         }
+    }
 
+    auto createAndOpenNewFifo(const char *path, int flags) const -> int
+    {
+        createNewFifo(path);
         int fd = open(path, flags);
         if (fd < 0)
             fatal(std::string("prism failed to open fifo: ") + path + " -- " + strerror(errno));
-
         return fd;
     }
 

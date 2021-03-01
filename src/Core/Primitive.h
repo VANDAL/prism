@@ -131,9 +131,11 @@ struct PrismSyncEvSlot_1 {
 // When repeatedly operating on the same set of bytes, Clang and GCC generate varying
 // assembly w/ these macros depending on call depth and use of intermediate variables,
 // so I'm not touching those optimizations.
+// ----------------------------------------------------------------------------
 #define SET_EV_TYPE_OR(ptr, EV_TY) ( *(unsigned char*)ptr |= ((unsigned char)EV_TY << 5) )
 #define SET_EV_TYPE(ptr, EV_TY) ( *(unsigned char*)ptr = ((unsigned char)EV_TY << 5) )
 
+// ----------------------------------------------------------------------------
 #define SET_EV_CFG_TYPE(ptr, EV_TY) ( *(unsigned char*)ptr |= ((unsigned char)EV_TY << 2) )
 #define SET_EV_CFG_CFG(ptr, CFG) ( *((unsigned char*)ptr + 1) = ((unsigned char)CFG) )
 #define SET_EV_CFG_ALL(ptr, EV_TY, CFG) do {\
@@ -142,24 +144,27 @@ struct PrismSyncEvSlot_1 {
     SET_EV_CFG_CFG(ptr, CFG);\
 } while (0)
 
+// ----------------------------------------------------------------------------
 #define SET_EV_MEM_TYPE(ptr, MEM_TY) ( *(unsigned char*)ptr |= ((unsigned char)MEM_TY << 3) )
 #define SET_EV_MEM_SIZE(ptr, MEM_SZ) ( *(unsigned char*)ptr |= ((unsigned char)MEM_SZ) )
 #define SET_EV_MEM_ADDR(ptr, MEM_ADDR) ( *((uintptr_t*)ptr) |= ((uintptr_t)MEM_ADDR << 8) )
 #define SET_EV_MEM_ID_AFTER_ADDR(ptr, MEM_ID) ( *((unsigned char*)ptr+sizeof(uintptr_t)) = (unsigned char)(MEM_ID) )
 #define SET_EV_MEM_ID(ptr, MEM_ID) ( *((unsigned char*)ptr+1) = (unsigned char)(MEM_ID) )
 
+// ----------------------------------------------------------------------------
 #define SET_EV_COMP_FMT(ptr, OP_FMT) ( *(unsigned char*)ptr |= ((unsigned char)OP_FMT << 3) )
 #define SET_EV_COMP_SZ(ptr, OP_SZ) ( *(unsigned char*)ptr |= ((unsigned char)OP_SZ) )
 #define SET_EV_COMP_TYPE(ptr, OP_TY) ( *((unsigned char*)ptr+1) |= ((unsigned char)OP_TY << 2) )
 #define SET_EV_COMP_ARITY(ptr, OP_ARITY) ( *((unsigned char*)ptr+1) |= ((unsigned char)OP_ARITY) )
 #define SET_EV_COMP_ID(ptr, SLOT, OP_ID) ( *((unsigned char*)ptr+2+SLOT) = ((unsigned char)OP_ID) )
 
+// ----------------------------------------------------------------------------
 #define SET_EV_CXT_TY(ptr, CXT_TY) ( *(unsigned char*)ptr |= ((unsigned char)CXT_TY) )
 #define SET_EV_CXT_W_NAME(ptr, len, str, ty_w_name) do {\
     SET_EV_TYPE(ptr, PRISM_EVENTTYPE_CXT);\
     SET_EV_CXT_TY(ptr, ty_w_name);\
     ((unsigned char*)ptr)[1] = uint8_t{len} - 1;\
-    memcpy((unsigned char*)ptr+2, name, len);\
+    memcpy((unsigned char*)ptr+2, str, len);\
 } while (0)
 #define SET_EV_CXT_W_ID(ptr, id, ty_w_id) do {\
     SET_EV_TYPE(ptr, PRISM_EVENTTYPE_CXT);\
@@ -167,8 +172,15 @@ struct PrismSyncEvSlot_1 {
     *((uintptr_t*)ptr) |= ((uintptr_t)id << 8);\
 } while (0)
 
+#define SET_EV_OPENTER_NAME(ptr, len, str) SET_EV_CXT_W_NAME(ptr, len, str, PRISM_CXT_ML_OP_ENTER)
+#define SET_EV_OPEXIT_NAME(ptr, len, str) SET_EV_CXT_W_NAME(ptr, len, str, PRISM_CXT_ML_OP_EXIT)
+#define SET_EV_NETENTER_NAME(ptr, len, str) SET_EV_CXT_W_NAME(ptr, len, str, PRISM_CXT_ML_NET_ENTER)
+#define SET_EV_NETEXIT_NAME(ptr, len, str) SET_EV_CXT_W_NAME(ptr, len, str, PRISM_CXT_ML_NET_EXIT)
+
+// ----------------------------------------------------------------------------
 #define SET_EV_SYNC_TY(ptr, SYNC_TY) ( *(unsigned char*)ptr |= ((unsigned char)SYNC_TY) )
 
+// ----------------------------------------------------------------------------
 #define SET_EV_END(ptr) SET_EV_TYPE(ptr, PRISM_EVENTTYPE_END)
 
 #ifdef __cplusplus
